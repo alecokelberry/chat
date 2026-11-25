@@ -407,3 +407,23 @@
 @utility duration-drawer {
   transition-duration: var(--duration-drawer);
 }
+
+/* Press feedback for Buttons: pressing in is instant (colors snap, a 97%
+   scale over 80ms) so even a quick tap shows; letting go eases back over
+   duration-fast. The scale only where motion is welcome. */
+@utility press {
+  transition-property: color, background-color, border-color, opacity, scale;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+  &:is(:active, [data-pressing]):not(
+      :disabled,
+      [aria-disabled="true"],
+      [data-disabled]
+    ) {
+    transition-duration: 0s, 0s, 0s, 0s, 80ms;
+    transition-timing-function: var(--ease-decelerate);
+    @media (prefers-reduced-motion: no-preference) {
+      scale: 0.97;
+    }
+  }
+}
