@@ -11,6 +11,11 @@ import { setSessionCookie } from "better-auth/cookies"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { passkey } from "@better-auth/passkey"
 
+/** The live address, and what every Preview's address ends with
+ *  (<branch>-chat.alecokelberry.workers.dev). */
+const LIVE_HOST = "chat.alecokelberry.workers.dev"
+const PREVIEW_SUFFIX = "-chat.alecokelberry.workers.dev"
+
 /** Whose account a passkey added with the setup code joins. */
 const OWNER = { email: "owner@chat.test", name: "Alec" }
 /** Dev: the local test account, kept apart from the owner's. `.test` can't
@@ -65,16 +70,22 @@ function createAuth() {
   return betterAuth({
     database: env.DB,
     secret: env.BETTER_AUTH_SECRET,
-    // The address comes from the request, so live and local both work; a
-    // passkey's rpID is its host (workers.dev is a public suffix, so the
-    // full chat.alecokelberry.workers.dev).
-    baseURL: {
-      allowedHosts: ["chat.alecokelberry.workers.dev", "localhost:*"],
+    // The address comes from the request, so live, Previews and local all
+    // work. A Preview's own origin is trusted only on its own host, so a
+    // passkey signed on one Preview can't be replayed on another or live.
+    baseURL: { allowedHosts: [LIVE_HOST, `*${PREVIEW_SUFFIX}`, "localhost:*"] },
+    trustedOrigins: (request) => {
+      const url = request === undefined ? undefined : new URL(request.url)
+      return url?.hostname.endsWith(PREVIEW_SUFFIX) === true ? [url.origin] : []
     },
     telemetry: { enabled: false },
     plugins: [
       passkey({
         rpName: "Chat",
+        // alecokelberry.workers.dev live and in Previews (workers.dev is the
+        // public suffix, so one account's subdomains can share it), so one
+        // passkey works on both; localhost locally.
+        rpID: env.PASSKEY_RP_ID,
         registration: {
           // Signed in, a passkey joins your own account. Signed out, only
           // with the setup code, and then it joins the owner's.

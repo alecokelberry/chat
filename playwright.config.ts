@@ -24,6 +24,7 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "e2e-only-secret-at-least-32-characters",
       SETUP_CODE: E2E_SETUP_CODE,
       DEV_SIGN_IN: "1",
+      PASSKEY_RP_ID: "localhost",
     },
   },
 })
