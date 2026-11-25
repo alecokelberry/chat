@@ -114,7 +114,7 @@ function createAuth() {
 
 let auth: ReturnType<typeof createAuth> | undefined
 
-/** The one Better Auth instance, made on first use (not at startup). */
+/** The one Better Auth instance, made once per isolate. */
 export function getAuth() {
   auth ??= createAuth()
   return auth
