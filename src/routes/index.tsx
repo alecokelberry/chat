@@ -1,7 +1,10 @@
-// Home: a placeholder until chat lands. Only a signed-in
-// browser gets here; anyone else goes to /sign-in.
-import { createFileRoute, redirect } from "@tanstack/react-router"
+// New chat: a greeting and the composer. Only a signed-in browser gets
+// here; anyone else goes to /sign-in. The first send makes the chat: a
+// fresh id, then /c/<id> with the message in history state, which that
+// page sends once it's connected (src/routes/c.$id.tsx).
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 
+import { Composer } from "@/components/chat/composer"
 import { getSession } from "@/lib/auth/session"
 
 export const Route = createFileRoute("/")({
@@ -10,14 +13,26 @@ export const Route = createFileRoute("/")({
     if (user === null) throw redirect({ to: "/sign-in" })
     return { user }
   },
-  component: Home,
+  component: NewChat,
 })
 
-function Home() {
+function NewChat() {
   const { user } = Route.useRouteContext()
+  const navigate = useNavigate()
   return (
-    <main className="grid min-h-dvh place-items-center bg-background p-4 text-foreground">
+    <main className="sticky top-0 flex min-h-dvh flex-col items-center justify-center gap-8 bg-background safe-area text-foreground">
       <h1 className="text-3xl font-medium">Hi, {user.name}</h1>
+      <div className="w-full max-w-content">
+        <Composer
+          onSend={(text) =>
+            void navigate({
+              to: "/c/$id",
+              params: { id: crypto.randomUUID() },
+              state: { firstMessage: text },
+            })
+          }
+        />
+      </div>
     </main>
   )
 }

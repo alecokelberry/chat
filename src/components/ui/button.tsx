@@ -20,9 +20,15 @@ const buttonVariants = cva(
         // stays at full strength: the passkey sheet is the feedback.
         prompt:
           "h-15 w-full justify-between gap-3 rounded-full border-border-strong bg-surface ps-5 pe-2.25 text-base font-normal text-foreground hover:border-input aria-busy:opacity-100 [&>[data-slot=prompt-go]]:flex [&>[data-slot=prompt-go]]:size-10 [&>[data-slot=prompt-go]]:shrink-0 [&>[data-slot=prompt-go]]:items-center [&>[data-slot=prompt-go]]:justify-center [&>[data-slot=prompt-go]]:rounded-full [&>[data-slot=prompt-go]]:bg-send [&>[data-slot=prompt-go]]:text-primary-foreground [&>[data-slot=prompt-go]_svg]:size-4.5",
+        // The composer's go circle: pink to send (the prompt pill's), ink
+        // to stop a streaming reply.
+        send: "bg-send text-primary-foreground hover:bg-send/90 active:bg-send/80 [&_svg]:size-4.5",
+        stop: "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active [&_svg]:size-3.5",
       },
       size: {
         default: "h-9 px-3 py-2 pointer-coarse:h-10",
+        // The 40px circle: send and stop.
+        circle: "size-10",
         // The variant brings its own size (prompt).
         none: "",
       },
