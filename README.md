@@ -16,7 +16,7 @@ DEV_SIGN_IN=1
 
 ## Deploying
 
-`pnpm deploy` builds, applies new migrations to the live database and deploys to chat.alecokelberry.workers.dev.
+`pnpm run deploy` builds, applies new migrations to the live database and deploys to chat.alecokelberry.workers.dev.
 
 To add a passkey while signed out (a new device), this sets a fresh setup code and opens `/setup` with it, without showing the code:
 
