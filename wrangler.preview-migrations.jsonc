@@ -1,0 +1,14 @@
+// Only for applying migrations/ to chat-preview, the database every Preview
+// shares (`pnpm run preview`). Wrangler migrates a top-level D1 binding, and
+// in wrangler.jsonc that is the live one.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chat",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chat-preview",
+      "database_id": "1e70df4a-c2db-46d0-8279-e47434393d8a",
+    },
+  ],
+}
