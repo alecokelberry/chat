@@ -10,6 +10,12 @@ const selectorRule = (selector, message) => ({
 export default {
   meta: { name: "ui" },
   rules: {
+    // The ui-sdk skill: a role ui-sdk ships a component for is almost
+    // always a hand-rolled copy of it.
+    "no-hand-rolled-role": selectorRule(
+      "JSXAttribute[name.name='role'][value.value=/^(listbox|menu|menubar|menuitem|menuitemcheckbox|menuitemradio|option|checkbox|tooltip|dialog|alertdialog|tablist|tab|tabpanel|separator|switch|slider|radiogroup|toolbar|tree|combobox)$/]",
+      "ui-sdk ships this role as a component: use it instead of hand-rolling (the ui-sdk skill's component table)."
+    ),
     "no-raw-button": selectorRule(
       "JSXOpeningElement[name.name='button']",
       "No raw <button> outside components/ui: use Button or another component there (DESIGN.md)."

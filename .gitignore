@@ -10,3 +10,5 @@ test-results
 playwright-report
 .tanstack
 worker-configuration.d.ts
+# Linked from node_modules on install, so it matches the installed version
+.claude/skills/ui-sdk

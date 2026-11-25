@@ -2,6 +2,7 @@
 // scheme following the system (a theme toggle comes with the shell).
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
+import "@/components/ui/dev-agent"
 
 import type { ReactNode } from "react"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"

@@ -68,6 +68,12 @@ WCAG 2.2 AA is the floor. Lint can't check it; axe catches some, so check the re
 
 Every control is a ui-sdk part, so keyboards, screen readers and agents all see it. Pick from the ui-sdk skill's table; anything pressable is a Button, never a raw `<button>`, and a destructive action confirms in an AlertDialog.
 
+- **Names:** every control has one, from its label part or `aria-label` on an icon-only one. Labels differ where they sit, so a row's menu is "Actions for <chat title>", not "Actions".
+- **State:** style from `data-slot` and state attributes, and animate popups with `data-starting-style` and `data-ending-style` from `--transform-origin`. An async action returns its Promise, so the part shows `data-pending` itself.
+- **Phones:** Menu, Select, Popover and Dialog take `presentation="auto"`, a sheet on a phone. The phone sidebar is a Drawer from `start`.
+- **Agents:** a destructive or sending action carries `data-agent-confirm="<what it does>"`; private text carries `data-agent-hidden`. In dev, `window.agent.snapshot()` lists every control and `window.agent.act()` drives it: use it to check a screen.
+- **Global parts** arrive with their first use: `Preferences` with `createColorScheme` for the theme (replacing the fixed `data-color-scheme`), `OverlayHost` for toasts and `confirm()`, `ScrollArea` with `stickToEnd` and `role="log"` for the thread.
+
 ## Screens
 
 | Screen   | Answers                                     |
