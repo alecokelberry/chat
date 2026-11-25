@@ -29,6 +29,15 @@ test("a new chat streams the reply and keeps it after a reload", async ({
 })
 
 test("Stop ends the reply and keeps what arrived", async ({ page }) => {
+  // Hold the Stop on its way to the server, so words keep arriving after
+  // the button is pressed, as they can on a slow connection.
+  await page.routeWebSocket(/\/api\/chats\//, (ws) => {
+    const server = ws.connectToServer()
+    ws.onMessage((message) => {
+      const delay = String(message).includes("cf_agent_chat_request_cancel")
+      setTimeout(() => server.send(message), delay ? 400 : 0)
+    })
+  })
   await signInAsDev(page)
   await send(page, "Tell me a long story")
 
@@ -37,11 +46,12 @@ test("Stop ends the reply and keeps what arrived", async ({ page }) => {
   await page.getByRole("button", { name: "Stop" }).click()
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 
-  const kept = await reply.innerText()
-  expect(kept).not.toContain("Done.")
-  // Nothing more arrives after Stop, and the partial reply is saved.
+  // Once the server has stopped, the screen shows what it saved: the
+  // words that reached it before the Stop did, and nothing after.
   await page.waitForTimeout(2500)
-  await expect(reply).toHaveText(kept)
+  const kept = await reply.innerText()
+  expect(kept).toContain("mock")
+  expect(kept).not.toContain("Done.")
   await page.reload()
   await expect(page.getByRole("article", { name: "Reply" })).toHaveText(kept)
 })
