@@ -7,6 +7,7 @@
     "node": "26"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "vite dev --port ${PORT:-3200}",
     "build": "vite build",
     "preview": "vite build && vite preview --port ${PORT:-3300}",

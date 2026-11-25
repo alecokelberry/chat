@@ -3,7 +3,7 @@
 # --force-with-lease) is fine; rewriting main never is, so a push that
 # would move main anywhere but forward is refused. Then `pnpm check` on
 # exactly what's committed; the full verify runs in CI.
-# Enable with: git config core.hooksPath .githooks
+# `pnpm install` enables it (the prepare script).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 zero=0000000000000000000000000000000000000000
