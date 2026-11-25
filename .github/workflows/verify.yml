@@ -1,11 +1,8 @@
 # CI on GitHub's own runners (free for a public repo).
 #
 # A pull request: `pnpm verify` (format, lint, types, unit, knip, build,
-# e2e). CI never merges; the project-manager chat merges by hand.
-#
-# Deploys come later (step 6 of docs/plan.md): only a green main will
-# deploy, with the Cloudflare token as a GitHub secret that fork PRs
-# can't read.
+# e2e). CI never merges; the coordinator merges by hand. Deploys run in
+# Cloudflare Workers Builds on each push to main, not here.
 name: verify
 
 on:

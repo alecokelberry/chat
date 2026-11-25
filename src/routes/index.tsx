@@ -1,4 +1,4 @@
-// Home: a placeholder until chat lands (docs/plan.md). Only a signed-in
+// Home: a placeholder until chat lands. Only a signed-in
 // browser gets here; anyone else goes to /sign-in.
 import { createFileRoute, redirect } from "@tanstack/react-router"
 
