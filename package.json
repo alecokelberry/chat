@@ -10,7 +10,7 @@
     "dev": "vite dev --port ${PORT:-3200}",
     "build": "vite build",
     "preview": "vite build && vite preview --port ${PORT:-3300}",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "vite build && wrangler d1 migrations apply chat --remote && wrangler deploy",
     "format": "oxfmt",
     "e2e": "playwright test",
     "check": "oxfmt --check && oxlint && tsc --noEmit",

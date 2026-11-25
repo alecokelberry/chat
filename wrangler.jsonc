@@ -13,7 +13,12 @@
   "secrets": { "required": ["BETTER_AUTH_SECRET", "SETUP_CODE"] },
   // "1" only in .dev.vars and e2e: the local Dev sign-in (src/lib/auth).
   "vars": { "DEV_SIGN_IN": "0" },
-  // Users, sign-ins and passkeys (migrations/). No database_id: the first
-  // deploy creates the database and writes it back here.
-  "d1_databases": [{ "binding": "DB", "database_name": "chat" }],
+  // Users, sign-ins and passkeys (migrations/, applied by `pnpm run deploy`).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chat",
+      "database_id": "d96596ed-4c29-49fa-9304-915427526af7",
+    },
+  ],
 }

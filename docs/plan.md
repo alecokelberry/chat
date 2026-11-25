@@ -16,4 +16,4 @@ One PR per step. Each step ends with `pnpm verify` green.
 1. Sign up at dash.cloudflare.com, Free plan, no card. Choose the workers.dev subdomain carefully: passkeys are tied to it.
 2. `pnpm wrangler login` in this folder.
 3. Before step 6: an API token from the "Edit Cloudflare Workers" template, saved as the `CLOUDFLARE_API_TOKEN` GitHub secret.
-4. At the first deploy: `pnpm wrangler secret put BETTER_AUTH_SECRET` and `SETUP_CODE` (two long random strings), open `/setup#<the code>` on the live site and add the passkey, then `pnpm wrangler secret delete SETUP_CODE`.
+4. To add a passkey on a new device while signed out: run the setup paste in the README, add the passkey on the page it opens, then turn `/setup` off with the README's second command.

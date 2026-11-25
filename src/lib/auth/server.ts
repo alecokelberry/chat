@@ -1,7 +1,7 @@
 // Sign-in on the server: Better Auth on D1 with passkeys only. There are no
 // passwords and no open sign-up. A passkey is added in one of two ways:
-// signed in already, or on /setup with the one-time SETUP_CODE (a Wrangler
-// secret), which adds it to the owner's account. Locally, with DEV_SIGN_IN
+// signed in already, or on /setup with the SETUP_CODE (a Wrangler secret),
+// which adds it to the owner's account. Locally, with DEV_SIGN_IN
 // set, /api/auth/dev-sign-in signs a browser on this machine in as Dev.
 // Sessions are a signed httpOnly cookie and a row in `session`.
 import { env } from "cloudflare:workers"
@@ -80,7 +80,8 @@ function createAuth() {
           // with the setup code, and then it joins the owner's.
           requireSession: false,
           resolveUser: async ({ ctx, context }) => {
-            // Deleting the secret turns /setup off.
+            // Without the code /setup does nothing; live, it is turned off by
+            // replacing it with a random one nobody knows (README.md).
             // (Typed as a string, but unset is undefined at runtime.)
             const code: unknown = env.SETUP_CODE
             if (
