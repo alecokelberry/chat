@@ -1,0 +1,15 @@
+# Keeps the GitHub Actions in .github/workflows up to date, one grouped PR
+# a month, each release at least 7 days old (pnpm's wait for npm packages).
+# npm packages aren't here: Dependabot's lockfile updates trip pnpm's
+# minimumReleaseAge, so a thread runs `pnpm update` instead.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
