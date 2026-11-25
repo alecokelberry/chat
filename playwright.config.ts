@@ -20,8 +20,12 @@ const smoke = process.env.NVIDIA_SMOKE === "1"
 export default defineConfig({
   testDir: "./e2e",
   forbidOnly: ci,
+  // In CI a failed test runs once more to record a trace, and a test that
+  // passes only on that retry still fails the run: a flake gets fixed,
+  // not hidden. The github reporter puts failures on the PR's lines.
   retries: ci ? 1 : 0,
-  reporter: ci ? [["list"], ["html", { open: "never" }]] : "list",
+  failOnFlakyTests: ci,
+  reporter: ci ? [["github"], ["list"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://localhost:${PORT}`, trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   ...(smoke ? { grep: /@nvidia/ } : { grepInvert: /@nvidia/ }),
