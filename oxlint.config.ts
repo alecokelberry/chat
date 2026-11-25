@@ -114,6 +114,7 @@ export default defineConfig({
       },
     ],
     "ui/no-raw-button": "error",
+    "ui/no-hand-rolled-role": "error",
     "ui/button-icon-data-icon": "error",
     "ui/no-button-render-link": "error",
     "ui/type-scale": "error",
@@ -131,9 +132,31 @@ export default defineConfig({
       // components/ui owns component styling and wraps ui-sdk.
       files: ["src/components/ui/**"],
       rules: {
-        "no-restricted-imports": "off",
         "ui/no-raw-button": "off",
         "ui/button-icon-data-icon": "off",
+        // Each component from its own entry; never ui-sdk's internals.
+        "no-restricted-imports": [
+          "error",
+          {
+            paths: [
+              {
+                name: "@ui-sdk/react",
+                message:
+                  "Import each component from its own entry, like @ui-sdk/react/select.",
+              },
+              {
+                name: "@ui-sdk/core",
+                message: "Import from its own entry, like @ui-sdk/core/agent.",
+              },
+            ],
+            patterns: [
+              {
+                group: ["@ui-sdk/*/internal/**"],
+                message: "ui-sdk's internals aren't API.",
+              },
+            ],
+          },
+        ],
         "ui/no-button-render-link": "off",
         "ui/no-leading-tracking": "off",
         "shadcn/no-restyle": "off",
