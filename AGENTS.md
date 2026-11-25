@@ -18,7 +18,7 @@ The open GitHub issues are the plan, `docs/decisions.md` says why it's built thi
 
 1. **Plan:** grill Alec (`grilling`, with `domain-modeling` for words and decisions), `prototype` what can't be settled on paper, then `to-spec` and `to-tickets`. An agreed issue is the go-ahead to build it; ask again only about UI direction Alec hasn't seen and anything that takes live down.
 2. **Build:** `implement` one ticket per branch, test-first with `tdd`, then `code-review` against its issue and fix what it finds until a pass comes back clean. Rebase onto `origin/main` and run `pnpm verify` before the PR.
-3. **Ship:** one PR per ticket, titled as a plain imperative sentence, body from the `pr` skill in the template's sections, saying `Closes #N`. The coordinator merges with a merge commit after reading the diff; threads and CI never merge. Each push to `main` deploys through Workers Builds.
+3. **Ship:** one PR per ticket, titled as a plain imperative sentence, body from the `pr` skill in the template's sections, saying `Closes #N`. The PR's thread merges with a merge commit, only after Alec's go-ahead; CI never merges. Each push to `main` deploys through Workers Builds.
 4. **Learn:** `retro` after a build that went badly; `diagnosing-bugs` for a hard bug.
 
 - Commits: one logical change each, an imperative subject in plain English (50 characters ideally, never over 72), and a body that says why. Not Conventional Commits. Fix earlier commits with `git commit --fixup` and rebase; never merge `main` in.
