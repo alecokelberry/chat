@@ -1,0 +1,9 @@
+# Wait 7 days before installing a new release (supply-chain attacks are
+# usually caught by then). Packages that run install scripts are listed here.
+minimumReleaseAge: 10080
+allowBuilds:
+  esbuild: true
+  workerd: true
+  sharp: true
+  # Its install script only prints a banner.
+  core-js-pure: false

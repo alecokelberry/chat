@@ -1,0 +1,46 @@
+{
+  "name": "chat",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": "26"
+  },
+  "scripts": {
+    "dev": "vite dev --port ${PORT:-3200}",
+    "build": "vite build",
+    "preview": "vite build && vite preview --port ${PORT:-3300}",
+    "deploy": "vite build && wrangler deploy",
+    "format": "oxfmt",
+    "e2e": "playwright test",
+    "check": "oxfmt --check && oxlint && tsc --noEmit",
+    "verify": "pnpm check && knip && vite build && playwright test",
+    "postinstall": "wrangler types"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@tanstack/react-router": "^1.170.46",
+    "@tanstack/react-start": "^1.169.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.70.0",
+    "@playwright/test": "^1.65.1",
+    "@shadcn/lint": "^0.2.5",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "knip": "^6.45.1",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "wrangler": "^4.164.0"
+  }
+}

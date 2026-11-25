@@ -1,0 +1,11 @@
+// The Worker: TanStack Start's server entry, on a free workers.dev address.
+// Its types (worker-configuration.d.ts) regenerate on install; after editing, run `pnpm wrangler types`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chat",
+  "compatibility_date": "2026-11-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+}
