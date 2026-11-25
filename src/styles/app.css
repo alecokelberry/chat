@@ -4,6 +4,8 @@
    under ours. */
 @layer ui-sdk;
 @import "tailwindcss" source(none);
+@import "./typeset.css";
+@import "./prose.css";
 
 @source "../**/*.{ts,tsx}";
 
