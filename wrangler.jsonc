@@ -6,7 +6,9 @@
   "compatibility_date": "2026-11-23",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
-  "observability": { "enabled": true },
+  // Logs and traces (time in D1 and NVIDIA per request), free and kept
+  // 3 days: the Worker's Observability tab.
+  "observability": { "enabled": true, "traces": { "enabled": true } },
   "upload_source_maps": true,
   // Live at chat.alecokelberry.workers.dev; each branch's Preview at
   // <branch>-chat.alecokelberry.workers.dev (Workers Builds, `previews` below).
