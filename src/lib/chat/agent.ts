@@ -12,9 +12,6 @@ export class ChatAgent extends AIChatAgent<Env> {
   // The name (user id and chat id) goes to that user's own browser only.
   static options = { sendIdentityOnConnect: true }
 
-  // A send while a reply streams is dropped: Send is Stop until it ends.
-  messageConcurrency = "drop" as const
-
   override async onChatMessage(
     _onFinish: unknown,
     options?: OnChatMessageOptions

@@ -35,8 +35,8 @@ export async function streamReply(
     model: model(),
     messages: await convertToModelMessages(messages),
     abortSignal,
-    // Thinking spends the same token budget as the answer, so keep it
-    // generous (docs/nvidia.md).
+    // NVIDIA's default cap cuts long answers short; thinking models also
+    // spend this budget on thinking (docs/nvidia.md).
     maxOutputTokens: 16_384,
     providerOptions: {
       nvidia: { chat_template_kwargs: { enable_thinking: false } },

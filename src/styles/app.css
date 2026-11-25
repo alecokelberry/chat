@@ -418,6 +418,17 @@
   transition-duration: var(--duration-drawer);
 }
 
+/* Text fields: body size, but 16px on touch screens, so iOS never zooms in
+   on focus (DESIGN.md › Phones). */
+@utility field-text {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  letter-spacing: var(--text-base--letter-spacing);
+  @media (pointer: coarse) {
+    font-size: 1rem;
+  }
+}
+
 /* Press feedback for Buttons: pressing in is instant (colors snap, a 97%
    scale over 80ms) so even a quick tap shows; letting go eases back over
    duration-fast. The scale only where motion is welcome. */
