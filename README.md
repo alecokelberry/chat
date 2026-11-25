@@ -16,7 +16,7 @@ DEV_SIGN_IN=1
 
 ## Deploying
 
-`pnpm run deploy` builds, applies new migrations to the live database and deploys to chat.alecokelberry.workers.dev.
+Every push to `main` deploys through Cloudflare Workers Builds, which runs `pnpm run deploy`: it builds, applies new migrations to the live database and deploys to chat.alecokelberry.workers.dev. Run it by hand only if Workers Builds is down.
 
 To add a passkey while signed out (a new device), this sets a fresh setup code and opens `/setup` with it, without showing the code:
 
