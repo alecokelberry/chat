@@ -385,6 +385,16 @@
   }
 }
 
+/* A full-screen page's padding: the 1rem gutter, or more where the notch,
+   Dynamic Island or home indicator would cover it (the viewport has
+   viewport-fit=cover, so an installed app paints under them). */
+@utility safe-area {
+  padding-top: max(--spacing(4), env(safe-area-inset-top));
+  padding-right: max(--spacing(4), env(safe-area-inset-right));
+  padding-bottom: max(--spacing(4), env(safe-area-inset-bottom));
+  padding-left: max(--spacing(4), env(safe-area-inset-left));
+}
+
 /* Named durations (Tailwind has no --duration-* namespace). */
 @utility duration-fast {
   transition-duration: var(--duration-fast);
