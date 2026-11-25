@@ -95,6 +95,7 @@ What Alec picked and why. New work starts here.
 ## Phones
 
 - iOS blurs the top edge unless a full-width, solid, sticky box covers it: a page's `main` is `sticky top-0 bg-background`.
+- Installed, the app paints under the notch and home indicator (`viewport-fit=cover`): a full-screen page pads with `safe-area` instead of `p-4`, and `theme-color` gives the status bar the page's `background`.
 - Text fields are at least 16px on touch screens, so iOS never zooms on focus.
 - Heights against the viewport are `svh` or `dvh`, never `vh`, which jumps when the iPhone keyboard opens.
 - Hover never changes anything on touch. Every `:hover` sits under `@media (hover: hover)` (Tailwind's `hover:` already does; hand-written CSS must too). iOS treats a tap that changes the look on hover as a hover and drops the click, so it takes two taps.
