@@ -1,0 +1,409 @@
+/* The design tokens (DESIGN.md). Utilities for a component (popup motion,
+   sheets, toasts, press, …) come back with that component from the
+   archived Chat's app/globals.css. ui-sdk's own rules sit in this layer,
+   under ours. */
+@layer ui-sdk;
+@import "tailwindcss" source(none);
+
+@source "../**/*.{ts,tsx}";
+
+/* Dark: the ui-sdk color scheme (components/ui/theme.ts) on <html>, chosen
+   or following the system; or a .dark scope. */
+@custom-variant dark {
+  &:where(
+    .dark,
+    .dark *,
+    [data-color-scheme="dark"],
+    [data-color-scheme="dark"] *
+  ) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-color-scheme="system"], [data-color-scheme="system"] *) {
+      @slot;
+    }
+  }
+}
+/* Hover only with a mouse or trackpad: Tailwind's own gate is (hover: hover),
+   which some Android phones claim, so a tap would leave the hover on. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+/* Pressed: the native :active, or data-pressing, which press-feedback.tsx
+   sets the moment a finger lands (iOS paints :active late or not at all on
+   a quick tap). */
+@custom-variant active (&:is(:active, [data-pressing]));
+/* Focus rings show for keyboard focus only: after a click (data-pointer,
+   focus-modality.tsx) just text fields keep theirs. */
+@custom-variant focus-visible (&:focus-visible:where(:root:not([data-pointer]) *, input, textarea, select, [contenteditable="true"]));
+
+/* The design system's tokens (DESIGN.md). Raw values live in :root and
+   its dark variant; @theme inline turns them into utilities. A new name also goes in
+   createCn (lib/utils.ts) so cn() merges it like a built-in. */
+
+@theme inline {
+  /* Type: Geist for text, Geist Mono for labels and code (@fontsource-variable, imported in __root.tsx). */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono:
+    "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-code: var(--font-mono);
+
+  /* The type scale (DESIGN.md › Type): text-xs 12/16, text-sm 14/20,
+     text-base 15/24, text-2xl 20/26, text-3xl 28/36. Small sizes track a
+     touch open, display sizes sit at 0. Geist is variable, so the weights
+     are the in-between ones: font-normal 425, font-medium 525, and 650 for
+     bold in prose. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-xs--letter-spacing: 0.01em;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-sm--letter-spacing: 0.0071em;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.5rem;
+  --text-base--letter-spacing: 0.0027em;
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.625rem;
+  --text-3xl: 1.75rem;
+  --text-3xl--line-height: 2.25rem;
+  --font-weight-normal: 425;
+  --font-weight-medium: 525;
+
+  /* Color roles. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-toast: var(--toast);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-active: var(--secondary-active);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-overlay: var(--overlay);
+  --color-bubble-user: var(--bubble-user);
+  --color-send: var(--send);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-icon: var(--sidebar-icon);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-sidebar-rail: var(--sidebar-rail);
+
+  /* Shape. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-item: 10px; /* list and sidebar rows */
+  --radius-overlay: 20px; /* menus and dialogs */
+
+  /* Elevation and blur. */
+  --shadow-elevated: var(--elevated-shadow);
+  --shadow-popover: var(--popover-shadow);
+  --shadow-raised-row: var(--raised-row-shadow);
+  --shadow-dialog: var(--dialog-shadow);
+  --shadow-tooltip: var(--tooltip-shadow); /* hairline + two soft drops */
+
+  /* Motion (DESIGN.md › Motion). Named durations are utilities below
+     (duration-menu, …). standard for color and in-place changes; decelerate
+     for anything arriving; accelerate for anything leaving; spring for
+     panes that slide; out-quint for toasts. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(
+    0.32,
+    0.72,
+    0,
+    1
+  ); /* iOS's sheet curve: the phone sidebar */
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms; /* hover, press */
+  --duration-base: 180ms;
+  --duration-menu: 120ms; /* menus and tooltips, in and out */
+  --duration-pane: 200ms; /* dialogs, scrims, the composer's focus */
+  --duration-spin: 300ms; /* the theme icon's spin */
+  --duration-sidebar: 200ms; /* collapse and expand */
+  --duration-drawer: 300ms; /* the phone sidebar opening; closing is duration-pane */
+  --duration-sheet: 500ms; /* phone sheets (Search, Settings): Vaul's iOS timing */
+
+  /* Sizes. */
+  --spacing-icon: 20px; /* icons in icon buttons, nav rows, toggles */
+  --spacing-sidebar-header: 56px;
+  --spacing-header: var(--header-height);
+  --spacing-header-content: calc(var(--header-height) + 1.5rem);
+  --container-content: 730px; /* Grok's reply column */
+  --container-signin: 384px;
+}
+
+:root {
+  --header-height: 56px;
+  /* Scroll bars: a 5% thumb that firms to 15% under the pointer. */
+  --scrollbar-thumb-dimmed: oklch(0% 0 0 / 0.05);
+  --scrollbar-thumb: oklch(0% 0 0 / 0.15);
+
+  --background: #f9f8f7;
+  --foreground: #2c2c2b;
+  --card: #f5f3f2;
+  --card-foreground: #2c2c2b;
+  --popover: #fefefc;
+  --popover-foreground: #2c2c2b;
+  --toast: #363636; /* toasts are dark in both themes */
+  --primary: #2c2c2b;
+  --primary-foreground: #fefefc;
+  --primary-hover: #40403e;
+  --primary-active: #1b1b1b;
+  --secondary: hsl(39 100% 8% / 8%);
+  --secondary-hover: hsl(39 100% 8% / 12%);
+  --secondary-active: hsl(39 100% 8% / 16%);
+  --secondary-foreground: #2c2c2b;
+  --muted: #f5f3f2;
+  --muted-foreground: #6b6b6a;
+  --accent: hsl(39 100% 8% / 6%);
+  --accent-foreground: #2c2c2b;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: hsl(36 20% 5% / 4%);
+  --border-strong: hsl(36 20% 5% / 11%);
+  --input: #e6e5e3;
+  --ring: #858584; /* 3.5:1 on the page: a focus ring must reach 3:1 */
+  --surface: #fefefc;
+  --overlay: hsl(0 0% 2% / 20%);
+  --bubble-user: #efeeec;
+  --send: #ec4899;
+  --highlight: oklch(0.86 0.17 95); /* <mark> in prose, mixed to 40% */
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-700);
+  --warning: var(--color-yellow-500);
+  --warning-foreground: var(--color-yellow-700);
+  --destructive-foreground: var(
+    --color-red-700
+  ); /* red text on a red tint, 5.3:1 */
+  --sidebar: #f9f8f7;
+  --sidebar-foreground: #2c2c2b;
+  --sidebar-primary: #2c2c2b;
+  --sidebar-primary-foreground: #fefefc;
+  --sidebar-accent: hsl(39 100% 8% / 6%);
+  --sidebar-accent-foreground: #2c2c2b;
+  --sidebar-border: hsl(36 20% 5% / 8%);
+  --sidebar-ring: #858584;
+  --sidebar-muted: #6b6b6a; /* section labels, 5.0:1 */
+  --sidebar-icon: #6b6b6a; /* row glyphs, header buttons */
+  --ink-secondary: rgb(
+    44 44 43 / 75.6%
+  ); /* Grok's secondary ink (rows, follow-ups), 6.1:1 */
+  --sidebar-rail: hsl(0 0% 2% / 15%); /* quote bars */
+  --popover-shadow: /* Grok's */
+    0 2px 6px 0 rgb(43 28 0 / 0.03), 0 8px 12px 0 rgb(43 28 0 / 0.03);
+  --elevated-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.04);
+  --raised-row-shadow: 0 12px 32px 0 rgb(43 28 0 / 0.03); /* New Chat, Grok's */
+  --dialog-shadow: /* Grok's */
+    0 12px 40px 0 rgb(10 9 8 / 0.18), 0 2px 8px 0 rgb(10 9 8 / 0.08);
+  --tooltip-shadow:
+    inset 0 0 0 0.5px hsl(36 20% 5% / 8%), 0 1px 2px 0 rgb(0 0 0 / 0.07),
+    0 2px 4px -2px rgb(0 0 0 / 0.05);
+  /* What ui-sdk's sheets (menus on phones) dim the page to. */
+  --sheet-backdrop: var(--overlay);
+  color-scheme: light;
+}
+
+:root,
+.dark {
+  @variant dark {
+    --scrollbar-thumb-dimmed: oklch(100% 0 0 / 0.05);
+    --scrollbar-thumb: oklch(100% 0 0 / 0.15);
+    --background: #1e1d1d;
+    --foreground: #e6e5e3;
+    --card: #282726;
+    --card-foreground: #e6e5e3;
+    --popover: #191919;
+    --popover-foreground: #e6e5e3;
+    --primary: #e6e5e3;
+    --primary-foreground: #1e1d1d;
+    --primary-hover: #f8f8f7;
+    --primary-active: #d4d3cf;
+    --secondary: hsl(0 0% 99% / 8%);
+    --secondary-hover: hsl(0 0% 99% / 12%);
+    --secondary-active: hsl(0 0% 99% / 16%);
+    --secondary-foreground: #e6e5e3;
+    --muted: #282726;
+    --muted-foreground: #999897;
+    --accent: hsl(0 0% 99% / 6%);
+    --accent-foreground: #e6e5e3;
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: hsl(0 0% 99% / 6%);
+    --border-strong: hsl(0 0% 99% / 12%);
+    --input: hsl(0 0% 99% / 6%);
+    --ring: #767574; /* 3.7:1 on the page */
+    --surface: #191919;
+    --overlay: hsl(0 0% 2% / 50%);
+    --bubble-user: #282726;
+    --highlight: oklch(0.62 0.13 95); /* darker, so light ink reads on it */
+    --send: #f15aa6;
+    --success: var(--color-emerald-500);
+    --success-foreground: var(--color-emerald-400);
+    --warning: var(--color-yellow-500);
+    --warning-foreground: var(--color-yellow-400);
+    --destructive-foreground: var(--color-red-300); /* 4.5:1 on its tint */
+    --sidebar: #1e1d1d;
+    --sidebar-foreground: #e6e5e3;
+    --sidebar-primary: #e6e5e3;
+    --sidebar-primary-foreground: #1e1d1d;
+    --sidebar-accent: hsl(0 0% 99% / 6%);
+    --sidebar-accent-foreground: #e6e5e3;
+    --sidebar-border: hsl(0 0% 99% / 6%);
+    --sidebar-ring: #767574;
+    --sidebar-muted: #999897; /* 5.8:1 */
+    --sidebar-icon: #999897;
+    --ink-secondary: rgb(230 229 227 / 75.6%); /* 8:1 */
+    --sidebar-rail: hsl(0 0% 99% / 20%);
+    --popover-shadow:
+      0 2px 6px 0 rgb(0 0 0 / 0.3), 0 8px 12px 0 rgb(0 0 0 / 0.25);
+    --elevated-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.24);
+    --raised-row-shadow: 0 12px 32px 0 rgb(0 0 0 / 0.2);
+    --dialog-shadow: 0 16px 48px 0 rgb(0 0 0 / 0.5);
+    --tooltip-shadow:
+      inset 0 0 0 0.5px hsl(0 0% 99% / 6%), 0 1px 2px 0 rgb(0 0 0 / 0.3),
+      0 2px 5px -2px rgb(0 0 0 / 0.25);
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-dimmed) transparent;
+  }
+  @media (hover: hover) {
+    :hover {
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
+  }
+  :root {
+    scrollbar-width: none;
+  }
+  /* One cursor rule: anything clickable shows the pointer, disabled shows
+     the arrow. Components don't set cursor-* themselves. */
+  :is(
+    button,
+    summary,
+    select,
+    label[for],
+    [role="button"],
+    [role="link"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"],
+    [role="tab"],
+    [role="switch"],
+    [role="checkbox"],
+    [role="radio"],
+    input:is([type="checkbox"], [type="radio"], [type="file"])
+  ) {
+    cursor: pointer;
+  }
+  :is(button, select, [role], input):is(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled]
+  ) {
+    cursor: default;
+  }
+  body {
+    position: relative;
+    @apply bg-background font-sans text-base font-normal text-foreground;
+  }
+  /* Native on a phone: no tap flash (controls have their own press
+     states), no font inflation in landscape, and no page bounce or
+     pull-to-refresh behind the app's own scrollers. */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+  /* Headings balance their lines; paragraphs avoid a lone last word.
+     Browsers without text-wrap ignore it. */
+  :where(h1, h2, h3, h4) {
+    text-wrap: balance;
+  }
+  :where(p, li, blockquote, figcaption) {
+    text-wrap: pretty;
+  }
+  /* height: auto and other keywords can transition (Collapsible), where
+     supported. */
+  :root {
+    interpolate-size: allow-keywords;
+  }
+  /* Taps fire at once: nothing here double-tap-zooms. */
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+  ::selection {
+    background-color: color-mix(in srgb, var(--send) 25%, transparent);
+  }
+}
+
+/* Named durations (Tailwind has no --duration-* namespace). */
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+@utility duration-pane {
+  transition-duration: var(--duration-pane);
+}
+@utility duration-base {
+  transition-duration: var(--duration-base);
+}
+@utility duration-menu {
+  transition-duration: var(--duration-menu);
+}
+@utility duration-spin {
+  transition-duration: var(--duration-spin);
+}
+@utility duration-sidebar {
+  transition-duration: var(--duration-sidebar);
+}
+@utility duration-drawer {
+  transition-duration: var(--duration-drawer);
+}

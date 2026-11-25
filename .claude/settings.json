@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(node *)",
+      "WebSearch",
+      "WebFetch",
+      "mcp__Claude_Browser",
+      "mcp__ccd_pr"
+    ],
+    "deny": [
+      "Bash(git reset --hard*)",
+      "Bash(* --no-verify*)",
+      "Bash(git commit -n*)",
+      "Read(./.env*)",
+      "Read(./**/.env*)",
+      "Read(./.dev.vars*)",
+      "Bash(cat *.dev.vars*)",
+      "Bash(cat *.env*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-changed.mjs\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
