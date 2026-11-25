@@ -17,6 +17,8 @@
     "node_modules/",
     "pnpm-lock.yaml",
     "src/routeTree.gen.ts",
-    "worker-configuration.d.ts"
+    "worker-configuration.d.ts",
+    ".claude/skills/",
+    "skills-lock.json"
   ]
 }
