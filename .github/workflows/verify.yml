@@ -1,0 +1,43 @@
+# CI on GitHub's own runners (free for a public repo).
+#
+# A pull request: `pnpm verify` (format, lint, types, unit, knip, build,
+# e2e). CI never merges; the project-manager chat merges by hand.
+#
+# Deploys come later (step 6 of docs/plan.md): only a green main will
+# deploy, with the Cloudflare token as a GitHub secret that fork PRs
+# can't read.
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      # A high or critical advisory in what ships stops the run early.
+      - name: Audit
+        run: pnpm audit --prod --audit-level high
+      - name: Verify
+        run: pnpm verify
