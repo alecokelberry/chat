@@ -8,4 +8,12 @@
   "main": "@tanstack/react-start/server-entry",
   "observability": { "enabled": true },
   "upload_source_maps": true,
+  // Wrangler secrets live; locally `.dev.vars` (README.md), and
+  // in e2e the environment (CLOUDFLARE_INCLUDE_PROCESS_ENV).
+  "secrets": { "required": ["BETTER_AUTH_SECRET", "SETUP_CODE"] },
+  // "1" only in .dev.vars and e2e: the local Dev sign-in (src/lib/auth).
+  "vars": { "DEV_SIGN_IN": "0" },
+  // Users, sign-ins and passkeys (migrations/). No database_id: the first
+  // deploy creates the database and writes it back here.
+  "d1_databases": [{ "binding": "DB", "database_name": "chat" }],
 }
