@@ -13,3 +13,19 @@ DEV_SIGN_IN=1
 ```
 
 `DEV_SIGN_IN=1` shows "Sign in as Dev" on `/sign-in`, on localhost only.
+
+## Deploying
+
+`pnpm deploy` builds, applies new migrations to the live database and deploys to chat.alecokelberry.workers.dev.
+
+To add a passkey while signed out (a new device), this sets a fresh setup code and opens `/setup` with it, without showing the code:
+
+```bash
+code=$(openssl rand -hex 24); printf %s "$code" | pnpm wrangler secret put SETUP_CODE && open "https://chat.alecokelberry.workers.dev/setup#$code"
+```
+
+Afterwards, turn `/setup` off again by replacing the code with one nobody knows. Don't delete it: Wrangler won't deploy without it.
+
+```bash
+openssl rand -hex 24 | tr -d '\n' | pnpm wrangler secret put SETUP_CODE
+```
