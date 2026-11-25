@@ -1,3 +1,16 @@
-# Intended behavior
+Closes #
 
-What this changes, from the request, in a few lines. Refine and `pnpm verify` have run on the branch (AGENTS.md).
+## Summary
+
+<!-- The smallest view that makes the change clear: a diagram, diff sketch or tree (the pr skill) -->
+
+## Evidence
+
+- **Before:**
+  **After:**
+
+## Merge danger
+
+**Door:** <!-- one-way or two-way -->
+
+**Blast radius:** <!-- one word, then what could break -->
