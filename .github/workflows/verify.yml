@@ -1,8 +1,8 @@
 # CI on GitHub's own runners (free for a public repo).
 #
 # A pull request: `pnpm verify` (format, lint, types, unit, knip, build,
-# e2e). CI never merges; the coordinator merges by hand. Deploys run in
-# Cloudflare Workers Builds on each push to main, not here.
+# e2e). CI never merges; the PR's thread merges after Alec's go-ahead.
+# Deploys run in Cloudflare Workers Builds on each push to main, not here.
 name: verify
 
 on:
