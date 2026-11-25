@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Chat's icon: Lucide's message-circle in the page color on warm ink, full bleed with the glyph inside the maskable safe zone. The favicon, and the source of the PNGs beside it (rendered at 180, 192 and 512). -->
+  <rect width="512" height="512" fill="#2c2c2b"/><g transform="translate(256 256) scale(11) translate(-12 -12)" fill="none" stroke="#f9f8f7" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/></g>
+</svg>
+
