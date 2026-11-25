@@ -15,7 +15,7 @@
     "e2e": "playwright test",
     "check": "oxfmt --check && oxlint && tsc --noEmit",
     "verify": "pnpm check && knip && vite build && playwright test",
-    "postinstall": "wrangler types --strict-vars=false"
+    "postinstall": "wrangler types --strict-vars=false && ln -sfn ../../node_modules/@ui-sdk/core/skills/ui-sdk .claude/skills/ui-sdk"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.25",
