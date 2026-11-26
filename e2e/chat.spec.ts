@@ -6,7 +6,7 @@ import { send, signInAsDev } from "./session"
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
 // reload, and Stop keeps what arrived. The mock's reply ends in "Done."
-// after about two seconds (src/lib/ai/mock.ts).
+// after under three seconds (src/lib/ai/mock.ts).
 
 test("a new chat streams the reply and keeps it after a reload", async ({
   page,
@@ -160,16 +160,3 @@ test("on a chat, an agent can find the thread's controls and stop a reply", asyn
   expect(result.stopped).toBe(true)
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 })
-
-declare global {
-  interface Window {
-    agent: AgentBridge
-  }
-}
-
-type AgentBridge = {
-  snapshot: () => { label?: string; offPage?: boolean }[]
-  act: (plan: {
-    steps: { ref: string; action: string; args: unknown[] }[]
-  }) => Promise<{ ok: boolean }>
-}

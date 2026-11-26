@@ -1,27 +1,34 @@
 // The composer: where a message is written and sent. Enter sends and
 // Shift+Enter starts a new line (ui-sdk's submit shortcut); an empty
-// message doesn't send. While a reply streams, Send becomes Stop.
+// message doesn't send. While a reply streams, Send becomes Stop. The
+// model picker beside Send chooses who answers the message; it starts on
+// `defaultModel` (the chat's last model) and keeps your choice after.
 import { useState } from "react"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { ModelPicker } from "@/components/chat/model-picker"
+import { DEFAULT_MODEL, type ModelKey } from "@/lib/ai/models"
 
 export function Composer({
   busy = false,
+  defaultModel = DEFAULT_MODEL,
   onSend,
   onStop,
 }: {
   busy?: boolean
-  onSend: (text: string) => void
+  defaultModel?: ModelKey
+  onSend: (text: string, model: ModelKey) => void
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
+  const [model, setModel] = useState(defaultModel)
   const message = text.trim()
 
   function send() {
     if (message === "" || busy) return
-    onSend(message)
+    onSend(message, model)
     setText("")
   }
 
@@ -42,6 +49,7 @@ export function Composer({
         value={text}
         onValueChange={setText}
       />
+      <ModelPicker value={model} onValueChange={setModel} />
       {busy ? (
         <Button variant="stop" size="circle" aria-label="Stop" onClick={onStop}>
           <SquareIcon fill="currentColor" />

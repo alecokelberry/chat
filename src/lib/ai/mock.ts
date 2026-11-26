@@ -1,7 +1,10 @@
 // The mock model: stands in for NVIDIA when MOCK_MODEL is "1" (e2e and, if
 // you like, local dev), so tests never call NVIDIA. It streams a fixed
-// reply a word at a time, about two seconds in all, ending in "Done.", so a
-// test can watch it arrive and stop it partway. A message that mentions
+// reply a word at a time, under three seconds in all, ending in "Done.", so
+// a test can watch it arrive and stop it partway. The reply opens by saying
+// which model id it stands in for and whether the request turned thinking
+// on, so a test can check what a real call would have asked NVIDIA for. A
+// message that mentions
 // "markdown" gets a reply with a heading, a list, a table, a link, code and
 // math instead, streamed the same way, so a test sees each half-written
 // piece (an open fence, an open formula) on its way.
@@ -10,7 +13,7 @@ import { simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 
 const REPLY =
-  "This is the mock model talking. It sends one word at a time, slowly enough that a test can watch the reply stream in, press Stop partway through, and check what was kept. Done."
+  "It sends one word at a time, slowly enough that a test can watch the reply stream in, press Stop partway through, and check what was kept. Done."
 
 const MARKDOWN_REPLY = `## Some markdown
 
@@ -36,9 +39,17 @@ $$
 
 Done.`
 
-export function mockModel(): LanguageModel {
+/** Whether a request's chat template options turn thinking on. */
+const thinks = (kwargs: unknown) =>
+  typeof kwargs === "object" &&
+  kwargs !== null &&
+  "enable_thinking" in kwargs &&
+  kwargs.enable_thinking === true
+
+export function mockModel(modelId: string): LanguageModel {
   return new MockLanguageModelV4({
-    doStream: async ({ prompt }) => {
+    modelId,
+    doStream: async ({ prompt, providerOptions }) => {
       const asked = prompt.at(-1)
       const text =
         asked?.role === "user" &&
@@ -46,7 +57,7 @@ export function mockModel(): LanguageModel {
           (part) => part.type === "text" && part.text.includes("markdown")
         )
           ? MARKDOWN_REPLY
-          : REPLY
+          : `This is the mock model talking, as ${modelId} with thinking ${thinks(providerOptions?.nvidia?.chat_template_kwargs) ? "on" : "off"}. ${REPLY}`
       // Each word keeps the space or newline after it.
       const words = text.split(/(?<=\s)/)
       return {

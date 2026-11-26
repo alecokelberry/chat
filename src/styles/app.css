@@ -450,3 +450,23 @@
     }
   }
 }
+
+/* Menus and selects: a fade and a 95% zoom from the trigger
+   (--transform-origin) over duration-menu, in and out, as transitions so
+   they can be interrupted. Under reduced motion only the fade stays. */
+@utility popup-motion {
+  transform-origin: var(--transform-origin);
+  transition-property: opacity, scale;
+  transition-duration: var(--duration-menu);
+  transition-timing-function: var(--ease-decelerate);
+  /* A tooltip that opens at once (data-instant) doesn't fade in. */
+  &[data-instant] {
+    transition-duration: 0s;
+  }
+  &:is([data-starting-style], [data-ending-style]) {
+    opacity: 0;
+    @media (prefers-reduced-motion: no-preference) {
+      scale: 0.95;
+    }
+  }
+}

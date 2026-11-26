@@ -3,7 +3,8 @@
 // server only checks the session and the browser renders the rest. A new
 // chat arrives from / with its first message in history state: it skips
 // loading (there's nothing yet), sends it, and clears the state so a
-// reload doesn't send it again.
+// reload doesn't send it again. Each message carries its model in its
+// metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last.
 import { Suspense, useEffect, useRef, useState } from "react"
 import {
   createFileRoute,
@@ -17,12 +18,13 @@ import { useAgentChat } from "@cloudflare/ai-chat/react"
 
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
+import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { getSession } from "@/lib/auth/session"
 import { CHAT_ID } from "@/lib/chat/id"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
-    firstMessage?: string
+    firstMessage?: { text: string; model: ModelKey }
   }
 }
 
@@ -60,7 +62,10 @@ function Chat({ id }: { id: string }) {
   useEffect(() => {
     if (firstMessage === undefined || sent.current) return
     sent.current = true
-    void sendMessage({ text: firstMessage })
+    void sendMessage({
+      text: firstMessage.text,
+      metadata: { model: firstMessage.model },
+    })
     void navigate({ to: ".", replace: true, state: {} })
   }, [firstMessage, sendMessage, navigate])
 
@@ -72,7 +77,10 @@ function Chat({ id }: { id: string }) {
       <div className="mx-auto w-full max-w-content">
         <Composer
           busy={busy}
-          onSend={(text) => void sendMessage({ text })}
+          defaultModel={firstMessage?.model ?? lastModel(messages).key}
+          onSend={(text, model) =>
+            void sendMessage({ text, metadata: { model } })
+          }
           onStop={stop}
         />
       </div>
