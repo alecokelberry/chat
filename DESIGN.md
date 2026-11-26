@@ -57,6 +57,8 @@ Motion is quick and functional.
 
 WCAG 2.2 AA is the floor. Lint can't check it; axe catches some, so check the rest by hand.
 
+- **Audits:** `e2e/a11y.spec.ts` scans sign-in, a new chat, a markdown reply and the account menu with axe, in light and dark at 1440 and 390, and fails on serious or critical WCAG 2.2 AA problems. A new screen adds itself to it when it lands.
+
 - **Focus:** a solid 2px `ring` (3.5:1 light, 3.7:1 dark) on keyboard focus only, and the same 2px for an invalid field. Never a soft glow under 3:1. `outline-hidden` keeps an outline in forced colors.
 - **Skip to content:** the first Tab on a signed-in page shows a pill at the top left that moves focus to the page's `<main id="main">` (`ui/skip-link.tsx`). A new signed-in page's `main` takes `id="main" tabIndex={-1}`.
 - **Targets:** at least 24px. Small buttons keep their look and get a bigger invisible touch area from `::after` (40px on touch screens).
