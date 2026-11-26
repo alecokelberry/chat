@@ -12,7 +12,6 @@ export const Route = createFileRoute("/_app/")({
 })
 
 function NewChat() {
-  const { user } = Route.useRouteContext()
   const navigate = useNavigate()
   return (
     // The archived Chat's (Grok's): the greeting 30% down and the composer
@@ -20,7 +19,7 @@ function NewChat() {
     // scrolls only if they don't fit. 24px in on a phone.
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto safe-area max-md:pt-0">
       <h1 className="mt-new-chat-top px-4 pb-7 text-center text-3xl font-medium max-md:mt-new-chat-top-phone">
-        Hi, {user.name}
+        What can I help with?
       </h1>
       <div className="mx-auto w-full max-w-composer px-2 sm:px-0">
         <Composer

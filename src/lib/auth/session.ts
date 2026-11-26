@@ -11,7 +11,9 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     const session = await getAuth().api.getSession({
       headers: getRequest().headers,
     })
-    return session === null ? null : { name: session.user.name }
+    return session === null
+      ? null
+      : { name: session.user.name, email: session.user.email }
   }
 )
 

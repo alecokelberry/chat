@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test"
 import {
   expect,
   expectNoHeldStart,
+  greeting,
   recordStartTimes,
   send,
   signInAsDev,
@@ -51,7 +52,7 @@ test("a chat moves up when it gets a message", async ({ page }) => {
   await sidebar(page)
     .getByRole("link", { name: "New Chat", exact: true })
     .click()
-  await expect(page.getByRole("heading", { name: "Hi, Dev" })).toBeVisible()
+  await expect(greeting(page)).toBeVisible()
   await send(page, "Second of two")
   await expect(page.getByRole("article", { name: "Reply" })).toContainText(
     "Done."

@@ -22,9 +22,9 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const chats = Route.useLoaderData()
-  const { sidebarCollapsed } = Route.useRouteContext()
+  const { user, sidebarCollapsed } = Route.useRouteContext()
   return (
-    <ChatSidebar chats={chats} collapsed={sidebarCollapsed}>
+    <ChatSidebar account={user} chats={chats} collapsed={sidebarCollapsed}>
       <Outlet />
     </ChatSidebar>
   )

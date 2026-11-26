@@ -4,8 +4,8 @@
 // are 40px at 15px in secondary ink that firms on hover and on the open
 // chat. New Chat is raised like the composer and led by its pink plus.
 // On a computer the column collapses to a 56px rail (data-collapsed) of
-// the toggle and New Chat's plus, sliding with duration-sidebar and
-// ease-spring, at once under reduced motion or from the keyboard
+// the toggle, New Chat's plus and the account's avatar, sliding with
+// duration-sidebar and ease-spring, at once under reduced motion or from the keyboard
 // (data-instant).
 // A row is a ui-sdk Button rendering the router's link (ui-sdk's Button
 // docs, Links): a real link to browsers and screen readers, and a control
@@ -165,6 +165,17 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** The bottom of the column and the drawer, holding the account. */
+function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sidebar-footer"
+      className={cn("mt-auto shrink-0 px-2.5 pb-2", className)}
+      {...props}
+    />
+  )
+}
+
 /** A group of rows under its label, 6px in. */
 function SidebarGroup({
   label,
@@ -208,6 +219,12 @@ const sidebarRowVariants = cva(
         // In the rail, only its plus on the sidebar's plane, in a 36px square.
         raised:
           "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row ring-1 ring-border-strong group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none group-data-collapsed/sidebar:ring-0 hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-5 [&>svg]:shrink-0",
+        // The account, Grok's: a 26px avatar and the name, medium in full
+        // ink, 8px in, in a muted row; hover and open fill the row at once
+        // and the avatar dims to 75%. In the rail, the avatar alone in a
+        // 36px circle.
+        account:
+          "gap-2 rounded-item px-2 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active active:text-foreground aria-expanded:bg-secondary-hover aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
         // A chat: its title only, 12px in and 8px at the end, fading out
         // at the end instead of an ellipsis. The open chat (the link's
         // aria-current) keeps the hover's wash and full ink.
@@ -240,6 +257,7 @@ export {
   SidebarDrawerContent,
   SidebarDrawerTrigger,
   SidebarGroup,
+  SidebarFooter,
   SidebarHeader,
   SidebarItem,
   SidebarRow,

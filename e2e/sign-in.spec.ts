@@ -2,7 +2,7 @@ import { generateKeyPairSync, randomBytes } from "node:crypto"
 import type { Page } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
-import { expect, test } from "./session"
+import { expect, expectSignedInAs, test } from "./session"
 
 // Signing in (src/lib/auth): only a signed-in browser reaches Chat, the
 // first passkey needs the setup code, and the passkey then signs in. A
@@ -59,20 +59,20 @@ test("the owner adds a passkey with the setup code and signs in with it", async 
   await addAuthenticator(page)
   await page.goto(`/setup#${E2E_SETUP_CODE}`)
   await page.getByRole("button", { name: "Add a passkey" }).click()
-  await expect(page.getByRole("heading", { name: "Hi, Alec" })).toBeVisible()
+  await expectSignedInAs(page, "Alec")
 
   // Signed out (cookies gone), the same passkey signs back in.
   await context.clearCookies()
   await page.goto("/")
   await expect(page).toHaveURL(/\/sign-in$/)
   await page.getByRole("button", { name: "Sign in with passkey" }).click()
-  await expect(page.getByRole("heading", { name: "Hi, Alec" })).toBeVisible()
+  await expectSignedInAs(page, "Alec")
 })
 
 test("Dev signs in on this machine without a passkey", async ({ page }) => {
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "Sign in as Dev" }).click()
-  await expect(page.getByRole("heading", { name: "Hi, Dev" })).toBeVisible()
+  await expectSignedInAs(page, "Dev")
 })
 
 test.describe(() => {
