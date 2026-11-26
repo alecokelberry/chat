@@ -8,6 +8,7 @@ import {
   send,
   signInAsDev,
   signInAsOwner,
+  tapInSheet,
   test,
 } from "./session"
 
@@ -145,6 +146,190 @@ test("a titled chat keeps its title after a reply", async ({ page }) => {
   )
 })
 
+// The row menu (src/components/chat/chat-actions.tsx): each test starts
+// its own chat and renames it to a name of its own, since other tests make
+// chats called TITLE at the same time.
+
+/** Starts a chat and waits for the model to name it. */
+async function startChat(page: Page, text: string) {
+  await signInAsDev(page)
+  await send(page, text)
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(TITLE)
+}
+
+/** The open chat's row: its link and its menu's trigger. */
+const openRow = (page: Page) =>
+  sidebar(page)
+    .getByRole("listitem")
+    .filter({ has: page.locator("a[aria-current=page]") })
+
+const rowMenu = (page: Page) =>
+  openRow(page).getByRole("button", { name: /^Actions for / })
+
+const menu = (page: Page) => page.getByRole("menu")
+
+const titleField = (page: Page) =>
+  page.getByRole("textbox", { name: "Chat title" })
+
+const unique = (name: string) =>
+  `${name} ${Math.random().toString(36).slice(2, 8)}`
+
+test("Rename in the row saves on Enter and ✓, cancels on Escape and ✕", async ({
+  page,
+}) => {
+  await startChat(page, "Rename me")
+  const pill = page.getByRole("heading", { level: 1 })
+
+  // Enter saves; the field starts with the title, all selected.
+  const first = unique("Renamed")
+  await openRow(page).hover()
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await expect(titleField(page)).toBeFocused()
+  await expect(titleField(page)).toHaveValue(TITLE)
+  await page.keyboard.type(first)
+  await page.keyboard.press("Enter")
+  await expect(titleField(page)).toBeHidden()
+  await expect(openRow(page).getByRole("link")).toHaveText(first)
+  await expect(pill).toHaveText(first)
+  // Focus goes back to the row's …, not to the page.
+  await expect(rowMenu(page)).toBeFocused()
+
+  // Escape and ✕ cancel.
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await page.keyboard.type("Not this")
+  await page.keyboard.press("Escape")
+  await expect(titleField(page)).toBeHidden()
+  await expect(openRow(page).getByRole("link")).toHaveText(first)
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await page.keyboard.type("Nor this")
+  await sidebar(page).getByRole("button", { name: "Cancel" }).click()
+  await expect(openRow(page).getByRole("link")).toHaveText(first)
+
+  // ✓ saves, and the name survives a reload and the next reply.
+  const second = unique("Renamed again")
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await page.keyboard.type(second)
+  await sidebar(page).getByRole("button", { name: "Save" }).click()
+  await expect(openRow(page).getByRole("link")).toHaveText(second)
+  await send(page, "Keep my name")
+  await expect(
+    page.getByRole("article", { name: "Reply" }).nth(1)
+  ).toContainText("Done.")
+  await page.reload()
+  await expect(openRow(page).getByRole("link")).toHaveText(second)
+  await expect(pill).toHaveText(second)
+})
+
+test("Pin moves a chat to Pinned and Unpin moves it back", async ({ page }) => {
+  await startChat(page, "Pin me")
+  const pinned = sidebar(page).getByRole("region", { name: "Pinned" })
+  const today = sidebar(page).getByRole("region", { name: "Today" })
+  const link = sidebar(page).locator("a[aria-current=page]")
+
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Pin" }).click()
+  await expect(pinned.locator("a[aria-current=page]")).toBeVisible()
+  await page.reload()
+  await expect(pinned.locator("a[aria-current=page]")).toBeVisible()
+
+  await openRow(page).hover()
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Unpin" }).click()
+  await expect(today.locator("a[aria-current=page]")).toBeVisible()
+  await page.reload()
+  await expect(today.locator("a[aria-current=page]")).toBeVisible()
+  await expect(link).toHaveCount(1)
+})
+
+// The write is checked against the signed-in user: here the request names
+// a chat that isn't theirs, so it fails, the row goes back and a toast
+// says so.
+test("a rename that fails goes back and says so", async ({ page }) => {
+  await startChat(page, "Fail my rename")
+  const id = new URL(page.url()).pathname.split("/").at(-1) ?? ""
+  await page.route(/\/_serverFn\//, (route) =>
+    route.request().method() === "POST"
+      ? route.continue({
+          postData: route
+            .request()
+            .postData()
+            ?.replace(id, "00000000-0000-4000-8000-00000000dead"),
+        })
+      : route.continue()
+  )
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await page.keyboard.type(unique("Not mine"))
+  await page.keyboard.press("Enter")
+  await expect(page.getByText("Couldn't rename the chat")).toBeVisible()
+  await expect(openRow(page).getByRole("link")).toHaveText(TITLE)
+})
+
+test("Open in new tab opens the chat in a new tab", async ({ page }) => {
+  await startChat(page, "Open me twice")
+  const path = new URL(page.url()).pathname
+  await rowMenu(page).click()
+  const [tab] = await Promise.all([
+    page.context().waitForEvent("page"),
+    menu(page).getByRole("menuitem", { name: "Open in new tab" }).click(),
+  ])
+  await expect(tab).toHaveURL(new RegExp(`${path}$`))
+})
+
+test("the header's … menu pins and renames in the pill", async ({ page }) => {
+  await startChat(page, "Header menu")
+  const actions = page.getByRole("button", { name: "Chat actions" })
+  const pill = page.getByRole("heading", { level: 1 })
+
+  await actions.click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await expect(titleField(page)).toBeFocused()
+  await expect(titleField(page)).toHaveValue(TITLE)
+  const name = unique("From the header")
+  await page.keyboard.type(name)
+  await page.keyboard.press("Enter")
+  await expect(pill).toHaveText(name)
+  await expect(openRow(page).getByRole("link")).toHaveText(name)
+  await expect(actions).toBeFocused()
+
+  await actions.click()
+  await menu(page).getByRole("menuitem", { name: "Pin" }).click()
+  await expect(
+    sidebar(page)
+      .getByRole("region", { name: "Pinned" })
+      .locator("a[aria-current=page]")
+  ).toBeVisible()
+  await actions.click()
+  await expect(
+    menu(page).getByRole("menuitem", { name: "Unpin" })
+  ).toBeVisible()
+  await page.keyboard.press("Escape")
+})
+
+// ui-sdk's agent test: each row's menu is a named control an agent can
+// open, and its actions are named.
+test("an agent can open a row's menu", async ({ page }) => {
+  await signInAsDev(page)
+  await expect(
+    sidebar(page).getByRole("link", { name: "Seeded for an agent" })
+  ).toBeVisible()
+  const opened = await page.evaluate(async () => {
+    const result = await window.agent.act({
+      steps: [
+        { ref: "Actions for Seeded for an agent", action: "press", args: [] },
+      ],
+    })
+    return result.ok
+  })
+  expect(opened).toBe(true)
+  for (const name of ["Pin", "Rename", "Open in new tab"])
+    await expect(menu(page).getByRole("menuitem", { name })).toBeVisible()
+})
+
 test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   const long =
     "An unreasonably long chat title that goes on and on and on and on and on and on and on and on"
@@ -175,7 +360,10 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   await expect(last).toHaveAttribute("aria-current", "page")
 })
 
-// ui-sdk's agent test: rows are controls an agent can find and press.
+// ui-sdk's agent test: rows are controls an agent can find and press. A
+// row's title is also in its menu's name ("Actions for …"), and a label
+// matches every label holding its words, so the agent picks the row by
+// its ref.
 test("an agent can open a chat from the list", async ({ page }) => {
   await signInAsDev(page)
   await expect(
@@ -183,17 +371,19 @@ test("an agent can open a chat from the list", async ({ page }) => {
   ).toBeVisible()
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const labels = agent
+    const entries = agent
       .snapshot()
       .filter((entry) => entry.offPage !== true && entry.ref !== "more")
-      .map((entry) => entry.label)
+    const row = entries.find((entry) => entry.label === "Seeded for an agent")
     const opened = await agent.act({
-      steps: [{ ref: "Seeded for an agent", action: "press", args: [] }],
+      steps: [{ ref: row?.ref ?? "", action: "press", args: [] }],
     })
-    return { labels, opened: opened.ok }
+    return { labels: entries.map((entry) => entry.label), opened: opened.ok }
   })
   expect(result.labels.every(Boolean)).toBe(true)
-  expect(result.labels).toEqual(expect.arrayContaining(["New Chat"]))
+  expect(result.labels).toEqual(
+    expect.arrayContaining(["New Chat", "Actions for Seeded for an agent"])
+  )
   expect(result.opened).toBe(true)
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(
@@ -241,6 +431,34 @@ test.describe("on a phone", () => {
     await drawer.getByRole("link", { name: "New Chat", exact: true }).tap()
     await expect(page).toHaveURL(/\/$/)
     await expect(drawer).toBeHidden()
+  })
+
+  // Touch has no hover: every row's … shows, its menu is a sheet, and
+  // Rename edits the row without closing the drawer.
+  test("a row's menu works in the drawer", async ({ page }) => {
+    await startChat(page, "Rename from my phone")
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    const row = drawer
+      .getByRole("listitem")
+      .filter({ has: page.locator("a[aria-current=page]") })
+    await row.getByRole("button", { name: /^Actions for / }).tap()
+    const sheet = page.locator('[data-slot="menu-content"]')
+    await expect(sheet).toHaveAttribute("data-presentation", "sheet")
+    await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
+    // A long, non-Latin title stays one row inside the drawer.
+    const name = unique(
+      "名前を変えたとても長いチャットのタイトルがここに続きます"
+    )
+    await titleField(page).fill(name)
+    await page.keyboard.press("Enter")
+    await expect(row.getByRole("link")).toHaveText(name)
+    await expect(drawer).toBeVisible()
+    expect((await row.getByRole("link").boundingBox())?.height).toBe(40)
+    const wide = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth
+    )
+    expect(wide).toBe(false)
   })
 
   // A long list opens with a screenful and fills in once the drawer has

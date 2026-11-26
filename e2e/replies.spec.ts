@@ -275,9 +275,18 @@ test("an agent can find a reply's actions, and Retry needs a person", async ({
     "Done."
   )
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+  // query, not snapshot: a long chat list fills the snapshot's 100
+  // entries before the thread's controls.
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const entries = agent.snapshot().filter((entry) => entry.offPage !== true)
+    const labels = agent
+      .snapshot()
+      .filter((entry) => entry.offPage !== true && entry.ref !== "more")
+      .map((entry) => entry.label)
+    const found = await Promise.all(
+      ["Reply actions", "Copy", "Retry"].map((text) => agent.query({ text }))
+    )
+    const entries = found.flatMap((list) => ("error" in list ? [] : list))
     // The question has a Copy too; the reply's comes after it.
     const copy = entries.findLast((entry) => entry.label === "Copy")?.ref ?? ""
     const copied = await agent.act({
@@ -287,13 +296,14 @@ test("an agent can find a reply's actions, and Retry needs a person", async ({
       steps: [{ ref: "Retry", action: "press", args: [] }],
     })
     return {
-      labels: entries.map((entry) => entry.label),
+      labels,
+      found: entries.map((entry) => entry.label),
       copied: copied.ok,
       retried: retried.ok,
     }
   })
   expect(result.labels.every(Boolean)).toBe(true)
-  expect(result.labels).toEqual(
+  expect(result.found).toEqual(
     expect.arrayContaining(["Reply actions", "Copy", "Retry"])
   )
   expect(result.copied).toBe(true)
@@ -314,9 +324,11 @@ test("an agent can find the thinking step and open it", async ({ page }) => {
   )
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const step = agent
-      .snapshot()
-      .find((entry) => entry.label?.startsWith("Thought for") === true)
+    const found = await agent.query({ text: "Thought" })
+    const step =
+      "error" in found
+        ? undefined
+        : found.find((entry) => entry.label?.startsWith("Thought for") === true)
     if (step === undefined) return { found: false, opened: false }
     const opened = await agent.act({
       steps: [{ ref: step.ref, action: "press", args: [] }],
