@@ -119,5 +119,27 @@ test.describe("on a phone", () => {
     await expect(menu(page)).toContainText("dev@chat.test")
     await expect(menu(page)).toHaveAttribute("data-presentation", "sheet")
     await expectNoHeldStart(page)
+
+    // A tapped Theme shows its press, then lets go like a native row: the
+    // highlight ui-sdk keeps on the tapped row isn't painted after a touch.
+    // Tapped where the row is once the sheet has slid up, as a finger would
+    // (Playwright's own tap scrolls first, which the sheet reads as a swipe).
+    const theme = menu(page).getByRole("menuitem", { name: "Theme" })
+    await expect
+      .poll(() =>
+        menu(page).evaluate((el) =>
+          el.style.getPropertyValue("--drawer-progress")
+        )
+      )
+      .toBe("1")
+    const box = await theme.boundingBox()
+    if (box === null) throw new Error("Theme has no box")
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    await expect(theme).toHaveAttribute("data-highlighted")
+    await expect(theme).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
   })
 })
