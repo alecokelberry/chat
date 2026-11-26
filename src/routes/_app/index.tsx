@@ -17,7 +17,11 @@ function NewChat() {
     // The archived Chat's (Grok's): the greeting 30% down and the composer
     // 28px under it, both staying put while the composer grows; the page
     // scrolls only if they don't fit. 24px in on a phone.
-    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto safe-area max-md:pt-0">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto safe-area outline-hidden max-md:pt-0"
+    >
       <h1 className="mt-new-chat-top px-4 pb-7 text-center text-3xl font-medium max-md:mt-new-chat-top-phone">
         What can I help with?
       </h1>

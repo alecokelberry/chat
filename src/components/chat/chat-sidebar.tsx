@@ -28,7 +28,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from "react"
 import { Link, ScriptOnce } from "@tanstack/react-router"
@@ -54,6 +53,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { groupChats } from "@/lib/chat/groups"
+import { usePhone } from "@/lib/phone"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
 import type { ChatSummary } from "@/lib/chat/store"
 
@@ -85,25 +85,6 @@ function takeEarlyTap(): boolean {
 
 /** More rows than the tallest phone shows: what the drawer opens with. */
 const FIRST_SCREEN = 40
-
-/** Phones, as Tailwind's `max-md`: the drawer instead of the column. */
-const PHONE = "(width < 48rem)"
-
-function subscribe(onChange: () => void) {
-  const query = window.matchMedia(PHONE)
-  query.addEventListener("change", onChange)
-  return () => query.removeEventListener("change", onChange)
-}
-
-/** Whether the screen is a phone's; null on the server and while
- *  hydrating. */
-function usePhone(): boolean | null {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(PHONE).matches,
-    () => null
-  )
-}
 
 export function ChatSidebar({
   account,

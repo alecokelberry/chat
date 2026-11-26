@@ -169,6 +169,7 @@
   --duration-sidebar: 200ms; /* collapse and expand */
   --duration-drawer: 300ms; /* the phone sidebar opening; closing is duration-pane */
   --duration-sheet: 500ms; /* phone sheets (Search, Settings): Vaul's iOS timing */
+  --duration-toast: 500ms; /* toasts in, out and stacking */
 
   /* Sizes. */
   --spacing-icon: 20px; /* icons in icon buttons, nav rows, toggles */
@@ -545,6 +546,104 @@
     transition-timing-function: var(--ease-decelerate);
     @media (prefers-reduced-motion: no-preference) {
       scale: 0.97;
+    }
+  }
+}
+
+/* The toast stack (src/components/ui/toast.tsx): the newest in front, the
+   rest peeking 12px behind it, smaller; hovering or focusing it spreads
+   them out. */
+@utility toast-region {
+  position: fixed;
+  inset: auto 1rem 1rem 1rem;
+  margin: 0 auto;
+  max-width: 22.25rem;
+  height: var(--toast-front-height);
+  &[data-expanded] {
+    height: calc(
+      var(--toast-stack-height) + (var(--toast-count) - 1) * 0.75rem
+    );
+  }
+  @media (width >= 48rem) {
+    inset: auto 1.5rem 1.5rem auto;
+    width: 100%;
+  }
+  /* Phones: at the top, 12px under the status bar, between the page's
+     gutters. Ours replaces ui-sdk's inset, so the safe area is added here. */
+  &[data-side="top"] {
+    inset: calc(env(safe-area-inset-top, 0px) + 0.75rem)
+      max(1rem, env(safe-area-inset-right)) auto
+      max(1rem, env(safe-area-inset-left));
+    max-width: none;
+  }
+}
+@utility toast-stack {
+  --y: calc(var(--toast-index) * -0.75rem);
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: calc(100 - var(--toast-index));
+  overflow: hidden;
+  height: var(--toast-height);
+  translate: var(--toast-swipe-x, 0px)
+    calc(var(--y) + var(--toast-swipe-y, 0px));
+  scale: calc(1 - var(--toast-index) * 0.05);
+  /* Height too, as ui-sdk's stack expects: a toast behind the front one
+     grows to its own height as the stack spreads out. */
+  transition:
+    translate var(--duration-toast) var(--ease-out-quint),
+    scale var(--duration-toast) var(--ease-out-quint),
+    opacity var(--duration-toast),
+    height var(--duration-fast);
+  user-select: none;
+  &:not([data-front], [data-expanded]) {
+    height: var(--toast-front-height);
+  }
+  &[data-expanded] {
+    --y: calc(var(--toast-offset) * -1 - var(--toast-index) * 0.75rem);
+    scale: 1;
+  }
+  &[data-swiping] {
+    transition-duration: 0s;
+  }
+  /* At the top (phones) the stack grows down. */
+  [data-side="top"] & {
+    top: 0;
+    bottom: auto;
+    --y: calc(var(--toast-index) * 0.75rem);
+    &[data-expanded] {
+      --y: calc(var(--toast-offset) + var(--toast-index) * 0.75rem);
+    }
+  }
+  /* Coming and going: in from the region's edge, out the way it was
+     swiped (up, down, or toward the end: right, or left right to left). */
+  @media (prefers-reduced-motion: no-preference) {
+    &[data-starting-style],
+    &[data-ending-style]:not([data-swipe-direction]) {
+      translate: 0 150%;
+    }
+    &[data-ending-style][data-swipe-direction="right"] {
+      translate: calc(var(--toast-swipe-x, 0px) + 150%) var(--y);
+    }
+    &[data-ending-style][data-swipe-direction="left"] {
+      translate: calc(var(--toast-swipe-x, 0px) - 150%) var(--y);
+    }
+    &[data-ending-style][data-swipe-direction="down"] {
+      translate: 0 calc(var(--toast-swipe-y, 0px) + 150%);
+    }
+    [data-side="top"] &[data-starting-style],
+    [data-side="top"] &[data-ending-style]:not([data-swipe-direction]) {
+      translate: 0 -150%;
+    }
+    &[data-ending-style][data-swipe-direction="up"] {
+      translate: 0 calc(var(--toast-swipe-y, 0px) - 150%);
+    }
+  }
+  /* Reduced motion: nothing moves; a toast fades in and out where it is. */
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: opacity;
+    &:is([data-starting-style], [data-ending-style]) {
+      opacity: 0;
     }
   }
 }
