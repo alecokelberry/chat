@@ -17,6 +17,11 @@ const lastReply = (page: Page) =>
 
 async function pick(page: Page, name: string) {
   await picker(page).click()
+  // With a mouse it's a popover; phones get a sheet (below).
+  await expect(page.locator('[data-slot="select-content"]')).toHaveAttribute(
+    "data-presentation",
+    "popover"
+  )
   await page.getByRole("option", { name }).click()
   await expect(picker(page)).toContainText(name)
 }
@@ -78,16 +83,25 @@ test("an agent can choose the model", async ({ page }) => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
-  test("the models open in a popover, not a sheet, and the chosen one answers", async ({
+  test("the models open in a sheet, and the chosen one answers", async ({
     page,
   }) => {
     await signInAsDev(page)
     await picker(page).tap()
-    await expect(page.locator('[data-slot="select-content"]')).toHaveAttribute(
-      "data-presentation",
-      "popover"
-    )
-    await page.getByRole("option", { name: "Nano Omni" }).tap()
+    const sheet = page.locator('[data-slot="select-content"]')
+    await expect(sheet).toHaveAttribute("data-presentation", "sheet")
+    // Tap where the row is, as a finger would, once the sheet has finished
+    // sliding up: Playwright's own tap scrolls the row into view first,
+    // and the sheet's scroller reads that as a swipe.
+    const option = page.getByRole("option", { name: "Nano Omni" })
+    await expect
+      .poll(() =>
+        sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
+      )
+      .toBe("1")
+    const box = await option.boundingBox()
+    if (box === null) throw new Error("The option has no box")
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
     await expect(picker(page)).toContainText("Nano Omni")
     await send(page, "Hello")
     await expect(lastReply(page)).toContainText(

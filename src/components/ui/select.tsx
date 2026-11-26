@@ -3,10 +3,13 @@
 // full ink whose chevron turns up while open; the list is a 240px popover
 // with 20px corners, 8px in, a hairline and two soft drops, that fades and
 // zooms in from the trigger (popup-motion), 4px away. Rows are 32px with
-// 12px corners and a muted check on the chosen one. Always a popover,
-// phones too (DESIGN.md › Phones): ui-sdk's phone sheet felt laggy on an
-// iPhone. `fixed` from the first frame, since popups render in place and
-// Safari painted one inside the composer's row for a few frames.
+// 12px corners and a muted check on the chosen one. On a phone it's a
+// sheet from the bottom instead (presentation "auto"), with 48px rows and
+// padding clear of the home indicator. The sheet moves only by ui-sdk's
+// own translate: no fade, zoom, blur or shadow of ours runs while it
+// slides, so it stays on the compositor. As a popover it's `fixed` from
+// the first frame, since popups render in place and Safari painted one
+// inside the composer's row for a few frames.
 import type * as React from "react"
 import {
   Select as SelectPrimitive,
@@ -20,7 +23,7 @@ import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function Select<T>(props: React.ComponentProps<typeof SelectPrimitive<T>>) {
-  return <SelectPrimitive<T> {...props} presentation="popover" />
+  return <SelectPrimitive<T> presentation="auto" {...props} />
 }
 
 function SelectTrigger({
@@ -58,7 +61,9 @@ function SelectContent({
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "fixed max-h-(--available-height) w-60 popup-motion overflow-x-hidden overflow-y-auto overscroll-contain rounded-overlay border border-border-strong bg-popover p-2 text-popover-foreground shadow-popover outline-hidden",
+        "overflow-x-hidden overflow-y-auto overscroll-contain border border-border-strong bg-popover p-2 text-popover-foreground outline-hidden",
+        "data-[presentation=popover]:fixed data-[presentation=popover]:max-h-(--available-height) data-[presentation=popover]:w-60 data-[presentation=popover]:popup-motion data-[presentation=popover]:rounded-overlay data-[presentation=popover]:shadow-popover",
+        "data-[presentation=sheet]:w-full data-[presentation=sheet]:rounded-t-overlay data-[presentation=sheet]:border-b-0 data-[presentation=sheet]:pt-3 data-[presentation=sheet]:safe-area-bottom",
         className
       )}
       {...props}
@@ -76,7 +81,7 @@ function SelectItem<T>({
   return (
     <SelectItemPrimitive<T>
       className={cn(
-        "relative flex min-h-8 items-center rounded-xl py-0.75 ps-2 pe-8 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground",
+        "relative flex min-h-8 items-center rounded-xl py-0.75 ps-2 pe-8 text-sm outline-hidden select-none in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:ps-3 in-data-[presentation=sheet]:text-base data-highlighted:bg-accent data-highlighted:text-accent-foreground",
         className
       )}
       {...props}
