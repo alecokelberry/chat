@@ -24,7 +24,7 @@ What `code-review` checks a diff against, on top of AGENTS.md and DESIGN.md. Eac
 
 **Edge cases.** Every case real use reaches (empty, one, many, very long, slow network, a reload mid-stream, two tabs, an error from NVIDIA), and rare ones whose failure would be bad (lost messages, a stuck spinner, a wrong chat). Give how likely and how bad.
 
-**Performance.** Fast enough for Chat's real load (one person, long chats, big files): flag work that's repeated, unbounded, blocks a render or streams slowly. Also flag optimizing what that load doesn't need. Workers Free gives each request 10 ms of CPU: flag heavy server work (big SSR, hashing, parsing) that belongs in the browser. React code follows `vercel-react-best-practices`.
+**Performance.** Fast enough for Chat's real load (one person, long chats, big files): flag work that's repeated, unbounded, blocks a render or streams slowly. Also flag optimizing what that load doesn't need. Workers Free gives each request 10 ms of CPU: flag heavy server work (big SSR, hashing, parsing) that belongs in the browser. React code follows `vercel-react-best-practices`. Server code (the Worker, D1, `wrangler.jsonc`) follows `cloudflare:workers-best-practices`, and the chat agent `cloudflare:agents-sdk` and `cloudflare:durable-objects`.
 
 **Tests.** The smallest set that gives real confidence: a smoke test per feature and a unit test for tricky logic, at the seams the ticket agreed. Every interface also gets ui-sdk's agent test (the `ui-sdk` skill's agent-ready page). e2e tests use `e2e/session.ts`'s `test`, sign-in and helpers; a second copy of a helper goes there instead. Flag a behavior change with no test, a test that can't fail, and any weakened lint, type or test check.
 
@@ -34,7 +34,7 @@ Polished at every size (1440 and 390), in light and dark, by mouse, touch and ke
 
 **ui-sdk first.** Read `node_modules/@ui-sdk/react/docs/llms.txt`, the `ui-sdk` skill and each component's page before using it. Flag anything against DESIGN.md › Which ui-sdk part, a part, behavior or hook built by hand that ui-sdk ships, and a popup opened from a click handler where a `create*Controller()` or `payload` belongs. Every control a person can use, links included, is one `window.agent.snapshot()` lists by name: a link is a Button whose `render` is the router's `Link` (ui-sdk's Button docs › Links), never a bare `Link`. When a lint rule and ui-sdk's docs disagree, the docs win: fix the rule in its own commit.
 
-**Skills, by what changed.** Load each that applies and say which ran. Most UI changes hit several rows.
+**Skills, by what changed.** Load each that applies and say which ran, in the PR's Evidence (`Ran: …`). Most UI changes hit several rows.
 
 | The diff touches                                                                   | Run                                        | What it catches here                                                                                   |
 | ---------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
