@@ -41,11 +41,12 @@ Motion is quick and functional.
 | Menus and tooltips (`popup-motion`: fade and 95% zoom from the trigger)                                     | `duration-menu` 120ms    | `ease-decelerate` |
 | Dialogs' scrims                                                                                             | `duration-pane` 200ms    | `ease-standard`   |
 | Sidebar collapse                                                                                            | `duration-sidebar` 200ms | `ease-spring`     |
+| A reply step opening (`transition-collapse`: its height, measured by ui-sdk's Collapsible)                  | `duration-pane` 200ms    | `ease-standard`   |
 | Phone sidebar (ui-sdk's Drawer: it follows the finger and settles on its own iOS spring)                    | spring                   | spring            |
 | Toasts                                                                                                      | 500ms                    | `ease-out-quint`  |
 
 - Use transitions, not keyframes, so motion can be interrupted. The exception is a loop that shows work under way (the spinner, the "Thinking" shimmer), which nothing interrupts.
-- Animate only `transform`/`scale` and `opacity` on things that move.
+- Animate only `transform`/`scale` and `opacity` on things that move. The exception is a Collapsible's height, the way ui-sdk animates it.
 - Keyboard-triggered actions (⌘K, send, switching chats) never animate.
 - Touch feedback starts on pointerdown (`PressFeedback`, `active:` matches `data-pressing`) and lasts at least 90ms, so a quick tap on iOS always shows.
 - Under reduced motion, movement and scale stop and fades stay (`press` scales only under `no-preference`).

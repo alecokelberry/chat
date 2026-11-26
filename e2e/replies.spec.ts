@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto"
 
-import { answeredBy } from "@/lib/chat/reply-metadata"
+import {
+  answeredBy,
+  stoppedMetadata,
+  thoughtFor,
+} from "@/lib/chat/reply-metadata"
 
-import { expect, send, signInAsDev, test } from "./session"
+import { expect, pickModel, send, signInAsDev, test } from "./session"
 
 // What you can do with a reply (src/components/chat/reply-actions.tsx), and
 // what happens when NVIDIA is busy (src/lib/ai), on the mock model. A
@@ -67,6 +71,84 @@ test("answeredBy names the model, with tenths under ten seconds", () => {
   expect(answeredBy({ model: "super" })).toBe("Super")
   expect(answeredBy({ model: "gpt" })).toBeUndefined()
   expect(answeredBy(undefined)).toBeUndefined()
+})
+
+test("a thinking model's reasoning streams into a closed step, kept on reload", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await pickModel(page, "Ultra")
+  await send(page, "Think about this")
+  const step = page.getByRole("button", { name: "Thinking…" })
+  await expect(step).toBeVisible()
+  await expect(step).toHaveAttribute("aria-expanded", "false")
+  const thought = page.getByRole("button", { name: /^Thought for \d+s$/ })
+  await expect(thought).toBeVisible()
+  // Thinking first, the mock takes about five seconds.
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done.",
+    { timeout: 10_000 }
+  )
+
+  await page.reload()
+  await expect(thought).toHaveAttribute("aria-expanded", "false")
+  await thought.click()
+  await expect(thought).toHaveAttribute("aria-expanded", "true")
+  await expect(page.getByRole("log", { name: "Messages" })).toContainText(
+    "The mock model is thinking"
+  )
+})
+
+test("Stop while thinking keeps the thoughts and how long they ran", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await pickModel(page, "Ultra")
+  await send(page, "Think about this")
+  const thread = page.getByRole("log", { name: "Messages" })
+  // Stop at the first thought, well before the thinking ends (the closed
+  // panel's text is in the page, hidden until found).
+  await expect(thread).toContainText("The mock")
+  await page.getByRole("button", { name: "Stop" }).click()
+  const thought = page.getByRole("button", { name: /^Thought for \d+s$/ })
+  await expect(thought).toBeVisible()
+  await expect(page.getByRole("article", { name: "Reply" })).toHaveCount(0)
+
+  await page.reload()
+  await expect(thought).toBeVisible()
+  await thought.click()
+  await expect(thread).toContainText("The mock")
+})
+
+test("a reply without thinking has no step", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, "Hello")
+  // Thinking first, the mock takes about five seconds.
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done.",
+    { timeout: 10_000 }
+  )
+  await expect(page.getByRole("button", { name: /^Thought/ })).toHaveCount(0)
+})
+
+test("thoughtFor says how long the model thought, at least a second", () => {
+  expect(thoughtFor({ thought: 12_400 })).toBe("Thought for 12s")
+  expect(thoughtFor({ thought: 300 })).toBe("Thought for 1s")
+  expect(thoughtFor({ thought: "soon" })).toBe("Thoughts")
+  expect(thoughtFor(undefined)).toBe("Thoughts")
+})
+
+test("stoppedMetadata times a stopped reply, and its thought if still thinking", () => {
+  expect(stoppedMetadata({ started: 1000, thinking: 1500 }, 4000)).toEqual({
+    started: 1000,
+    thinking: 1500,
+    ms: 3000,
+    thought: 2500,
+  })
+  expect(
+    stoppedMetadata({ started: 1000, thinking: 1500, thought: 800 }, 4000)
+  ).toEqual({ started: 1000, thinking: 1500, thought: 800, ms: 3000 })
+  expect(stoppedMetadata(undefined, 4000)).toEqual({ ms: 0 })
 })
 
 test("Retry replaces the last reply in place", async ({ page }) => {
@@ -167,4 +249,32 @@ test("an agent can find a reply's actions, and Retry needs a person", async ({
   expect(result.copied).toBe(true)
   expect(result.retried).toBe(false)
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+})
+
+// The agent test for the thinking step: it's named by what it says, and an
+// agent can open it.
+test("an agent can find the thinking step and open it", async ({ page }) => {
+  await signInAsDev(page)
+  await pickModel(page, "Ultra")
+  await send(page, "Think about this")
+  // Thinking first, the mock takes about five seconds.
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done.",
+    { timeout: 10_000 }
+  )
+  const result = await page.evaluate(async () => {
+    const { agent } = window
+    const step = agent
+      .snapshot()
+      .find((entry) => entry.label?.startsWith("Thought for") === true)
+    if (step === undefined) return { found: false, opened: false }
+    const opened = await agent.act({
+      steps: [{ ref: step.ref, action: "press", args: [] }],
+    })
+    return { found: true, opened: opened.ok }
+  })
+  expect(result).toEqual({ found: true, opened: true })
+  await expect(
+    page.getByRole("button", { name: /^Thought for \d+s$/ })
+  ).toHaveAttribute("aria-expanded", "true")
 })

@@ -490,6 +490,18 @@
   transition-duration: var(--duration-sidebar);
 }
 
+/* A reply step opening and closing (src/components/ui/reply-step.tsx): its
+   panel's height, from ui-sdk's measured --collapsible-panel-height. Reduced
+   motion snaps it. */
+@utility transition-collapse {
+  transition-property: height;
+  transition-timing-function: var(--ease-standard);
+  transition-duration: var(--duration-pane);
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: none;
+  }
+}
+
 /* The theme's sun and moon trading places (src/components/ui/
    theme-icon.tsx): a spin, a scale and a fade. */
 @utility transition-spin {

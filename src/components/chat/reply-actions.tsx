@@ -1,9 +1,10 @@
 // The icon row under a reply: Copy puts the reply's markdown on the
 // clipboard (the icon swaps to a check and its name to "Copied" for a
-// moment), and Retry, on the last reply only, asks the same model again and
-// replaces it. Then who answered and how long it took ("Super · 4.2s").
-// Under the last reply the row always shows; under earlier ones on hover
-// or focus (always on touch).
+// moment; a reply stopped while thinking has no words, so no Copy), and
+// Retry, on the last reply only, asks the same model again and replaces
+// it. Then who answered and how long it took ("Super · 4.2s"). Under the
+// last reply the row always shows; under earlier ones on hover or focus
+// (always on touch).
 import { useEffect, useState, type ReactNode } from "react"
 import { CheckIcon, CopyIcon, RefreshCwIcon } from "lucide-react"
 
@@ -45,28 +46,30 @@ export function ReplyActions({
       aria-label="Reply actions"
       reveal={latest ? "always" : "hover"}
     >
-      <ReplyAction
-        label={copied ? "Copied" : "Copy"}
-        // Where the browser refuses (a denied permission), nothing changes:
-        // the name stays Copy.
-        onClick={() => {
-          navigator.clipboard.writeText(text).then(
-            () => setCopied(true),
-            () => undefined
-          )
-        }}
-      >
-        <span className="grid *:col-start-1 *:row-start-1 *:transition-swap motion-reduce:*:transition-none">
-          <CopyIcon
-            aria-hidden
-            className={cn(copied && "scale-50 opacity-0")}
-          />
-          <CheckIcon
-            aria-hidden
-            className={cn(!copied && "scale-50 opacity-0")}
-          />
-        </span>
-      </ReplyAction>
+      {text !== "" && (
+        <ReplyAction
+          label={copied ? "Copied" : "Copy"}
+          // Where the browser refuses (a denied permission), nothing changes:
+          // the name stays Copy.
+          onClick={() => {
+            navigator.clipboard.writeText(text).then(
+              () => setCopied(true),
+              () => undefined
+            )
+          }}
+        >
+          <span className="grid *:col-start-1 *:row-start-1 *:transition-swap motion-reduce:*:transition-none">
+            <CopyIcon
+              aria-hidden
+              className={cn(copied && "scale-50 opacity-0")}
+            />
+            <CheckIcon
+              aria-hidden
+              className={cn(!copied && "scale-50 opacity-0")}
+            />
+          </span>
+        </ReplyAction>
+      )}
       {onRetry && (
         <ReplyAction
           label="Retry"
