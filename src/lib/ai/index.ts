@@ -8,6 +8,8 @@
 // When NVIDIA is busy (429, or 503 when its shared capacity is full), the AI
 // SDK asks once more after a 2 s backoff (docs/nvidia.md › Errors); a
 // second refusal ends the reply with an error the chat shows with Retry.
+// When NVIDIA goes quiet for 30 s, before the first word or between two,
+// the reply ends with an error and Retry too (src/lib/ai/silence.ts).
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 import { env } from "cloudflare:workers"
@@ -15,6 +17,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import {
   APICallError,
   convertToModelMessages,
+  wrapLanguageModel,
   generateText,
   RetryError,
   streamText,
@@ -23,8 +26,21 @@ import {
 
 import { mockModel } from "@/lib/ai/mock"
 import { lastModel, LIGHTNING } from "@/lib/ai/models"
+import { failWhenSilent, SilentModelError } from "@/lib/ai/silence"
+
+/** How long NVIDIA may send nothing before a reply ends. NVIDIA's first
+ *  word normally comes within a second (docs/nvidia.md); the mock's limit
+ *  is short so a test sees it run out. */
+const SILENCE_LIMIT_MS = env.MOCK_MODEL === "1" ? 3_000 : 30_000
 
 function model(id: string) {
+  return wrapLanguageModel({
+    model: baseModel(id),
+    middleware: failWhenSilent(SILENCE_LIMIT_MS),
+  })
+}
+
+function baseModel(id: string) {
   if (env.MOCK_MODEL === "1") return mockModel(id)
   const nvidia = createOpenAICompatible({
     name: "nvidia",
@@ -71,6 +87,8 @@ export function replyError(error: unknown): string {
     status,
     cause instanceof Error ? cause.message : String(cause)
   )
+  if (cause instanceof SilentModelError)
+    return "NVIDIA isn't answering right now."
   return status === 429 || status === 503
     ? "NVIDIA is busy right now."
     : "Request failed."
