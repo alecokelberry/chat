@@ -1,6 +1,14 @@
 import type { Page } from "@playwright/test"
 
-import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
+import {
+  expect,
+  recordStartTimes,
+  send,
+  signInAsDev,
+  signInAsOwner,
+  startTimeLeads,
+  test,
+} from "./session"
 
 // The chat list (src/components/chat/chat-sidebar.tsx, src/lib/chat) on the
 // mock model: a send puts its chat at the top, the first reply names it
@@ -175,6 +183,20 @@ test.describe("on a phone", () => {
     await drawer.getByRole("link", { name: "New Chat", exact: true }).tap()
     await expect(page).toHaveURL(/\/$/)
     await expect(drawer).toBeHidden()
+  })
+
+  // The drawer's slide starts on its first frame, with no start time held
+  // ahead (ui-sdk #1085: WebKit kept it, so an iPhone showed nothing for a
+  // second).
+  test("the drawer's slide starts at once", async ({ page }) => {
+    await recordStartTimes(page)
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await expect.poll(async () => (await drawer.boundingBox())?.x).toBe(0)
+    const leads = await startTimeLeads(page)
+    expect(leads.length).toBeGreaterThan(0)
+    expect(Math.max(...leads)).toBeLessThanOrEqual(0)
   })
 
   // ui-sdk's agent test: the drawer's trigger is named and an agent can

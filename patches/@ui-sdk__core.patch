@@ -1,0 +1,93 @@
+diff --git a/dist/foundation/popups/sheet-driver.js b/dist/foundation/popups/sheet-driver.js
+index 1c152f53d8d8557cdfde4f736eb17fa5be025178..d6b93696a636687ce09a614187f9ccf242da5c1e 100644
+--- a/dist/foundation/popups/sheet-driver.js
++++ b/dist/foundation/popups/sheet-driver.js
+@@ -1,6 +1,17 @@
+ // src/foundation/popups/sheet-driver.ts
+ import { setStyle } from "../platform/style.js";
+ var openHold = 1e3;
++// Patched in Chat (patches/@ui-sdk__core.patch), for ui-sdk issue #1085:
++// an open's start time is held openHold ahead, then set to its first frame's
++// time. WebKit keeps the first start time for what it draws, so on an
++// iPhone the sheet shows nothing for about a second, then jumps open. A held
++// start is left for the browser to pick (the next frame); afterFirstFrame
++// still sets the frame's own time.
++function setStartTime(animation, time) {
++  if (time <= performance.now()) {
++    animation.startTime = time;
++  }
++}
+ function afterFirstFrame(view, start) {
+   view.requestAnimationFrame(() => view.requestAnimationFrame(start));
+ }
+@@ -25,6 +36,7 @@ function setStyles(el, styles) {
+   return () => restores.forEach((restore) => restore());
+ }
+ export {
++  setStartTime,
+   afterFirstFrame,
+   closedExtentFor,
+   openHold,
+diff --git a/dist/foundation/popups/sheet-effects.js b/dist/foundation/popups/sheet-effects.js
+index 57b44de1f4acfd6a84d38f5c6af2337f93ca9de5..51bfe33957e9ae914b824a0f3e45ae126f10a726 100644
+--- a/dist/foundation/popups/sheet-effects.js
++++ b/dist/foundation/popups/sheet-effects.js
+@@ -1,6 +1,7 @@
+ // src/foundation/popups/sheet-effects.ts
+ import { dimAmount, expandAmount, progressAmount } from "../motion/curves.js";
+ import { ahead } from "../platform/style.js";
++import { setStartTime } from "./sheet-driver.js";
+ var sampleStep = 1e3 / 60;
+ var variables = [
+   "--drawer-progress",
+@@ -148,7 +149,7 @@ function createSheetEffects(targets) {
+         easing: easing(curve)
+       });
+       if (motion.type === "settle") {
+-        animation.startTime = motion.startTime;
++        setStartTime(animation, motion.startTime);
+       }
+       running.push(animation);
+     };
+diff --git a/dist/foundation/popups/sheet-pointer.js b/dist/foundation/popups/sheet-pointer.js
+index 9dab30cf6441fc7d455ba968de555126791ec268..d7daca2b48736c6e61c6209b4a58a3b0b30580f6 100644
+--- a/dist/foundation/popups/sheet-pointer.js
++++ b/dist/foundation/popups/sheet-pointer.js
+@@ -18,6 +18,7 @@ import {
+ import {
+   afterFirstFrame,
+   openHold,
++  setStartTime,
+   reducedFade,
+   reducedSettle,
+   sampleTranslate
+@@ -172,7 +173,7 @@ function createPointerDriver(options) {
+         finishSettle();
+       }
+     };
+-    animation.startTime = startTime;
++    setStartTime(animation, startTime);
+     options.onMotion({
+       type: "settle",
+       extentAt: motion.extentAt,
+diff --git a/dist/foundation/popups/sheet-scroll-snap.js b/dist/foundation/popups/sheet-scroll-snap.js
+index b338f7cceb8fff9b4dc12f343fb7fbfbe3c9b3d6..578a5ed79736362d64ffaff24cbc621611fc86a5 100644
+--- a/dist/foundation/popups/sheet-scroll-snap.js
++++ b/dist/foundation/popups/sheet-scroll-snap.js
+@@ -9,6 +9,7 @@ import { on } from "../kernel/events.js";
+ import {
+   afterFirstFrame,
+   openHold,
++  setStartTime,
+   sampleTranslate,
+   setStyles,
+   toolbarBleed
+@@ -236,7 +237,7 @@ function createScrollSnapDriver(options) {
+         fill: "both"
+       }
+     );
+-    animation.startTime = startTime;
++    setStartTime(animation, startTime);
+     flip = { animation, to: target, extentAt, startTime };
+     options.onMotion({ type: "settle", extentAt, startTime, duration });
+     animation.onfinish = () => {
