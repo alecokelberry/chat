@@ -295,6 +295,15 @@ test("a pin stays put when a stale list load lands", async ({ page }) => {
   await page.waitForTimeout(500)
   const seen = await page.evaluate(() => Reflect.get(window, "seen"))
   expect(seen).toEqual(["Today", "Pinned"])
+
+  // Back where it was: pins sit at the top, where other tests look.
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Unpin" }).click()
+  await expect(
+    sidebar(page)
+      .getByRole("region", { name: "Today" })
+      .locator("a[aria-current=page]")
+  ).toBeVisible()
 })
 
 // The write is checked against the signed-in user: here the request names
