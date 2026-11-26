@@ -39,13 +39,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       # Sonnet at medium effort by default. A PR that touches sign-in, the
-      # database (D1 queries and migrations), secrets or the chat WebSocket
-      # route gets Opus at high effort and a `security-review` pass instead.
+      # database (queries, migrations), secrets (the AI keys) or the chat
+      # WebSocket route gets Opus at high effort and a `security-review` pass instead.
       - name: Pick the review depth
         id: size
         run: |
           RISKY=$(git diff --name-only origin/main...HEAD | grep -E \
-            '^(src/lib/auth/|src/routes/api/|src/routes/(sign-in|setup)|src/lib/chat/(agent|route)\.ts|src/server\.ts|migrations/|wrangler[^/]*\.jsonc|\.github/workflows/)' || true)
+            '^(src/lib/(auth|ai)/|src/lib/chat/(agent|route|store|list)\.ts|src/routes/(api/|_app/route\.tsx|sign-in|setup)|src/server\.ts|migrations/|drizzle\.config\.ts|wrangler[^/]*\.jsonc|\.github/workflows/)' || true)
           if [ -n "$RISKY" ]; then
             echo "Risky files:"; echo "$RISKY"
             echo "args=--model opus --effort high" >> "$GITHUB_OUTPUT"
