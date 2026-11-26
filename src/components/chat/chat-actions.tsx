@@ -1,9 +1,10 @@
 // A chat's actions, the archived Chat's (Grok's), in each sidebar row's …
 // menu and the open chat's header …: Pin or Unpin, Rename, then Open in
-// new tab (a real link, so it opens the way the browser opens links).
+// new tab (a real link, so it opens the way the browser opens links),
+// then Delete, in red, which an agent can't press (data-agent-confirm).
 //
-// Pin and Rename go through the chat list (chat-list.tsx), which shows
-// them at once and saves them.
+// Pin, Rename and Delete go through the chat list (chat-list.tsx), which
+// shows them at once and saves them; Delete offers Undo first.
 //
 // RenameField is the title being renamed, in a row or the header's pill:
 // it opens focused with the title selected; Enter, ✓ or leaving saves,
@@ -11,7 +12,13 @@
 // blank or unchanged title saves nothing.
 import { useEffect, useRef, type RefObject } from "react"
 import { Link } from "@tanstack/react-router"
-import { ExternalLinkIcon, PencilIcon, PinIcon, PinOffIcon } from "lucide-react"
+import {
+  ExternalLinkIcon,
+  PencilIcon,
+  PinIcon,
+  PinOffIcon,
+  Trash2Icon,
+} from "lucide-react"
 
 import { useChatList, type ChatRef } from "@/components/chat/chat-list"
 import { EditActions } from "@/components/ui/edit-actions"
@@ -33,11 +40,20 @@ export function ChatMenuContent({
   chat: ChatRef
   onRename: () => void
 }) {
-  const { pin } = useChatList()
+  const list = useChatList()
+  // Delete takes the …  away with its row (or header), so focus goes to
+  // the page instead; the rest return it to the ….
+  const deleting = useRef(false)
   return (
-    <MenuContent align="end" side="bottom">
+    <MenuContent
+      align="end"
+      side="bottom"
+      finalFocus={() =>
+        deleting.current ? document.getElementById("main") : null
+      }
+    >
       <MenuGroup>
-        <MenuItem onSelect={() => pin(chat, !chat.pinned)}>
+        <MenuItem onSelect={() => list.pin(chat, !chat.pinned)}>
           {chat.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
           {chat.pinned ? "Unpin" : "Pin"}
         </MenuItem>
@@ -59,6 +75,18 @@ export function ChatMenuContent({
       >
         <ExternalLinkIcon aria-hidden />
         Open in new tab
+      </MenuItem>
+      <MenuSeparator />
+      <MenuItem
+        destructive
+        data-agent-confirm="Delete this chat"
+        onSelect={() => {
+          deleting.current = true
+          list.delete(chat)
+        }}
+      >
+        <Trash2Icon aria-hidden />
+        Delete
       </MenuItem>
     </MenuContent>
   )
