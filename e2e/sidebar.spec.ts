@@ -185,6 +185,23 @@ test.describe("on a phone", () => {
     await expect(drawer).toBeHidden()
   })
 
+  // A long list opens with a screenful and fills in once the drawer has
+  // settled, so mounting 1,000 rows doesn't freeze the slide.
+  test("a long list fills in once the drawer has opened", async ({ page }) => {
+    await signInAsOwner(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await expect(
+      drawer.getByRole("link", { name: "X", exact: true })
+    ).toBeVisible()
+    await expect(
+      drawer.getByRole("link", { name: "Seeded chat 996" })
+    ).toHaveCount(1)
+    expect(await drawer.getByRole("listitem").count()).toBeGreaterThanOrEqual(
+      1000
+    )
+  })
+
   // The drawer's slide starts on its first frame, with no start time held
   // ahead (ui-sdk #1085: WebKit kept it, so an iPhone showed nothing for a
   // second).
