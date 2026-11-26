@@ -4,8 +4,8 @@ import { expect, send, signInAsDev, test } from "./session"
 
 // The chat screen's feel, as the archived Chat had it: where a new chat's
 // greeting sits, what a tap does to the composer on a phone, the waiting
-// marker before a reply's first word, and a saved chat opening at your
-// last message with a way to jump to the latest.
+// marker before a reply's first word, a saved chat opening at your last
+// message with a way to jump to the latest, and Send's tooltip.
 
 const phone = {
   viewport: { width: 393, height: 659 },
@@ -98,11 +98,12 @@ test("a saved chat opens at the last message, with a jump to the latest", async 
   await page.reload()
   const last = page.getByRole("article", { name: "Your message" }).last()
   await expect(last).toHaveText("Now some markdown")
-  // The last question sits at the top, its reply reading from the start.
+  // The last question sits at the top, 24px under the phone's header as
+  // in the archive, its reply reading from the start.
   await expect(async () => {
     const top = (await thread.boundingBox())?.y ?? 0
     const y = (await last.boundingBox())?.y ?? Infinity
-    expect(y - top).toBeLessThan(16)
+    expect(Math.round(y - top)).toBe(24)
   }).toPass()
 
   const jump = page.getByRole("button", { name: "Jump to latest" })
@@ -111,4 +112,36 @@ test("a saved chat opens at the last message, with a jump to the latest", async 
   await expect(page.getByText("Done.").last()).toBeInViewport()
   // Faded out and inert: out of reach until there's more below again.
   await expect(jump).toHaveAttribute("inert")
+})
+
+test("Send is named in a tooltip, even before there's anything to send", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const sendButton = page.getByRole("button", { name: "Send" })
+  // Still in the Tab order while there's nothing to send, so keyboards
+  // reach its tooltip too.
+  await expect(sendButton).toHaveAttribute("aria-disabled", "true")
+  await page.getByRole("combobox", { name: "Model" }).focus()
+  await page.keyboard.press("Tab")
+  await expect(sendButton).toBeFocused()
+  await expect(page.getByRole("tooltip")).toHaveText("Send")
+  await sendButton.click({ force: true })
+  await expect(page).toHaveURL(/\/$/)
+})
+
+test("on a computer the last question rests 80px down, under the title", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await signInAsDev(page)
+  await send(page, "Hello")
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done."
+  )
+  await page.reload()
+  const question = page.getByRole("article", { name: "Your message" })
+  await expect
+    .poll(async () => Math.round((await question.boundingBox())?.y ?? 0))
+    .toBe(80)
 })

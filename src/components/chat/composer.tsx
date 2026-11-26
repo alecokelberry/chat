@@ -9,11 +9,17 @@
 // 32px Send at the end; longer text grows the row and they stay on its
 // last line. A tap doesn't change it (the caret shows where you are): only
 // keyboard focus rings it (the keyboard variant, focus-modality.tsx).
+// Send and Stop are icons alone, named by their tooltips (type "label").
 import { useState } from "react"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { ModelPicker } from "@/components/chat/model-picker"
 import { DEFAULT_MODEL, type ModelKey } from "@/lib/ai/models"
 
@@ -57,20 +63,34 @@ export function Composer({
       />
       <ModelPicker value={model} onValueChange={setModel} />
       {busy ? (
-        <Button variant="stop" size="circle" aria-label="Stop" onClick={onStop}>
-          <SquareIcon fill="currentColor" />
-        </Button>
+        <Tooltip type="label">
+          <TooltipTrigger
+            render={<Button variant="stop" size="circle" onClick={onStop} />}
+          >
+            <SquareIcon fill="currentColor" />
+          </TooltipTrigger>
+          <TooltipContent>Stop</TooltipContent>
+        </Tooltip>
       ) : (
-        <Button
-          type="submit"
-          variant="send"
-          size="circle"
-          aria-label="Send"
-          disabled={message === ""}
-          data-agent-confirm="Sends this message to the model"
-        >
-          <ArrowUpIcon />
-        </Button>
+        <Tooltip type="label">
+          <TooltipTrigger
+            render={
+              <Button
+                type="submit"
+                variant="send"
+                size="circle"
+                disabled={message === ""}
+                // Still focusable, so its tooltip reaches keyboards too
+                // (ui-sdk's Tooltip docs, Disabled buttons).
+                focusableWhenDisabled
+                data-agent-confirm="Sends this message to the model"
+              />
+            }
+          >
+            <ArrowUpIcon />
+          </TooltipTrigger>
+          <TooltipContent>Send</TooltipContent>
+        </Tooltip>
       )}
     </form>
   )

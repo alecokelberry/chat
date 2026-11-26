@@ -55,7 +55,9 @@ function ChatScreen() {
     select: (chats) => chats.find((chat) => chat.id === id)?.title,
   })
   return (
-    <main className="flex min-h-0 flex-1 flex-col safe-area max-md:pt-0">
+    // No top pad: the header floats over the thread, whose own pad sets
+    // where the last question rests (message-scroller.tsx).
+    <main className="flex min-h-0 flex-1 flex-col safe-area pt-0">
       {typeof title === "string" && (
         // Taps go through to the page and the phone's sidebar button, 88px
         // clear of the pill on either side.

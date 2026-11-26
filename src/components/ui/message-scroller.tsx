@@ -5,7 +5,8 @@
 // question to the top as it's sent, the reply growing under it. A spacer at
 // the end lets the last question reach the top while its reply is short.
 // The view holds the question there while the turns above it render, until
-// you scroll. While more of the reply is below the view, ui-sdk's
+// you scroll. As in the archive, that's 80px from the screen's top: under
+// the title pill on a computer, 24px under the header row on a phone. While more of the reply is below the view, ui-sdk's
 // jump-to-latest button floats 12px above the composer.
 import * as React from "react"
 import {
@@ -40,7 +41,7 @@ function MessageScroller({
       >
         <ScrollAreaContent
           ref={content}
-          className="mx-auto flex h-max min-h-full w-full max-w-composer flex-col gap-6 px-2 pt-2 pb-6 sm:px-6 md:pt-header-content"
+          className="mx-auto flex h-max min-h-full w-full max-w-composer flex-col gap-6 px-2 pt-6 pb-6 sm:px-6 md:pt-header-content"
         >
           {children}
           <div ref={spacer} aria-hidden className="-mt-6 shrink-0" />

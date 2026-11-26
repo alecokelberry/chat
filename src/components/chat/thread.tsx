@@ -61,7 +61,7 @@ export function Thread({
           <MessageScrollerItem key={message.id} anchor>
             <article
               aria-label="Your message"
-              className="max-w-4/5 self-end rounded-3xl bg-bubble-user px-4 py-2.5 break-words whitespace-pre-wrap"
+              className="max-w-4/5 self-end rounded-3xl bg-bubble-user px-4 py-3 break-words whitespace-pre-wrap"
             >
               {textOf(message)}
             </article>
