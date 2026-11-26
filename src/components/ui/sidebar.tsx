@@ -55,6 +55,17 @@ function Sidebar({
 
 const TOGGLE_SHORTCUT = "mod+b"
 
+/** ⌘J (Ctrl+J elsewhere) starts a new chat from anywhere, even from the
+ *  composer. */
+const NEW_CHAT_SHORTCUT = "mod+j"
+
+function useNewChatShortcut(onNewChat: () => void) {
+  useShortcut(NEW_CHAT_SHORTCUT, onNewChat, {
+    description: "New chat",
+    allowInInput: true,
+  })
+}
+
 /** The column's top row: its collapse button, Grok's panel glyph, 12px
  *  in. ⌘B (Ctrl+B elsewhere) presses it while `shortcut` is on. */
 function SidebarToggle({
@@ -262,4 +273,6 @@ export {
   SidebarItem,
   SidebarRow,
   SidebarToggle,
+  NEW_CHAT_SHORTCUT,
+  useNewChatShortcut,
 }

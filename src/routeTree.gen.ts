@@ -13,6 +13,7 @@ import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppSplatRouteImport } from './routes/_app/$'
 import { Route as AppCIdRouteImport } from './routes/_app/c.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -35,6 +36,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppSplatRoute = AppSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppCIdRoute = AppCIdRouteImport.update({
   id: '/c/$id',
   path: '/c/$id',
@@ -50,12 +56,14 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
+  '/$': typeof AppSplatRoute
   '/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
+  '/$': typeof AppSplatRoute
   '/': typeof AppIndexRoute
   '/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -65,20 +73,22 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
+  '/_app/$': typeof AppSplatRoute
   '/_app/': typeof AppIndexRoute
   '/_app/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/setup' | '/sign-in' | '/c/$id' | '/api/auth/$'
+  fullPaths: '/' | '/setup' | '/sign-in' | '/$' | '/c/$id' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/setup' | '/sign-in' | '/' | '/c/$id' | '/api/auth/$'
+  to: '/setup' | '/sign-in' | '/$' | '/' | '/c/$id' | '/api/auth/$'
   id:
     | '__root__'
     | '/_app'
     | '/setup'
     | '/sign-in'
+    | '/_app/$'
     | '/_app/'
     | '/_app/c/$id'
     | '/api/auth/$'
@@ -121,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/$': {
+      id: '/_app/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof AppSplatRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/c/$id': {
       id: '/_app/c/$id'
       path: '/c/$id'
@@ -139,11 +156,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteRouteChildren {
+  AppSplatRoute: typeof AppSplatRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCIdRoute: typeof AppCIdRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppSplatRoute: AppSplatRoute,
   AppIndexRoute: AppIndexRoute,
   AppCIdRoute: AppCIdRoute,
 }

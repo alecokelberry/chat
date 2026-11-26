@@ -18,7 +18,6 @@ import { Suspense, useEffect, useRef, useState } from "react"
 import {
   createFileRoute,
   getRouteApi,
-  notFound,
   useLocation,
   useNavigate,
   useRouter,
@@ -26,6 +25,7 @@ import {
 import { useAgent } from "agents/react"
 import { useAgentChat } from "@cloudflare/ai-chat/react"
 
+import { NotFoundPage } from "@/components/error-page"
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
 import { HeaderTitle } from "@/components/ui/header-title"
@@ -40,9 +40,6 @@ declare module "@tanstack/react-router" {
 }
 
 export const Route = createFileRoute("/_app/c/$id")({
-  beforeLoad: ({ params }) => {
-    if (!CHAT_ID.test(params.id)) throw notFound()
-  },
   ssr: "data-only",
   component: ChatScreen,
 })
@@ -54,6 +51,8 @@ function ChatScreen() {
   const title = appRoute.useLoaderData({
     select: (chats) => chats.find((chat) => chat.id === id)?.title,
   })
+  // Not an id a chat can have: the not-found page, inside the shell.
+  if (!CHAT_ID.test(id)) return <NotFoundPage />
   return (
     // No top pad: the header floats over the thread, whose own pad sets
     // where the last question rests (message-scroller.tsx).
