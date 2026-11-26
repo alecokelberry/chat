@@ -5,6 +5,9 @@
 // loading (there's nothing yet), sends it, and clears the state so a
 // reload doesn't send it again. Each message carries its model in its
 // metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last.
+// A reload (or a second tab) while a reply streams picks it up where it is:
+// useAgentChat asks the agent to resume, and the agent replays the chunks
+// it has kept, then streams the rest.
 import { Suspense, useEffect, useRef, useState } from "react"
 import {
   createFileRoute,
