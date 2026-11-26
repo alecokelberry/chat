@@ -11,6 +11,14 @@ insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "update
 insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt") values
   ('e2e-dev', '00000000-0000-4000-8000-000000000000', 'Seeded for an agent', 1795000000000, 1795000000000);
 
+-- Older than every other seeded chat, so only its pin puts it above Today.
+insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt", "pinned") values
+  ('e2e-dev', '00000000-0000-4000-8000-000000000005', 'Seeded pinned', 1767225600000, 1767225600000, 1);
+
+-- Already titled, as a rename leaves it: Lightning must not rename it.
+insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt") values
+  ('e2e-dev', '00000000-0000-4000-8000-000000000006', 'Seeded kept title', 1795000000000, 1795000000000);
+
 -- Around midnight in Auckland on Mar 10, 2026 (UTC+13), which is still
 -- Mar 9 in UTC until 11:00 there.
 insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt") values

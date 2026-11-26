@@ -8,7 +8,8 @@
 //
 // It also keeps the chat's row in the D1 chat list (src/lib/chat/store.ts):
 // a send adds the chat or moves it to the top, and once the first reply is
-// in, Lightning names it (if that fails, the next reply tries again).
+// in, Lightning names it (if that fails, the next reply tries again). A
+// chat that already has a title, a rename's included, keeps it.
 // After either, it tells its open tabs CHATS_CHANGED, so their sidebars
 // load the list again.
 //

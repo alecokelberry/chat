@@ -1,9 +1,10 @@
 // The signed-in shell: the sidebar beside the page. From md up it's a
 // column; on a phone it's a drawer from the start edge, opened from a
 // header above the page, and it closes when you pick a row. It holds New
-// Chat, the chat list, grouped by the browser's own day
-// (src/lib/chat/groups.ts), newest first (a chat without a title yet shows
-// "New chat"), and the account row at the bottom (account-menu.tsx).
+// Chat, the chat list, pinned chats first, then grouped by the browser's
+// own day (src/lib/chat/groups.ts), newest first (a chat without a title
+// yet shows "New chat"), and the account row at the bottom
+// (account-menu.tsx).
 //
 // On a computer the column collapses to a rail from its toggle or ⌘B
 // (Ctrl+B elsewhere), remembered in a cookie (src/lib/sidebar.ts). The
@@ -225,7 +226,8 @@ function ChatList({
   onPick,
 }: {
   chats: ChatSummary[]
-  /** Only the newest this many, while the drawer slides. */
+  /** Only the first this many (pins, then the newest), while the drawer
+   *  slides. */
   limit?: number
   onPick?: () => void
 }) {

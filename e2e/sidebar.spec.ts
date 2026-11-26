@@ -102,8 +102,47 @@ test.describe("in Auckland", () => {
     )
     await expect(group("Older")).toContainText("Seeded a month ago")
     const headings = await sidebar(page).getByRole("heading").allInnerTexts()
-    expect(headings).toEqual(["Today", "Yesterday", "Previous 7 days", "Older"])
+    expect(headings).toEqual([
+      "Pinned",
+      "Today",
+      "Yesterday",
+      "Previous 7 days",
+      "Older",
+    ])
   })
+})
+
+// The pin is seeded, so the first load reads it from the database the
+// way a reload does. The Auckland test above checks it sits above Today.
+test("a pinned chat sits under Pinned, at the top", async ({ page }) => {
+  await signInAsDev(page)
+  const pinned = sidebar(page).getByRole("region", { name: "Pinned" })
+  await expect(pinned).toContainText("Seeded pinned")
+  await expect(sidebar(page).getByRole("heading").first()).toHaveText("Pinned")
+  // Only there: pinned chats leave their day's group.
+  await expect(
+    sidebar(page).getByRole("link", { name: "Seeded pinned" })
+  ).toHaveCount(1)
+})
+
+// A chat with a title keeps it: Lightning names only a chat without one,
+// so a rename sticks (the mock would name it TITLE). Lightning runs after
+// each reply, so a second reply gives the first one's naming time to land.
+test("a titled chat keeps its title after a reply", async ({ page }) => {
+  await signInAsDev(page)
+  await sidebar(page).getByRole("link", { name: "Seeded kept title" }).click()
+  const title = page.getByRole("heading", { level: 1 })
+  await expect(title).toHaveText("Seeded kept title")
+  const replies = page.getByRole("article", { name: "Reply" })
+  await send(page, "Don't rename me")
+  await expect(replies).toContainText("Done.")
+  await send(page, "Still don't")
+  await expect(replies.nth(1)).toContainText("Done.")
+  await page.reload()
+  await expect(title).toHaveText("Seeded kept title")
+  await expect(sidebar(page).locator("a[aria-current=page]")).toHaveText(
+    "Seeded kept title"
+  )
 })
 
 test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {

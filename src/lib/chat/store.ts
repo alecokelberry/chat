@@ -1,4 +1,4 @@
-// The chat list in D1, through Drizzle: each chat's id, title and last
+// The chat list in D1, through Drizzle: each chat's id, title, pin and last
 // activity, per user. The table here is the schema: `pnpm db:generate`
 // (drizzle-kit, drizzle.config.ts) writes its migrations into migrations/. The
 // chat's agent writes it (src/lib/chat/agent.ts): a send adds the chat or
@@ -27,8 +27,11 @@ export const chat = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     id: text().notNull(),
-    /** Null until the first reply names it. */
+    /** Null until the first reply names it. Lightning names only a chat
+     *  without one, so a title, once set, is kept. */
     title: text(),
+    /** Listed under Pinned, above the day groups. */
+    pinned: integer({ mode: "boolean" }).notNull().default(false),
     createdAt: integer().notNull(),
     updatedAt: integer().notNull(),
   },
@@ -42,6 +45,7 @@ export const chat = sqliteTable(
 export type ChatSummary = {
   id: string
   title: string | null
+  pinned: boolean
   updatedAt: number
 }
 
@@ -77,7 +81,8 @@ export async function isUntitled(
   return row !== undefined && row.title === null
 }
 
-/** Names the chat, unless it already has a name. */
+/** Titles the chat, unless it already has a title (a rename's, or an
+ *  earlier try's): the check and the write are one statement. */
 export async function setFirstTitle(
   d1: D1Database,
   owner: ChatOwner,
@@ -89,14 +94,20 @@ export async function setFirstTitle(
     .where(and(isChat(owner), isNull(chat.title)))
 }
 
-/** The user's chats, latest activity first. */
+/** The user's chats, pinned ones first, then latest activity first, so
+ *  the drawer's first screen of rows starts with the pins. */
 export async function listChats(
   d1: D1Database,
   userId: string
 ): Promise<ChatSummary[]> {
   return db(d1)
-    .select({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt })
+    .select({
+      id: chat.id,
+      title: chat.title,
+      pinned: chat.pinned,
+      updatedAt: chat.updatedAt,
+    })
     .from(chat)
     .where(eq(chat.userId, userId))
-    .orderBy(desc(chat.updatedAt), chat.id)
+    .orderBy(desc(chat.pinned), desc(chat.updatedAt), chat.id)
 }
