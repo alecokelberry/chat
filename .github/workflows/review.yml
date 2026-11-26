@@ -5,7 +5,7 @@
 #
 # It runs on Alec's Claude subscription (CLAUDE_CODE_OAUTH_TOKEN from
 # `claude setup-token`), so it costs nothing extra but uses his limits:
-# review effort follows the diff's size, and later pushes aren't
+# the model follows the diff's risk, and later pushes aren't
 # re-reviewed. It is advice, not a gate: the ruleset requires only
 # `verify`. Fork and Dependabot PRs get no secrets, so they're skipped.
 name: review
@@ -38,20 +38,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # Up to 200 changed lines: Sonnet at medium effort. More: Opus at high.
-      # Generated and vendored files don't count.
-      - name: Size the review
+      # Sonnet at medium effort by default. A PR that touches sign-in, the
+      # database (D1 queries and migrations), secrets or the chat WebSocket
+      # route gets Opus at high effort and a `security-review` pass instead.
+      - name: Pick the review depth
         id: size
         run: |
-          LINES=$(git diff --numstat origin/main...HEAD -- . \
-            ':!pnpm-lock.yaml' ':!src/routeTree.gen.ts' ':!worker-configuration.d.ts' \
-            ':!migrations/meta/**' ':!.claude/skills/**' \
-            | awk '{ n += $1 + $2 } END { print n + 0 }')
-          echo "$LINES lines to review"
-          if [ "$LINES" -le 200 ]; then
-            echo "args=--model sonnet --effort medium" >> "$GITHUB_OUTPUT"
-          else
+          RISKY=$(git diff --name-only origin/main...HEAD | grep -E \
+            '^(src/lib/auth/|src/routes/api/|src/routes/(sign-in|setup)|src/lib/chat/(agent|route)\.ts|src/server\.ts|migrations/|wrangler[^/]*\.jsonc|\.github/workflows/)' || true)
+          if [ -n "$RISKY" ]; then
+            echo "Risky files:"; echo "$RISKY"
             echo "args=--model opus --effort high" >> "$GITHUB_OUTPUT"
+            echo "risky=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--model sonnet --effort medium" >> "$GITHUB_OUTPUT"
+            echo "risky=no" >> "$GITHUB_OUTPUT"
           fi
       - uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
         with:
@@ -70,6 +71,7 @@ jobs:
             - one summary with `gh pr comment`, headed "## Claude review", with the
               Standards and Spec sections and the one-line totals. If both axes are
               clean, say so in one line.
+            ${{ steps.size.outputs.risky == 'yes' && 'This PR touches sign-in, the database, secrets or the chat WebSocket route: also run the security-review skill on the diff and put its findings under a Security heading in the same summary.' || '' }}
             Only real findings: no praise, no restating the diff.
           claude_args: >-
             ${{ steps.size.outputs.args }}
