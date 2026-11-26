@@ -1,7 +1,9 @@
 // The document every page renders into: fonts, tokens, and the saved
 // color scheme (AppPreferences, which puts it on <html> before the first
 // paint, so <html> expects its attribute to change). The
-// page tracks whether focus came from the keyboard (FocusModality). The
+// page tracks whether focus came from the keyboard (FocusModality), shows
+// a press the moment a finger lands (PressFeedback), and holds the one
+// toast area (Toasts). The
 // head also makes it installable: public/manifest.webmanifest names the app
 // and its icons, iOS reads the apple-touch-icon, and theme-color paints the
 // status bar in the page's background, light or dark, following the
@@ -15,6 +17,8 @@ import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
 import { FocusModality } from "@/components/ui/focus-modality"
 import { AppPreferences, THEME_COLOR } from "@/components/ui/preferences"
+import { PressFeedback } from "@/components/ui/press-feedback"
+import { Toasts } from "@/components/ui/toast"
 
 import appCss from "@/styles/app.css?url"
 
@@ -59,6 +63,8 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         <AppPreferences>{children}</AppPreferences>
         <FocusModality />
+        <PressFeedback />
+        <Toasts />
         <Scripts />
       </body>
     </html>

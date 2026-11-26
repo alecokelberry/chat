@@ -43,13 +43,13 @@ Motion is quick and functional.
 | Sidebar collapse                                                                                            | `duration-sidebar` 200ms | `ease-spring`     |
 | A reply step opening (`transition-collapse`: its height, measured by ui-sdk's Collapsible)                  | `duration-pane` 200ms    | `ease-standard`   |
 | Phone sidebar (ui-sdk's Drawer: it follows the finger and settles on its own iOS spring)                    | spring                   | spring            |
-| Toasts                                                                                                      | 500ms                    | `ease-out-quint`  |
+| Toasts (`toast-stack`: slide in from their edge, leave the way they're swiped)                              | `duration-toast` 500ms   | `ease-out-quint`  |
 
 - Use transitions, not keyframes, so motion can be interrupted. The exception is a loop that shows work under way (the spinner, the "Thinking" shimmer), which nothing interrupts.
 - Animate only `transform`/`scale` and `opacity` on things that move. The exception is a Collapsible's height, the way ui-sdk animates it.
 - Keyboard-triggered actions (⌘K, send, switching chats) never animate.
-- Touch feedback starts on pointerdown (`PressFeedback`, `active:` matches `data-pressing`) and lasts at least 90ms, so a quick tap on iOS always shows.
-- Under reduced motion, movement and scale stop and fades stay (`press` scales only under `no-preference`).
+- Touch feedback starts on pointerdown (`ui/press-feedback.tsx`, mounted once by the root; `active:` matches `data-pressing`) and lasts at least 90ms, so a quick tap on iOS always shows. A scroll taking over or a finger sliding 12px off the control lets it go.
+- Under reduced motion, movement and scale stop and fades stay (`press` scales only under `no-preference`; a toast fades where it sits).
 - Durations and curves are the tokens in the table; `ui/motion-tokens` lints the rest.
 - Route changes don't animate: switching chats is one of the most frequent things you do here. View transitions stay out.
 
@@ -58,6 +58,7 @@ Motion is quick and functional.
 WCAG 2.2 AA is the floor. Lint can't check it; axe catches some, so check the rest by hand.
 
 - **Focus:** a solid 2px `ring` (3.5:1 light, 3.7:1 dark) on keyboard focus only, and the same 2px for an invalid field. Never a soft glow under 3:1. `outline-hidden` keeps an outline in forced colors.
+- **Skip to content:** the first Tab on a signed-in page shows a pill at the top left that moves focus to the page's `<main id="main">` (`ui/skip-link.tsx`). A new signed-in page's `main` takes `id="main" tabIndex={-1}`.
 - **Targets:** at least 24px. Small buttons keep their look and get a bigger invisible touch area from `::after` (40px on touch screens).
 - **Text:** every word is 4.5:1, labels and placeholders included: the quietest ink is `muted-foreground` (and `sidebar-muted` for section labels), 5.0:1 light and 5.8:1 dark. Red text on a red tint is `destructive-foreground`.
 - **Wrapping:** headings balance and paragraphs wrap pretty (`text-wrap`, set once in app.css).
@@ -73,7 +74,7 @@ Every control is a ui-sdk part, so keyboards, screen readers and agents all see 
 - **State:** style from `data-slot` and state attributes, and animate popups with `data-starting-style` and `data-ending-style` from `--transform-origin`. An async action returns its Promise, so the part shows `data-pending` itself.
 - **Phones:** Menu, Select, Popover and Dialog take `presentation="auto"`, a sheet on a phone. A sheet moves only by ui-sdk's own translate: no fade, zoom, shadow or blur of ours while it slides (the archived Chat's sheets felt laggy on an iPhone). The phone sidebar is a Drawer from `start`.
 - **Agents:** a destructive or sending action carries `data-agent-confirm="<what it does>"`; private text carries `data-agent-hidden`. In dev, `window.agent.snapshot()` lists every control and `window.agent.act()` drives it: use it to check a screen.
-- **Global parts** arrive with their first use: `Preferences` with `createColorScheme` for the theme (replacing the fixed `data-color-scheme`), `OverlayHost` for toasts and `confirm()`, `ScrollArea` under the thread's `MessageScroller` (`role="log"`), which opens at your last message rather than sticking to the end.
+- **Global parts** arrive with their first use: `Preferences` with `createColorScheme` for the theme (replacing the fixed `data-color-scheme`), `OverlayHost` for toasts (`ui/toast.tsx`: always dark, 356px at the bottom right, at the top on a phone, no close button) and later `confirm()`, `ScrollArea` under the thread's `MessageScroller` (`role="log"`), which opens at your last message rather than sticking to the end.
 
 ## Screens
 
