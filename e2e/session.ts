@@ -75,6 +75,40 @@ export async function signInAsOwner(page: Page) {
   await expect(page.getByRole("heading", { name: "Hi, Alec" })).toBeVisible()
 }
 
+/** Records how far ahead of now each animation's start time is set: a
+ *  sheet's open must never hold one ahead (ui-sdk #1085, patched in
+ *  patches/@ui-sdk__core.patch), since WebKit draws from the first one. */
+export async function recordStartTimes(page: Page) {
+  await page.addInitScript(() => {
+    const own = Object.getOwnPropertyDescriptor(
+      Animation.prototype,
+      "startTime"
+    )
+    const leads: number[] = []
+    Object.assign(window, { startTimeLeads: leads })
+    Object.defineProperty(Animation.prototype, "startTime", {
+      get(this: Animation) {
+        return own?.get?.call(this)
+      },
+      set(this: Animation, time: number | null) {
+        if (time !== null) leads.push(time - performance.now())
+        own?.set?.call(this, time)
+      },
+    })
+  })
+}
+
+/** Checks that an open set its start times, none of them ahead of now. */
+export async function expectNoHeldStart(page: Page) {
+  const leads: number[] = await page.evaluate(() =>
+    "startTimeLeads" in window && Array.isArray(window.startTimeLeads)
+      ? window.startTimeLeads
+      : []
+  )
+  expect(leads.length).toBeGreaterThan(0)
+  expect(Math.max(...leads)).toBeLessThanOrEqual(0)
+}
+
 export async function send(page: Page, text: string) {
   await page.getByRole("textbox", { name: "Message" }).fill(text)
   await page.keyboard.press("Enter")

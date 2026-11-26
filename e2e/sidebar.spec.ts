@@ -1,6 +1,14 @@
 import type { Page } from "@playwright/test"
 
-import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
+import {
+  expect,
+  expectNoHeldStart,
+  recordStartTimes,
+  send,
+  signInAsDev,
+  signInAsOwner,
+  test,
+} from "./session"
 
 // The chat list (src/components/chat/chat-sidebar.tsx, src/lib/chat) on the
 // mock model: a send puts its chat at the top, the first reply names it
@@ -175,6 +183,35 @@ test.describe("on a phone", () => {
     await drawer.getByRole("link", { name: "New Chat", exact: true }).tap()
     await expect(page).toHaveURL(/\/$/)
     await expect(drawer).toBeHidden()
+  })
+
+  // A long list opens with a screenful and fills in once the drawer has
+  // settled, so mounting 1,000 rows doesn't freeze the slide.
+  test("a long list fills in once the drawer has opened", async ({ page }) => {
+    await signInAsOwner(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await expect(
+      drawer.getByRole("link", { name: "X", exact: true })
+    ).toBeVisible()
+    await expect(
+      drawer.getByRole("link", { name: "Seeded chat 996" })
+    ).toHaveCount(1)
+    expect(await drawer.getByRole("listitem").count()).toBeGreaterThanOrEqual(
+      1000
+    )
+  })
+
+  // The drawer's slide starts on its first frame, with no start time held
+  // ahead (ui-sdk #1085: WebKit kept it, so an iPhone showed nothing for a
+  // second).
+  test("the drawer's slide starts at once", async ({ page }) => {
+    await recordStartTimes(page)
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await expect.poll(async () => (await drawer.boundingBox())?.x).toBe(0)
+    await expectNoHeldStart(page)
   })
 
   // ui-sdk's agent test: the drawer's trigger is named and an agent can

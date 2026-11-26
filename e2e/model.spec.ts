@@ -1,6 +1,13 @@
 import type { Page } from "@playwright/test"
 
-import { expect, send, signInAsDev, test } from "./session"
+import {
+  expect,
+  expectNoHeldStart,
+  recordStartTimes,
+  send,
+  signInAsDev,
+  test,
+} from "./session"
 
 // The model picker in the composer (src/components/chat/model-picker.tsx)
 // on the mock model, whose reply opens with the model id it was asked for
@@ -83,6 +90,25 @@ test("an agent can choose the model", async ({ page }) => {
 
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+
+  // ui-sdk held an open's start time a second ahead and set the real one a
+  // frame later; WebKit draws from the first, so on an iPhone the sheet
+  // showed nothing for a second, then jumped open (ui-sdk #1085, patched
+  // in patches/@ui-sdk__core.patch). No start time is set ahead of now.
+  test("the sheet's slide starts at once, with no held start time", async ({
+    page,
+  }) => {
+    await recordStartTimes(page)
+    await signInAsDev(page)
+    await picker(page).tap()
+    const sheet = page.locator('[data-slot="select-content"]')
+    await expect
+      .poll(() =>
+        sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
+      )
+      .toBe("1")
+    await expectNoHeldStart(page)
+  })
 
   test("the models open in a sheet, and the chosen one answers", async ({
     page,
