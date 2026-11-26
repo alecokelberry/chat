@@ -14,7 +14,8 @@
 // which this app's Tailwind never generates, so nothing but our prose
 // styles (styles/prose.css, on its data-streamdown hooks) reaches the page.
 // Its controls (copy, download, link check) are off too: Chat's controls
-// are ui-sdk parts.
+// are ui-sdk parts, plugged in through its component overrides
+// (code-block.tsx, table-actions.tsx).
 //
 // A streaming reply is paced in the browser (useSmoothText): an even flow
 // of whole words, with a breathing caret at the end (stream-caret in
@@ -29,6 +30,8 @@ import { createCodePlugin } from "@streamdown/code"
 import { math } from "@streamdown/math"
 import { Streamdown } from "streamdown"
 
+import { Code } from "@/components/chat/code-block"
+import { Table } from "@/components/chat/table-actions"
 import { prepareMarkdown } from "@/lib/chat/markdown"
 import { useSmoothText } from "@/lib/chat/smooth-text"
 import { cn } from "@/lib/utils"
@@ -39,6 +42,7 @@ const plugins = {
   }),
   math,
 }
+const components = { code: Code, table: Table }
 const linkSafety = { enabled: false }
 
 export default function Reply({
@@ -65,6 +69,7 @@ export default function Reply({
       <Streamdown
         prefix="sd"
         plugins={plugins}
+        components={components}
         isAnimating={live}
         controls={false}
         linkSafety={linkSafety}

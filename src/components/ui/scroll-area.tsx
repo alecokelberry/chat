@@ -14,16 +14,25 @@ function ScrollArea({
   className,
   children,
   stickToEnd,
+  fade,
   ...props
 }: React.ComponentProps<typeof ScrollAreaViewport> & {
   stickToEnd?: boolean
+  /** Fade the top and bottom edge while there's more to scroll that way. */
+  fade?: boolean
 }) {
   return (
     <ScrollAreaPrimitive
       stickToEnd={stickToEnd}
       className={cn("relative min-h-0", className)}
     >
-      <ScrollAreaViewport className="size-full outline-hidden" {...props}>
+      <ScrollAreaViewport
+        className={cn(
+          "size-full outline-hidden",
+          fade === true && "scroll-fade-y"
+        )}
+        {...props}
+      >
         <ScrollAreaContent>{children}</ScrollAreaContent>
       </ScrollAreaViewport>
     </ScrollAreaPrimitive>
