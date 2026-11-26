@@ -58,8 +58,12 @@ test.describe("on a phone", () => {
 
 test("keyboard focus rings the composer", async ({ page }) => {
   await signInAsDev(page)
-  await page.keyboard.press("Tab")
-  await expect(page.getByRole("textbox", { name: "Message" })).toBeFocused()
+  // Tab past the sidebar's New Chat and chat rows to the composer.
+  const field = page.getByRole("textbox", { name: "Message" })
+  await expect(async () => {
+    await page.keyboard.press("Tab")
+    await expect(field).toBeFocused({ timeout: 100 })
+  }).toPass()
   expect(await ringOf(page)).not.toBe("none")
 })
 

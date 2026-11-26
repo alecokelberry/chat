@@ -40,7 +40,10 @@ export const MODELS = [
 type Model = (typeof MODELS)[number]
 export type ModelKey = Model["key"]
 
-const [DEFAULT] = MODELS
+const [DEFAULT, , , LIGHTNING_MODEL] = MODELS
+/** The quickest: it names each chat after its first reply. */
+export const LIGHTNING = LIGHTNING_MODEL satisfies { key: "lightning" }
+
 export const DEFAULT_MODEL: ModelKey = DEFAULT.key
 
 /** The model a message's metadata names, or Super for anything else:

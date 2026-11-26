@@ -9,15 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignInRouteImport } from './routes/sign-in'
-import { Route as CIdRouteImport } from './routes/c.$id'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppCIdRouteImport } from './routes/_app/c.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppRouteRoute = AppRouteRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupRoute = SetupRouteImport.update({
@@ -30,10 +30,15 @@ const SignInRoute = SignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CIdRoute = CIdRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCIdRoute = AppCIdRouteImport.update({
   id: '/c/$id',
   path: '/c/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -42,50 +47,57 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
-  '/c/$id': typeof CIdRoute
+  '/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
-  '/c/$id': typeof CIdRoute
+  '/': typeof AppIndexRoute
+  '/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteRouteWithChildren
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
-  '/c/$id': typeof CIdRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/setup' | '/sign-in' | '/c/$id' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/setup' | '/sign-in' | '/c/$id' | '/api/auth/$'
-  id: '__root__' | '/' | '/setup' | '/sign-in' | '/c/$id' | '/api/auth/$'
+  to: '/setup' | '/sign-in' | '/' | '/c/$id' | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/setup'
+    | '/sign-in'
+    | '/_app/'
+    | '/_app/c/$id'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRouteRoute: typeof AppRouteRouteWithChildren
   SetupRoute: typeof SetupRoute
   SignInRoute: typeof SignInRoute
-  CIdRoute: typeof CIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup': {
@@ -102,12 +114,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/c/$id': {
-      id: '/c/$id'
+    '/_app/': {
+      id: '/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/c/$id': {
+      id: '/_app/c/$id'
       path: '/c/$id'
       fullPath: '/c/$id'
-      preLoaderRoute: typeof CIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppCIdRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -119,11 +138,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppCIdRoute: typeof AppCIdRoute
+}
+
+const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppCIdRoute: AppCIdRoute,
+}
+
+const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
+  AppRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRouteRoute: AppRouteRouteWithChildren,
   SetupRoute: SetupRoute,
   SignInRoute: SignInRoute,
-  CIdRoute: CIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

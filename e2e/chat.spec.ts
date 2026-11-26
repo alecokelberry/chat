@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
-import { E2E_SETUP_CODE } from "../playwright.config"
 import { REPLY } from "../src/lib/ai/mock"
-import { send, signInAsDev } from "./session"
+import { send, signInAsDev, signInAsOwner } from "./session"
 
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
@@ -159,21 +158,7 @@ test("another account can't open the chat", async ({ page, browser }) => {
   // The owner's account, asking for the same id, gets an empty chat of its
   // own, never Dev's.
   const owner = await stranger.newPage()
-  const cdp = await stranger.newCDPSession(owner)
-  await cdp.send("WebAuthn.enable")
-  await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  })
-  await owner.goto(`/setup#${E2E_SETUP_CODE}`)
-  await owner.getByRole("button", { name: "Add a passkey" }).click()
-  await expect(owner.getByRole("heading", { name: "Hi, Alec" })).toBeVisible()
+  await signInAsOwner(owner)
   const theirs = await stranger.request.get(messages)
   expect(theirs.status()).toBe(200)
   expect(await theirs.text()).not.toContain("Only mine")
@@ -181,14 +166,21 @@ test("another account can't open the chat", async ({ page, browser }) => {
 })
 
 // ui-sdk's agent test (the ui-sdk skill's agent-ready page): every control
-// is named, an agent can write a message, and sending needs a person.
+// is named, an agent can write a message, and sending needs a person. The
+// snapshot lists the first 100 controls and then a "more" entry (a long
+// chat list fills it), so the composer's controls are looked up by name.
 test("an agent can find every control, and sending needs a person", async ({
   page,
 }) => {
   await signInAsDev(page)
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const entries = agent.snapshot().filter((entry) => entry.offPage !== true)
+    const entries = agent
+      .snapshot()
+      .filter((entry) => entry.offPage !== true && entry.ref !== "more")
+    const found = await Promise.all(
+      ["Message", "Send"].map((text) => agent.query({ text }))
+    )
     const typed = await agent.act({
       steps: [{ ref: "Message", action: "setValue", args: ["From an agent"] }],
     })
@@ -197,12 +189,15 @@ test("an agent can find every control, and sending needs a person", async ({
     })
     return {
       labels: entries.map((entry) => entry.label),
+      found: found.flatMap((list) =>
+        "error" in list ? [] : list.map((entry) => entry.label)
+      ),
       typed: typed.ok,
       sent: sent.ok,
     }
   })
   expect(result.labels.every(Boolean)).toBe(true)
-  expect(result.labels).toEqual(expect.arrayContaining(["Message", "Send"]))
+  expect(result.found).toEqual(expect.arrayContaining(["Message", "Send"]))
   expect(result.typed).toBe(true)
   expect(result.sent).toBe(false)
   await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
@@ -219,14 +214,25 @@ test("on a chat, an agent can find the thread's controls and stop a reply", asyn
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const entries = agent.snapshot().filter((entry) => entry.offPage !== true)
+    const entries = agent
+      .snapshot()
+      .filter((entry) => entry.offPage !== true && entry.ref !== "more")
+    const found = await Promise.all(
+      ["Messages", "Message", "Stop"].map((text) => agent.query({ text }))
+    )
     const stopped = await agent.act({
       steps: [{ ref: "Stop", action: "press", args: [] }],
     })
-    return { labels: entries.map((entry) => entry.label), stopped: stopped.ok }
+    return {
+      labels: entries.map((entry) => entry.label),
+      found: found.flatMap((list) =>
+        "error" in list ? [] : list.map((entry) => entry.label)
+      ),
+      stopped: stopped.ok,
+    }
   })
   expect(result.labels.every(Boolean)).toBe(true)
-  expect(result.labels).toEqual(
+  expect(result.found).toEqual(
     expect.arrayContaining(["Messages", "Message", "Stop"])
   )
   expect(result.stopped).toBe(true)

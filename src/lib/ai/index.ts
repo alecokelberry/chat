@@ -8,19 +8,21 @@
 // When NVIDIA is busy (429, or 503 when its shared capacity is full), the AI
 // SDK asks once more after a 2 s backoff (docs/nvidia.md › Errors); a
 // second refusal ends the reply with an error the chat shows with Retry.
-// The model never changes on its own: Alec picks it.
+// The model never changes on its own: Alec picks it. After a chat's first
+// reply, Lightning, the quickest, names it.
 import { env } from "cloudflare:workers"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import {
   APICallError,
   convertToModelMessages,
+  generateText,
   RetryError,
   streamText,
   type UIMessage,
 } from "ai"
 
 import { mockModel } from "@/lib/ai/mock"
-import { lastModel } from "@/lib/ai/models"
+import { lastModel, LIGHTNING } from "@/lib/ai/models"
 
 function model(id: string) {
   if (env.MOCK_MODEL === "1") return mockModel(id)
@@ -72,4 +74,49 @@ export function replyError(error: unknown): string {
   return status === 429 || status === 503
     ? "NVIDIA is busy right now."
     : "Request failed."
+}
+
+const TITLE_LIMIT = 60
+
+/** A few words naming a chat from its first question and reply, or null
+ *  when Lightning fails, is slow or answers something that isn't a title:
+ *  the chat then stays "New chat". */
+export async function nameChat(
+  question: string,
+  reply: string
+): Promise<string | null> {
+  try {
+    const { text } = await generateText({
+      model: model(LIGHTNING.id),
+      prompt: [
+        'Name this chat in three to six words, like a short headline ("Why the sky is blue"). Reply with the title only: no quotes, no period.',
+        `Question: ${question.slice(0, 2000)}`,
+        `Answer: ${reply.slice(0, 2000)}`,
+      ].join("\n\n"),
+      maxOutputTokens: 32,
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(10_000),
+      providerOptions: {
+        nvidia: { chat_template_kwargs: LIGHTNING.chatTemplate },
+      },
+    })
+    return cleanTitle(text)
+  } catch {
+    return null
+  }
+}
+
+/** The model's answer as a title: its first line without quotes, a
+ *  "Title:" label, markdown or end punctuation; null if nothing usable is
+ *  left or it runs long. */
+function cleanTitle(text: string): string | null {
+  const title = (text.split("\n").find((line) => line.trim() !== "") ?? "")
+    .replace(/^\s*title\s*:\s*/i, "")
+    .replace(/[*_`#]/g, "")
+    .trim()
+    .replace(/^["“'‘]+|["”'’]+$/g, "")
+    .replace(/[.!:;,]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  return title.length < 2 || title.length > TITLE_LIMIT ? null : title
 }

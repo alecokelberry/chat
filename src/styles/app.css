@@ -172,6 +172,7 @@
 
   /* Sizes. */
   --spacing-icon: 20px; /* icons in icon buttons, nav rows, toggles */
+  --spacing-sidebar: 254px; /* the sidebar's column and phone drawer */
   --spacing-sidebar-header: 56px;
   --spacing-header: var(--header-height);
   --spacing-header-content: calc(var(--header-height) + 1.5rem);
@@ -181,6 +182,11 @@
      padding and this), so it stays put while the composer under it grows
      (Grok's). svh, so the iPhone keyboard doesn't move it. */
   --spacing-new-chat-top: calc(30svh - 1rem);
+  /* The same 30% on a phone, where the greeting sits under the sidebar's
+     header bar instead of the page's padding. */
+  --spacing-new-chat-top-phone: calc(
+    30svh - var(--header-height) - env(safe-area-inset-top)
+  );
   --container-signin: 384px;
 }
 
@@ -424,6 +430,32 @@
    a phone that has one. */
 @utility safe-area-bottom {
   padding-bottom: max(--spacing(3), env(safe-area-inset-bottom));
+}
+
+/* Just the notch's or home indicator's room, for a bar or sheet whose own
+   padding sits inside it (the phone header, the sidebar drawer). */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* A sidebar row's title fades out over its last 20px instead of ending in
+   an ellipsis (Grok's). */
+@utility mask-row-fade {
+  mask-image: linear-gradient(
+    to right,
+    black calc(100% - 20px),
+    transparent 100%
+  );
+  &:dir(rtl) {
+    mask-image: linear-gradient(
+      to left,
+      black calc(100% - 20px),
+      transparent 100%
+    );
+  }
 }
 
 /* Named durations (Tailwind has no --duration-* namespace). */

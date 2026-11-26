@@ -63,14 +63,15 @@ test("an agent can choose the model", async ({ page }) => {
   await signInAsDev(page)
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const labels = agent
-      .snapshot()
-      .filter((entry) => entry.offPage !== true)
-      .map((entry) => entry.label)
-    const found = await agent.query({ within: "Model", text: "Ultra" })
+    const entries = agent.snapshot().filter((entry) => entry.offPage !== true)
+    const labels = entries.map((entry) => entry.label)
+    // By its ref: a label matches by its words, so "Model" would also find
+    // a chat in the sidebar named "Talking to the mock model".
+    const ref = entries.find((entry) => entry.label === "Model")?.ref ?? ""
+    const found = await agent.query({ within: ref, text: "Ultra" })
     const ultra = "error" in found ? undefined : found[0]?.items[0]?.value
     const chosen = await agent.act({
-      steps: [{ ref: "Model", action: "setValue", args: [ultra] }],
+      steps: [{ ref, action: "setValue", args: [ultra] }],
     })
     return { labels, chosen: chosen.ok, error: chosen.error?.message }
   })
