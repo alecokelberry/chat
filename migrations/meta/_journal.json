@@ -8,6 +8,13 @@
       "when": 1795640643939,
       "tag": "0002_chats",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795714154475,
+      "tag": "20261126172914_pinned",
+      "breakpoints": true
     }
   ]
 }

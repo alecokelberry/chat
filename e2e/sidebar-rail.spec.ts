@@ -45,11 +45,18 @@ test("the toggle collapses the sidebar to a rail, and it stays after a reload", 
 
 test("⌘B or Ctrl+B toggles it at once, even while typing", async ({ page }) => {
   await signInAsDev(page)
+  // Keyboard actions never animate: data-instant lasts only two frames,
+  // too short to catch by polling, so the page notes when it appears.
+  await sidebar(page).evaluate((element) => {
+    new MutationObserver(() => {
+      if (element.hasAttribute("data-instant"))
+        element.setAttribute("data-was-instant", "")
+    }).observe(element, { attributeFilter: ["data-instant"] })
+  })
   await page.getByRole("textbox", { name: "Message" }).click()
   await page.keyboard.press("ControlOrMeta+b")
   await expect(sidebar(page)).toHaveAttribute("data-collapsed")
-  // Keyboard actions never animate.
-  await expect(sidebar(page)).toHaveAttribute("data-instant")
+  await expect(sidebar(page)).toHaveAttribute("data-was-instant")
   expect(await width(page)).toBe(56)
   await page.keyboard.press("ControlOrMeta+b")
   expect(await width(page)).toBe(254)
