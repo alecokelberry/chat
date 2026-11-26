@@ -91,6 +91,11 @@ function createAuth() {
     // or not. `pnpm run deploy` migrates before it deploys, so that only
     // costs CPU (docs/decisions.md, Nov 26).
     advanced: { database: { validateSchema: false } },
+    // The session also rides in a second signed cookie for 5 minutes, so a
+    // request checks it by its signature instead of reading D1 each time
+    // (both the page and its chat list ask). Signing out clears it here;
+    // another device's sign-out reaches this one within the 5 minutes.
+    session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
     plugins: [
       passkey({
         rpName: "Chat",
