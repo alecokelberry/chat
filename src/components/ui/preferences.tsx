@@ -87,6 +87,8 @@ const NUDGE_MS = 150
  *  A manual popover leaves open menus and focus alone. Returns its
  *  cleanup. */
 function nudgeStatusBar() {
+  // A browser without popovers has no top layer to show it in.
+  if (!("showPopover" in HTMLElement.prototype)) return
   const layer = document.createElement("div")
   layer.popover = "manual"
   layer.ariaHidden = "true"

@@ -7,7 +7,7 @@
 // sheet from the bottom instead (presentation "auto"), with 48px rows and
 // padding clear of the home indicator, its fill carried on below its
 // edge (sheet-bleed, a still shadow that moves with it). The sheet moves only by ui-sdk's
-// own translate: no fade, zoom, blur or shadow of ours runs while it
+// own translate: no fade, zoom, blur or shadow of ours animates while it
 // slides, so it stays on the compositor. As a popover it's `fixed` from
 // the first frame, since popups render in place and Safari painted one
 // inside the composer's row for a few frames.

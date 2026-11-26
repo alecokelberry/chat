@@ -103,13 +103,19 @@ test.describe("on a computer", () => {
   test("a saved theme colors the status bar before the app's scripts run", async ({
     page,
   }) => {
-    // The phone is light and the saved choice is Dark. With the app's own
+    // The phone is light; Dark is picked with the sign-in switch, so it's
+    // saved the way ui-sdk saves it. After a reload with the app's own
     // scripts emptied, only the head's inline script can set the color.
-    await page.addInitScript(() => localStorage.setItem("theme", "dark"))
+    await page.goto("/sign-in")
+    await page.getByRole("button", { name: "Dark theme" }).click()
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
     await page.route("**/*.js", (route) =>
       route.fulfill({ contentType: "text/javascript", body: "" })
     )
-    await page.goto("/sign-in")
+    await page.reload()
     const statusBar = page.locator('meta[name="theme-color"]')
     await expect(statusBar).toHaveCount(2)
     await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
