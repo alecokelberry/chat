@@ -30,12 +30,13 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Link, ScriptOnce } from "@tanstack/react-router"
+import { Link, ScriptOnce, useNavigate } from "@tanstack/react-router"
 
 import { AccountMenu, type Account } from "@/components/chat/account-menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
+  NEW_CHAT_SHORTCUT,
   Sidebar,
   SidebarDrawer,
   SidebarDrawerContent,
@@ -46,10 +47,12 @@ import {
   SidebarItem,
   SidebarRow,
   SidebarToggle,
+  useNewChatShortcut,
 } from "@/components/ui/sidebar"
 import {
   Tooltip,
   TooltipContent,
+  TooltipShortcut,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { groupChats } from "@/lib/chat/groups"
@@ -99,6 +102,9 @@ export function ChatSidebar({
   children: ReactNode
 }) {
   const phone = usePhone()
+  const navigate = useNavigate()
+  // Navigating has no animation to skip: the page just swaps.
+  useNewChatShortcut(() => void navigate({ to: "/" }))
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -132,7 +138,7 @@ export function ChatSidebar({
           onToggle={toggle}
         />
         <div className="px-2.5">
-          <NewChatLink tooltip={collapsed} />
+          <NewChatLink />
         </div>
         {phone === false && <ChatList chats={chats} />}
         <SidebarFooter>
@@ -155,7 +161,7 @@ export function ChatSidebar({
           {phone === true && (
             <SidebarDrawerContent title="Chats">
               <SidebarHeader>
-                <NewChatLink onClick={close} />
+                <NewChatLink onClick={close} tooltip={false} />
               </SidebarHeader>
               <ChatList
                 chats={chats}
@@ -176,14 +182,16 @@ export function ChatSidebar({
 
 function NewChatLink({
   onClick,
-  tooltip = false,
+  tooltip = true,
 }: {
   onClick?: () => void
-  /** Named in a tooltip, for the rail, where its label is hidden. */
+  /** Whether to show the tooltip: the shortcut, named. The phone's drawer
+   *  has none (a finger has no hover). */
   tooltip?: boolean
 }) {
+  const disabled = !tooltip
   return (
-    <Tooltip disabled={!tooltip}>
+    <Tooltip disabled={disabled} shortcut={NEW_CHAT_SHORTCUT}>
       <TooltipTrigger
         render={
           <SidebarRow
@@ -196,7 +204,10 @@ function NewChatLink({
         <NewChatGlyph />
         <span>New Chat</span>
       </TooltipTrigger>
-      <TooltipContent side="right">New Chat</TooltipContent>
+      <TooltipContent side="right">
+        New Chat
+        <TooltipShortcut />
+      </TooltipContent>
     </Tooltip>
   )
 }

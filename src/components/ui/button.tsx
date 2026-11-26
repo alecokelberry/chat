@@ -14,6 +14,9 @@ const buttonVariants = cva(
       variant: {
         ghost:
           "text-muted-foreground hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active",
+        // The page's one main action (Try again): the ink pill.
+        primary:
+          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active",
         outline:
           "border-border-strong bg-transparent text-foreground hover:bg-secondary-hover active:bg-secondary-active",
         // The sign-in's passkey pill: the composer's surface and hairline
