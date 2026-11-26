@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test"
 import {
   expect,
   expectNoHeldStart,
+  pickModel,
   recordStartTimes,
   send,
   signInAsDev,
@@ -22,17 +23,6 @@ const picker = (page: Page) => page.getByRole("combobox", { name: "Model" })
 const lastReply = (page: Page) =>
   page.getByRole("article", { name: "Reply" }).last()
 
-async function pick(page: Page, name: string) {
-  await picker(page).click()
-  // With a mouse it's a popover; phones get a sheet (below).
-  await expect(page.locator('[data-slot="select-content"]')).toHaveAttribute(
-    "data-presentation",
-    "popover"
-  )
-  await page.getByRole("option", { name }).click()
-  await expect(picker(page)).toContainText(name)
-}
-
 test("a new chat starts on Super, with thinking off", async ({ page }) => {
   await signInAsDev(page)
   await expect(picker(page)).toContainText("Super")
@@ -44,7 +34,7 @@ test("the chosen model answers, and the chat remembers it", async ({
   page,
 }) => {
   await signInAsDev(page)
-  await pick(page, "Ultra")
+  await pickModel(page, "Ultra")
   await send(page, "Think about this")
   await expect(lastReply(page)).toContainText(`as ${ULTRA} with thinking on.`)
   await expect(lastReply(page)).toContainText("Done.")
@@ -52,7 +42,7 @@ test("the chosen model answers, and the chat remembers it", async ({
   await page.reload()
   await expect(picker(page)).toContainText("Ultra")
 
-  await pick(page, "Lightning")
+  await pickModel(page, "Lightning")
   await send(page, "Quickly now")
   await expect(lastReply(page)).toContainText(
     `as ${LIGHTNING} with thinking off.`
