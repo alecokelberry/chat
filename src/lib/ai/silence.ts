@@ -66,8 +66,13 @@ export function failWhenSilent(ms: number): LanguageModelMiddleware {
               // part, then the end (an errored stream would skip the
               // chat's error message).
               onSilence = (error) => {
-                controller.enqueue({ type: "error", error })
-                controller.terminate()
+                try {
+                  controller.enqueue({ type: "error", error })
+                  controller.terminate()
+                } catch {
+                  // The stream already ended another way (NVIDIA's body
+                  // failed, or the reader cancelled it): nothing to end.
+                }
               }
             },
             transform(part, controller) {

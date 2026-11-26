@@ -85,18 +85,27 @@ const thinks = (kwargs: unknown) =>
   kwargs.enable_thinking === true
 
 const BUSY = /\(busy (\d+)\)/
+const SILENT = /\(silent (\d+)\)/
 
-/** Calls still to refuse, per message. Lives as long as the isolate: each
- *  test sends a message of its own. */
-const busyCalls = new Map<string, number>()
+/** Calls already taken, per pattern and message. Lives as long as the
+ *  isolate: each test sends a message of its own. */
+const taken = new Map<string, number>()
+
+/** Whether this call is one of the first N a message's "(word N)" asks
+ *  for, counting it if so. */
+function takeCall(pattern: RegExp, message: string) {
+  const match = pattern.exec(message)
+  if (match === null) return false
+  const key = `${pattern.source}\n${message}`
+  const count = taken.get(key) ?? 0
+  if (count >= Number(match[1])) return false
+  taken.set(key, count + 1)
+  return true
+}
 
 /** Throws NVIDIA's 429 while this message's busy calls last. */
 function refuseIfBusy(message: string) {
-  const busy = BUSY.exec(message)
-  if (busy === null) return
-  const left = busyCalls.get(message) ?? Number(busy[1])
-  if (left === 0) return
-  busyCalls.set(message, left - 1)
+  if (!takeCall(BUSY, message)) return
   throw new APICallError({
     message: "Too Many Requests",
     url: "https://mock.invalid/v1/chat/completions",
@@ -104,22 +113,6 @@ function refuseIfBusy(message: string) {
     statusCode: 429,
     isRetryable: true,
   })
-}
-
-const SILENT = /\(silent (\d+)\)/
-
-/** Calls still to leave unanswered, per message, like busyCalls. */
-const silentCalls = new Map<string, number>()
-
-/** Whether to leave this call unanswered: while this message's silent
- *  calls last. */
-function staysSilent(message: string) {
-  const silent = SILENT.exec(message)
-  if (silent === null) return false
-  const left = silentCalls.get(message) ?? Number(silent[1])
-  if (left === 0) return false
-  silentCalls.set(message, left - 1)
-  return true
 }
 
 /** Never answers: the request hangs until it's cancelled. */
@@ -144,7 +137,7 @@ const stall = () =>
  *  that never answers, or a reply that stops partway. */
 function failureFor(message: string, abortSignal: AbortSignal | undefined) {
   refuseIfBusy(message)
-  if (staysSilent(message)) return hang(abortSignal)
+  if (takeCall(SILENT, message)) return hang(abortSignal)
   if (message.includes("(stalls)")) return { stream: stall() }
   return undefined
 }
