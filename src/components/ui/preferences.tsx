@@ -11,6 +11,7 @@ import * as React from "react"
 // oxlint-disable-next-line no-restricted-imports -- preferences and storage have no entry of their own
 import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
 import { Preferences, usePreference } from "@ui-sdk/react/preferences"
+import { useShortcut } from "@ui-sdk/react/shortcuts"
 
 /** The status bar's color, light and dark: the page's --background in
  *  app.css, repeated here because the server writes it into the head. */
@@ -62,4 +63,27 @@ function useToggleTheme() {
   return () => colorScheme.set(resolved === "dark" ? "light" : "dark")
 }
 
-export { AppPreferences, THEME_COLOR, useToggleTheme }
+/** Whether dark is showing now (the system's choice included). */
+function useIsDark() {
+  return usePreference(colorScheme).resolved === "dark"
+}
+
+/** D flips the theme from anywhere signed in. ui-sdk leaves plain letters
+ *  alone in text fields and pauses page shortcuts under a modal; an open
+ *  menu isn't modal and takes D as type-ahead, so it holds the key too. */
+function useThemeShortcut() {
+  const toggle = useToggleTheme()
+  useShortcut("d", toggle, {
+    description: "Switch light and dark",
+    when: () =>
+      document.querySelector('[role="menu"], [role="dialog"]') === null,
+  })
+}
+
+export {
+  AppPreferences,
+  THEME_COLOR,
+  useIsDark,
+  useThemeShortcut,
+  useToggleTheme,
+}

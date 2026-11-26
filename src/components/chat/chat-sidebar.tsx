@@ -40,6 +40,7 @@ import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
 import { useChatList, type ChatRef } from "@/components/chat/chat-list"
 import { Menu } from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
+import { useThemeShortcut } from "@/components/ui/preferences"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   NEW_CHAT_SHORTCUT,
@@ -111,6 +112,7 @@ export function ChatSidebar({
   const navigate = useNavigate()
   // Navigating has no animation to skip: the page just swaps.
   useNewChatShortcut(() => void navigate({ to: "/" }))
+  useThemeShortcut()
   const { chats } = useChatList()
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)

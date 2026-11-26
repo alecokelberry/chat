@@ -72,6 +72,49 @@ test.describe("on a computer", () => {
     await expect(html).toHaveAttribute("data-color-scheme", "light")
   })
 
+  test("the sign-in switch flips the theme and keeps it after a reload", async ({
+    page,
+  }) => {
+    await page.goto("/sign-in")
+    await expect(page.getByTestId("brand-mark")).toBeVisible()
+    const html = page.locator("html")
+    const toggle = page.getByRole("button", { name: "Dark theme" })
+    await expect(toggle).toHaveAttribute("aria-pressed", "false")
+    await toggle.click()
+    await expect(html).toHaveAttribute("data-color-scheme", "dark")
+    // One label in both states; the pressed state says which.
+    await expect(toggle).toHaveAttribute("aria-pressed", "true")
+    await page.reload()
+    await expect(html).toHaveAttribute("data-color-scheme", "dark")
+    await expect(
+      page.getByRole("button", { name: "Dark theme" })
+    ).toHaveAttribute("aria-pressed", "true")
+  })
+
+  test("D switches the theme, but not while typing", async ({ page }) => {
+    await signInAsDev(page)
+    await expect(sidebar(page).getByTestId("brand-mark")).toBeVisible()
+    const html = page.locator("html")
+    await expect(html).toHaveAttribute("data-color-scheme", "system")
+    await page.keyboard.press("d")
+    await expect(html).toHaveAttribute("data-color-scheme", "dark")
+    await page.keyboard.press("d")
+    await expect(html).toHaveAttribute("data-color-scheme", "light")
+
+    const message = page.getByRole("textbox", { name: "Message" })
+    await message.click()
+    await page.keyboard.type("dd")
+    await expect(message).toHaveValue("dd")
+    await expect(html).toHaveAttribute("data-color-scheme", "light")
+
+    // Not under a dialog either: the account menu is open.
+    await message.blur()
+    await accountRow(page).click()
+    await expect(menu(page)).toBeVisible()
+    await page.keyboard.press("d")
+    await expect(html).toHaveAttribute("data-color-scheme", "light")
+  })
+
   test("Sign out lands on /sign-in", async ({ page }) => {
     await signInAsDev(page)
     await accountRow(page).click()
