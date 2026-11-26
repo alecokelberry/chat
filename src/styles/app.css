@@ -9,7 +9,7 @@
 
 @source "../**/*.{ts,tsx}";
 
-/* Dark: the ui-sdk color scheme (components/ui/theme.ts) on <html>, chosen
+/* Dark: the ui-sdk color scheme (src/components/ui/preferences.tsx) on <html>, chosen
    or following the system; or a .dark scope. */
 @custom-variant dark {
   &:where(
@@ -488,6 +488,14 @@
   transition-property: width;
   transition-timing-function: var(--ease-spring);
   transition-duration: var(--duration-sidebar);
+}
+
+/* The theme's sun and moon trading places (src/components/ui/
+   theme-icon.tsx): a spin, a scale and a fade. */
+@utility transition-spin {
+  transition-property: opacity, scale, rotate;
+  transition-timing-function: var(--ease-standard);
+  transition-duration: var(--duration-spin);
 }
 
 /* An icon swap (copy to check): fades and scales, never eases its color, so

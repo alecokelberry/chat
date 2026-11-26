@@ -43,10 +43,26 @@ export const test = base.extend<{
 
 export { expect }
 
+/** A new chat's heading. */
+export const greeting = (page: Page) =>
+  page.getByRole("heading", { name: "What can I help with?" })
+
+/** Checks that a new chat shows, signed in as `name`: the account row at
+ *  the column's bottom names them. A phone hides the column (its drawer
+ *  has its own row), so this finds the row hidden too. */
+export async function expectSignedInAs(page: Page, name: string) {
+  await expect(greeting(page)).toBeVisible()
+  await expect(
+    page
+      .getByRole("navigation", { name: "Chats", includeHidden: true })
+      .getByRole("button", { name, exact: true, includeHidden: true })
+  ).toBeAttached()
+}
+
 export async function signInAsDev(page: Page) {
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "Sign in as Dev" }).click()
-  await expect(page.getByRole("heading", { name: "Hi, Dev" })).toBeVisible()
+  await expectSignedInAs(page, "Dev")
   // Typing before React hydrates is lost; the agent bridge sees the
   // controls once it has. The bridge itself may not be there yet, so check
   // for it first: a TypeError would end the wait instead of retrying it.
@@ -72,7 +88,7 @@ export async function signInAsOwner(page: Page) {
   })
   await page.goto(`/setup#${E2E_SETUP_CODE}`)
   await page.getByRole("button", { name: "Add a passkey" }).click()
-  await expect(page.getByRole("heading", { name: "Hi, Alec" })).toBeVisible()
+  await expectSignedInAs(page, "Alec")
 }
 
 /** Records how far ahead of now each animation's start time is set: a

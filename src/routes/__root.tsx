@@ -1,11 +1,11 @@
-// The document every page renders into: fonts, tokens, and the color
-// scheme following the system (a theme toggle comes with the shell). The
+// The document every page renders into: fonts, tokens, and the saved
+// color scheme (AppPreferences, which puts it on <html> before the first
+// paint, so <html> expects its attribute to change). The
 // page tracks whether focus came from the keyboard (FocusModality). The
 // head also makes it installable: public/manifest.webmanifest names the app
 // and its icons, iOS reads the apple-touch-icon, and theme-color paints the
-// status bar in the page's background, light or dark (--background). The
-// theme toggle will need to set theme-color too: the media queries only
-// follow the system.
+// status bar in the page's background, light or dark, following the
+// theme the account menu picks.
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "@/components/ui/dev-agent"
@@ -14,6 +14,7 @@ import type { ReactNode } from "react"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
 import { FocusModality } from "@/components/ui/focus-modality"
+import { AppPreferences, THEME_COLOR } from "@/components/ui/preferences"
 
 import appCss from "@/styles/app.css?url"
 
@@ -40,23 +41,23 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-color-scheme="system">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
         {/* Here, not in head(): HeadContent keeps one meta per name. */}
         <meta
           name="theme-color"
           media="(prefers-color-scheme: light)"
-          content="#f9f8f7"
+          content={THEME_COLOR.light}
         />
         <meta
           name="theme-color"
           media="(prefers-color-scheme: dark)"
-          content="#1e1d1d"
+          content={THEME_COLOR.dark}
         />
       </head>
       <body>
-        {children}
+        <AppPreferences>{children}</AppPreferences>
         <FocusModality />
         <Scripts />
       </body>

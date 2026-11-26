@@ -1,13 +1,14 @@
 // The signed-in shell: the sidebar beside the page. From md up it's a
 // column; on a phone it's a drawer from the start edge, opened from a
 // header above the page, and it closes when you pick a row. It holds New
-// Chat and the chat list, grouped by the browser's own day
-// (src/lib/chat/groups.ts), newest first; a chat without a title yet shows
-// "New chat".
+// Chat, the chat list, grouped by the browser's own day
+// (src/lib/chat/groups.ts), newest first (a chat without a title yet shows
+// "New chat"), and the account row at the bottom (account-menu.tsx).
 //
-// On a computer the column collapses to a rail from its toggle or ⌘B (Ctrl+B
-// elsewhere), remembered in a cookie (src/lib/sidebar.ts). The list stays
-// mounted but hidden in the rail, so expanding never builds 1,000 rows.
+// On a computer the column collapses to a rail from its toggle or ⌘B
+// (Ctrl+B elsewhere), remembered in a cookie (src/lib/sidebar.ts). The
+// list stays mounted but hidden in the rail, so expanding never builds
+// 1,000 rows.
 //
 // The list needs the browser's time zone, so it renders only in the
 // browser, in the one place the screen's width calls for (not both, which
@@ -31,6 +32,7 @@ import {
 } from "react"
 import { Link, ScriptOnce } from "@tanstack/react-router"
 
+import { AccountMenu, type Account } from "@/components/chat/account-menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -39,6 +41,7 @@ import {
   SidebarDrawerContent,
   SidebarDrawerTrigger,
   SidebarGroup,
+  SidebarFooter,
   SidebarHeader,
   SidebarItem,
   SidebarRow,
@@ -102,10 +105,12 @@ function usePhone(): boolean | null {
 }
 
 export function ChatSidebar({
+  account,
   chats,
   collapsed: startCollapsed,
   children,
 }: {
+  account: Account
   chats: ChatSummary[]
   /** Whether the computer's column starts as a rail. */
   collapsed: boolean
@@ -148,6 +153,9 @@ export function ChatSidebar({
           <NewChatLink tooltip={collapsed} />
         </div>
         {phone === false && <ChatList chats={chats} />}
+        <SidebarFooter>
+          <AccountMenu account={account} tooltip={collapsed} />
+        </SidebarFooter>
       </Sidebar>
       {/* Relative: a chat's title pill sits over this column's top, in the
           phone's header row (src/routes/_app/c.$id.tsx). */}
@@ -172,6 +180,9 @@ export function ChatSidebar({
                 limit={opened ? undefined : FIRST_SCREEN}
                 onPick={close}
               />
+              <SidebarFooter>
+                <AccountMenu account={account} />
+              </SidebarFooter>
             </SidebarDrawerContent>
           )}
         </SidebarDrawer>
