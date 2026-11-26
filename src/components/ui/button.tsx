@@ -7,6 +7,10 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/** The ink pill: Try again, and Stop. */
+const INK =
+  "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active"
+
 const buttonVariants = cva(
   "group/button relative inline-flex shrink-0 press items-center justify-center gap-2 rounded-full border border-transparent bg-clip-padding text-base font-medium whitespace-nowrap outline-hidden select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
@@ -15,8 +19,7 @@ const buttonVariants = cva(
         ghost:
           "text-muted-foreground hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active",
         // The page's one main action (Try again): the ink pill.
-        primary:
-          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active",
+        primary: INK,
         outline:
           "border-border-strong bg-transparent text-foreground hover:bg-secondary-hover active:bg-secondary-active",
         // The sign-in's passkey pill: the composer's surface and hairline
@@ -29,7 +32,7 @@ const buttonVariants = cva(
         // with nothing to send Grok's quiet wash and muted arrow; ink to
         // stop a streaming reply.
         send: "bg-send text-primary-foreground hover:bg-send/90 active:bg-send/80 disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100 aria-disabled:bg-secondary aria-disabled:text-muted-foreground aria-disabled:opacity-100 [&_svg:not([class*='size-'])]:size-4.5",
-        stop: "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active [&_svg:not([class*='size-'])]:size-3",
+        stop: `${INK} [&_svg:not([class*='size-'])]:size-3`,
         // Floats over the thread (jump to latest): a translucent raised
         // circle.
         float:

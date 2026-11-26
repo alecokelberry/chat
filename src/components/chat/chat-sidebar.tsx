@@ -189,9 +189,8 @@ function NewChatLink({
    *  has none (a finger has no hover). */
   tooltip?: boolean
 }) {
-  const disabled = !tooltip
   return (
-    <Tooltip disabled={disabled} shortcut={NEW_CHAT_SHORTCUT}>
+    <Tooltip disabled={!tooltip} shortcut={NEW_CHAT_SHORTCUT}>
       <TooltipTrigger
         render={
           <SidebarRow

@@ -38,7 +38,7 @@ function Notice({
       id="main"
       tabIndex={-1}
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-4 bg-background p-12 safe-area text-center text-balance outline-hidden",
+        "flex flex-1 flex-col items-center justify-center gap-4 bg-background p-12 safe-area text-center outline-hidden",
         inShell === true ? "min-h-0" : "min-h-dvh"
       )}
     >
