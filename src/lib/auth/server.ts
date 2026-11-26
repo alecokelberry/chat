@@ -52,12 +52,19 @@ const devSignIn = {
           throw APIError.fromStatus("NOT_FOUND")
         }
         const adapter = ctx.context.internalAdapter
+        const find = async () =>
+          (await adapter.findUserByEmail(DEV.email))?.user ?? null
+        // Two first sign-ins at once (parallel tests) both find no Dev, and
+        // one create loses on the unique email: it takes the winner's.
         const user =
-          (await adapter.findUserByEmail(DEV.email))?.user ??
-          (await adapter.createUser(
-            { ...DEV, emailVerified: false },
-            { method: "dev" }
-          ))
+          (await find()) ??
+          (await adapter
+            .createUser({ ...DEV, emailVerified: false }, { method: "dev" })
+            .catch(async (error: unknown) => {
+              const found = await find()
+              if (found === null) throw error
+              return found
+            }))
         const session = await adapter.createSession(user.id)
         await setSessionCookie(ctx, { session, user })
         return ctx.json({ ok: true })
