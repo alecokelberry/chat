@@ -53,7 +53,7 @@ function MenuItem({
   return (
     <MenuItemPrimitive
       className={cn(
-        "relative flex min-h-8 items-center gap-3.5 rounded-xl px-2 py-0.75 text-sm outline-hidden select-none in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-destructive:data-highlighted:bg-destructive/10 data-destructive:data-highlighted:text-destructive-foreground data-pending:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground data-destructive:[&_svg]:text-destructive-foreground",
+        "relative flex min-h-8 items-center gap-3.5 rounded-xl px-2 py-0.75 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-destructive:active:bg-destructive/10 data-destructive:active:text-destructive-foreground data-disabled:opacity-50 data-pending:opacity-50 highlighted:bg-accent highlighted:text-accent-foreground data-destructive:highlighted:bg-destructive/10 data-destructive:highlighted:text-destructive-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground data-destructive:[&_svg]:text-destructive-foreground",
         className
       )}
       {...props}
