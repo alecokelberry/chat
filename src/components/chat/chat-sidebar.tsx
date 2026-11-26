@@ -292,8 +292,8 @@ const ChatRow = memo(function ChatRow({
   const action = useRef<HTMLButtonElement>(null)
   const name = title ?? "New chat"
   useEffect(() => {
-    if (movedRow?.id === id && Date.now() < movedRow.until)
-      action.current?.focus()
+    if (movedRow?.id !== id) return
+    if (Date.now() < movedRow.until) action.current?.focus()
     movedRow = null
   }, [id])
   if (renaming)

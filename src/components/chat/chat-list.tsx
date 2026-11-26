@@ -10,7 +10,9 @@ import {
   createContext,
   use,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -90,12 +92,27 @@ export function ChatListProvider({
     })
     if (waiting.length !== changes.length) setChanges(waiting)
   }
+  // The timers that drop a change nothing confirmed, stopped on unmount.
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>())
+  useEffect(() => {
+    const pending = timers.current
+    return () => pending.forEach(clearTimeout)
+  }, [])
   const change = useCallback(
     async (next: Change, write: () => Promise<unknown>, failed: string) => {
       const drop = () =>
         setChanges((shown) => shown.filter((other) => other !== next))
-      setChanges((shown) => [...shown, next])
-      setTimeout(drop, SHOWN_FOR)
+      // A newer change to the same field replaces the older one.
+      const fields = Object.keys(next).filter((key) => key !== "id")
+      setChanges((shown) => [
+        ...shown.filter(
+          (other) =>
+            other.id !== next.id || !fields.some((field) => field in other)
+        ),
+        next,
+      ])
+      const timer = setTimeout(drop, SHOWN_FOR)
+      timers.current.add(timer)
       try {
         await write()
       } catch {
