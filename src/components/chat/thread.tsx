@@ -1,12 +1,13 @@
 // The thread: a chat's messages, oldest first, in a log that opens at your
 // last message and brings each new one to the top, the reply growing under
-// it (message-scroller.tsx). Your messages sit in bubbles on the end side;
-// replies are markdown across the column (reply.tsx), each with its actions,
-// who answered and how long it took under it once it has finished
-// (reply-actions.tsx). A model that thinks shows its reasoning above the
-// reply in a closed step, "Thinking…" until the answer's first word, then
-// how long it thought (ui/reply-step.tsx). Until a reply's first word or
-// thought arrives, the waiting marker holds its place (pending-reply.tsx).
+// it (message-scroller.tsx). Your messages sit in bubbles on the end side,
+// each with Edit and Copy (question.tsx); replies are markdown across the
+// column (reply.tsx), each with its actions, who answered and how long it
+// took under it once it has finished (reply-actions.tsx). A model that
+// thinks shows its reasoning above the reply in a closed step,
+// "Thinking…" until the answer's first word, then how long it thought
+// (ui/reply-step.tsx). Until a reply's first word or thought arrives, the
+// waiting marker holds its place (pending-reply.tsx).
 // A failed reply ends the thread with one quiet line saying why, and Retry.
 // The markdown renderer loads in the browser only, starting as this module
 // does, so it's ready before the first message arrives over the WebSocket;
@@ -18,6 +19,7 @@ import type { ReasoningUIPart, UIMessage } from "ai"
 import { BrainIcon, CircleAlertIcon, RefreshCwIcon } from "lucide-react"
 
 import { PendingReply } from "@/components/chat/pending-reply"
+import { Question } from "@/components/chat/question"
 import { ReplyActions } from "@/components/chat/reply-actions"
 import { Button } from "@/components/ui/button"
 import { ReplyStep } from "@/components/ui/reply-step"
@@ -52,6 +54,7 @@ export function Thread({
   stopped,
   error,
   onRetry,
+  onEdit,
 }: {
   messages: UIMessage[]
   busy: boolean
@@ -61,6 +64,8 @@ export function Thread({
   error: string | undefined
   /** Asks again for the last reply, replacing it. */
   onRetry: () => void
+  /** Replaces a question, and everything after it, with new words. */
+  onEdit: (id: string, text: string) => void
 }) {
   const last = messages.at(-1)
   const waiting = busy && (last?.role !== "assistant" || isBlank(last))
@@ -74,12 +79,11 @@ export function Thread({
       {messages.map((message) =>
         message.role === "user" ? (
           <MessageScrollerItem key={message.id} anchor>
-            <article
-              aria-label="Your message"
-              className="max-w-4/5 self-end rounded-3xl bg-bubble-user px-4 py-3 break-words whitespace-pre-wrap"
-            >
-              {textOf(message)}
-            </article>
+            <Question
+              text={textOf(message)}
+              busy={busy}
+              onEdit={(text) => onEdit(message.id, text)}
+            />
           </MessageScrollerItem>
         ) : isBlank(message) ? null : (
           // A reply with no words or thoughts yet: the waiting marker stands

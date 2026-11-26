@@ -4,7 +4,10 @@
 // reply from src/lib/ai back to every open tab; Stop aborts the stream and
 // the SDK keeps what arrived, and a dropped connection picks the stream
 // back up from the SDK's buffer. A failed reply sends the chat a short
-// reason (replyError); Retry asks again in its place (regenerate).
+// reason (replyError); Retry asks again in its place (regenerate). An
+// edited question arrives as a send that ends at it, under its old id: the
+// SDK saves it and deletes every message after it (persistMessages'
+// stale-row cleanup), so nothing here handles edits.
 //
 // It also keeps the chat's row in the D1 chat list (src/lib/chat/store.ts):
 // a send adds the chat or moves it to the top, and once the first reply is

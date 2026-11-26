@@ -8,6 +8,9 @@
 // reload doesn't send it again. Each message carries its model in its
 // metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last,
 // and Retry, which regenerates the last reply in place, asks the same one.
+// An edited question is sent in the old one's place, with the picker's
+// model: the SDK drops it and everything after it, here and in the agent,
+// and the reply is asked again.
 // A reload (or a second tab) while a reply streams picks it up where it is:
 // useAgentChat asks the agent to resume, and the agent replays the chunks
 // it has kept, then streams the rest. Once the chat has a title (from the
@@ -106,6 +109,9 @@ function Chat({ id }: { id: string }) {
   const sent = useRef(false)
   // Stop shows the cut-off reply as it arrived, not paced (thread.tsx).
   const [stopped, setStopped] = useState(false)
+  const [model, setModel] = useState(
+    firstMessage?.model ?? lastModel(messages).key
+  )
 
   useEffect(() => {
     if (firstMessage === undefined || sent.current) return
@@ -132,14 +138,19 @@ function Chat({ id }: { id: string }) {
           setStopped(false)
           void regenerate()
         }}
+        onEdit={(messageId, text) => {
+          setStopped(false)
+          void sendMessage({ text, messageId, metadata: { model } })
+        }}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
           the thread's text; 16px in on a computer. */}
       <div className="mx-auto w-full max-w-composer px-2 pb-2 sm:px-0">
         <Composer
           busy={busy}
-          defaultModel={firstMessage?.model ?? lastModel(messages).key}
-          onSend={(text, model) => {
+          model={model}
+          onModelChange={setModel}
+          onSend={(text) => {
             setStopped(false)
             void sendMessage({ text, metadata: { model } })
           }}
