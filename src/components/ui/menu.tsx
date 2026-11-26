@@ -3,7 +3,7 @@
 // list: a 256px popover with 20px corners, 8px in, a hairline and two soft
 // drops, that fades and zooms in from its trigger (popup-motion), 6px
 // away. Rows are 32px with 12px corners and 16px muted icons; a pending
-// row dims. On a phone it's a sheet from the bottom instead (presentation
+// row dims, and a destructive one (Delete) is red. On a phone it's a sheet from the bottom instead (presentation
 // "auto", DESIGN.md › Phones), with 48px rows and padding clear of the
 // home indicator, moved only by ui-sdk's own translate. As a popover it's
 // `fixed` from the first frame, since popups render in place and Safari
@@ -53,7 +53,7 @@ function MenuItem({
   return (
     <MenuItemPrimitive
       className={cn(
-        "relative flex min-h-8 items-center gap-3.5 rounded-xl px-2 py-0.75 text-sm outline-hidden select-none in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-pending:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+        "relative flex min-h-8 items-center gap-3.5 rounded-xl px-2 py-0.75 text-sm outline-hidden select-none in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-destructive:data-highlighted:bg-destructive/10 data-destructive:data-highlighted:text-destructive-foreground data-pending:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground data-destructive:[&_svg]:text-destructive-foreground",
         className
       )}
       {...props}
