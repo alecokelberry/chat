@@ -6,6 +6,8 @@ What `code-review` checks a diff against, on top of AGENTS.md and DESIGN.md. Eac
 
 **Simplicity.** The change can't get smaller without losing something it needs. List what it must do, then flag every line, branch, option, file or dependency that isn't needed for that, and every two things that could be one.
 
+**Library first.** Code a well-maintained library already gives us isn't written by hand: before writing a table, parser, map or helper, check the packages already installed (and what they export), then a free, current, widely used one. Flag hand-written code a dependency already ships (like a language-name map Shiki has), and a new dependency the PR body doesn't name and justify.
+
 **Modularity.** Each part has one job and a small, explicit interface: it could be moved elsewhere by reconnecting that interface alone. Flag parts that only pass things through, reach into another part's internals, depend on each other in a circle, or take more than they use.
 
 **Abstraction.** Every concept is real, sized right, and there are few enough to hold in your head. Flag a parameter only ever given one value, an interface with one implementation, a helper used once, and two things merged only because they look alike.
@@ -24,13 +26,13 @@ What `code-review` checks a diff against, on top of AGENTS.md and DESIGN.md. Eac
 
 **Performance.** Fast enough for Chat's real load (one person, long chats, big files): flag work that's repeated, unbounded, blocks a render or streams slowly. Also flag optimizing what that load doesn't need. Workers Free gives each request 10 ms of CPU: flag heavy server work (big SSR, hashing, parsing) that belongs in the browser. React code follows `vercel-react-best-practices`.
 
-**Tests.** The smallest set that gives real confidence: a smoke test per feature and a unit test for tricky logic, at the seams the ticket agreed. Every interface also gets ui-sdk's agent test (the `ui-sdk` skill's agent-ready page). Flag a behavior change with no test, a test that can't fail, and any weakened lint, type or test check.
+**Tests.** The smallest set that gives real confidence: a smoke test per feature and a unit test for tricky logic, at the seams the ticket agreed. Every interface also gets ui-sdk's agent test (the `ui-sdk` skill's agent-ready page). e2e tests use `e2e/session.ts`'s `test`, sign-in and helpers; a second copy of a helper goes there instead. Flag a behavior change with no test, a test that can't fail, and any weakened lint, type or test check.
 
 ## UI
 
 Polished at every size (1440 and 390), in light and dark, by mouse, touch and keyboard, with worst-case data. Follows DESIGN.md, and matches grok.com where Grok has the same part (measure it in a browser, don't guess). Flag desktop UI squeezed onto a phone, missing focus and loading states, and motion that fights the user.
 
-**ui-sdk first.** Read `node_modules/@ui-sdk/react/docs/llms.txt`, the `ui-sdk` skill and each component's page before using it. Flag anything against DESIGN.md › Which ui-sdk part, a part, behavior or hook built by hand that ui-sdk ships, and a popup opened from a click handler where a `create*Controller()` or `payload` belongs.
+**ui-sdk first.** Read `node_modules/@ui-sdk/react/docs/llms.txt`, the `ui-sdk` skill and each component's page before using it. Flag anything against DESIGN.md › Which ui-sdk part, a part, behavior or hook built by hand that ui-sdk ships, and a popup opened from a click handler where a `create*Controller()` or `payload` belongs. Every control a person can use, links included, is one `window.agent.snapshot()` lists by name: a link is a Button whose `render` is the router's `Link` (ui-sdk's Button docs › Links), never a bare `Link`. When a lint rule and ui-sdk's docs disagree, the docs win: fix the rule in its own commit.
 
 **Skills, by what changed.** Load each that applies and say which ran. Most UI changes hit several rows.
 

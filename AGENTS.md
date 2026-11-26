@@ -17,7 +17,8 @@ The open GitHub issues are the plan, `docs/decisions.md` says why it's built thi
 ## How work flows
 
 1. **Plan:** grill Alec (`grilling`, with `domain-modeling` for words and decisions), `prototype` what can't be settled on paper, then `to-spec` and `to-tickets`. An agreed issue is the go-ahead to build it; ask again only about UI direction Alec hasn't seen and anything that takes live down.
-2. **Build:** `implement` one ticket per branch, test-first with `tdd`, then `code-review` against its issue and fix what it finds until a pass comes back clean. Rebase onto `origin/main` and run `pnpm verify` before the PR.
+   - **Tickets that run at once:** each ticket lists the files it expects to change. Shared pieces two tickets would both add (a test helper, a mock reply, a CSS utility, a model map, a `components/ui` part) become their own small ticket that lands first and blocks the rest. Two tickets that change the same file get a "blocked by" link instead of running together. At most three build threads run at once, and each PR merges once it's approved, not in a batch.
+2. **Build:** before writing code, read the ui-sdk docs for each part it uses and how the archived Chat (`alecokelberry/chat-archive`, a reference, not a spec) did the same thing. `implement` one ticket per branch, test-first with `tdd`, then `code-review` against its issue and fix what it finds until a pass comes back clean. Rebase onto `origin/main` and run `pnpm verify` before the PR.
 3. **Ship:** one PR per ticket, titled as a plain imperative sentence, body from the `pr` skill in the template's sections, saying `Closes #N`. After Alec's go-ahead, and only then, the PR's thread brings the branch up to date and turns on auto-merge; GitHub squash-merges it once `verify` passes. Each push to `main` deploys through Workers Builds.
 4. **Learn:** `retro` after a build that went badly; `diagnosing-bugs` for a hard bug.
 
