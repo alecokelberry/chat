@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test"
+import type { UIMessage } from "ai"
 
 import { REPLY } from "../src/lib/ai/mock"
 import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
@@ -107,15 +108,31 @@ test("Stop ends the reply and keeps what arrived", async ({ page }) => {
   await page.getByRole("button", { name: "Stop" }).click()
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 
-  // Once the server has stopped, the screen shows what it saved: the
-  // words that reached it before the Stop did, and nothing after.
-  await page.waitForTimeout(2500)
-  const kept = await reply.innerText()
-  expect(kept).toContain("mock")
+  // Once the server has stopped and saved the reply (the words that
+  // reached it before the Stop did), the screen shows exactly that. Wait on
+  // the saved chat, not a timer: under load the Stop takes longer to land.
+  const id = new URL(page.url()).pathname.split("/").pop() ?? ""
+  let kept = ""
+  await expect(async () => {
+    kept = await savedReply(page, id)
+    expect(kept).toContain("mock")
+    await expect(reply).toHaveText(kept, { timeout: 1000 })
+  }).toPass()
   expect(kept).not.toContain("Done.")
   await page.reload()
   await expect(page.getByRole("article", { name: "Reply" })).toHaveText(kept)
 })
+
+/** The last reply's text as the chat's agent has saved it. */
+async function savedReply(page: Page, id: string) {
+  const response = await page.request.get(`/api/chats/${id}/get-messages`)
+  await expect(response).toBeOK()
+  const messages: UIMessage[] = await response.json()
+  const reply = messages.findLast((message) => message.role === "assistant")
+  return (reply?.parts ?? [])
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("")
+}
 
 test("Shift+Enter starts a new line and Enter sends", async ({ page }) => {
   await signInAsDev(page)
