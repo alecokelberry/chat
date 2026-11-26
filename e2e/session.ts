@@ -182,6 +182,7 @@ type AgentBridge = {
     within?: string
     text?: string
   }) => Promise<
-    { error: string } | { label?: string; items: { value: unknown }[] }[]
+    | { error: string }
+    | { ref: string; label?: string; items: { value: unknown }[] }[]
   >
 }

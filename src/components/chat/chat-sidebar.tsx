@@ -4,7 +4,9 @@
 // Chat, the chat list, pinned chats first, then grouped by the browser's
 // own day (src/lib/chat/groups.ts), newest first (a chat without a title
 // yet shows "New chat"), and the account row at the bottom
-// (account-menu.tsx).
+// (account-menu.tsx). Each row has its own … menu (chat-actions.tsx), so
+// each is a menu an agent can find by the row's name, and Rename edits
+// that row's title in place.
 //
 // On a computer the column collapses to a rail from its toggle or ⌘B
 // (Ctrl+B elsewhere), remembered in a cookie (src/lib/sidebar.ts). The
@@ -31,8 +33,12 @@ import {
   type ReactNode,
 } from "react"
 import { Link, ScriptOnce, useNavigate } from "@tanstack/react-router"
+import { EllipsisIcon } from "lucide-react"
 
 import { AccountMenu, type Account } from "@/components/chat/account-menu"
+import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
+import { useChatList, type ChatRef } from "@/components/chat/chat-list"
+import { Menu } from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -46,6 +52,8 @@ import {
   SidebarHeader,
   SidebarItem,
   SidebarRow,
+  SidebarRowAction,
+  SidebarRowEdit,
   SidebarToggle,
   useNewChatShortcut,
 } from "@/components/ui/sidebar"
@@ -91,12 +99,10 @@ const FIRST_SCREEN = 40
 
 export function ChatSidebar({
   account,
-  chats,
   collapsed: startCollapsed,
   children,
 }: {
   account: Account
-  chats: ChatSummary[]
   /** Whether the computer's column starts as a rail. */
   collapsed: boolean
   children: ReactNode
@@ -105,6 +111,7 @@ export function ChatSidebar({
   const navigate = useNavigate()
   // Navigating has no animation to skip: the page just swaps.
   useNewChatShortcut(() => void navigate({ to: "/" }))
+  const { chats } = useChatList()
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -222,6 +229,7 @@ function ChatList({
   limit?: number
   onPick?: () => void
 }) {
+  const [renaming, setRenaming] = useState<string | null>(null)
   const listed = useMemo(
     () => (limit === undefined ? chats : chats.slice(0, limit)),
     [chats, limit]
@@ -231,6 +239,7 @@ function ChatList({
   // comes in, and starts it again after.
   const shown = useDeferredValue(listed, NO_CHATS)
   const groups = useMemo(() => groupChats(shown, Date.now()), [shown])
+  const stopRenaming = useCallback(() => setRenaming(null), [])
   return (
     <ScrollArea
       aria-label="Chat list"
@@ -244,6 +253,10 @@ function ChatList({
                 key={chat.id}
                 id={chat.id}
                 title={chat.title}
+                pinned={chat.pinned}
+                renaming={chat.id === renaming}
+                onRename={setRenaming}
+                onRenamed={stopRenaming}
                 onPick={onPick}
               />
             ))}
@@ -254,15 +267,33 @@ function ChatList({
   )
 }
 
+// Takes the chat's fields rather than the chat, so a reloaded list
+// re-renders only the rows that changed.
 const ChatRow = memo(function ChatRow({
   id,
   title,
+  pinned,
+  renaming,
+  onRename,
+  onRenamed,
   onPick,
-}: {
-  id: string
-  title: string | null
+}: ChatRef & {
+  renaming: boolean
+  onRename: (id: string) => void
+  onRenamed: () => void
   onPick?: () => void
 }) {
+  const chat = { id, title, pinned }
+  const action = useRef<HTMLButtonElement>(null)
+  const name = title ?? "New chat"
+  if (renaming)
+    return (
+      <SidebarItem>
+        <SidebarRowEdit>
+          <RenameField chat={chat} onClose={onRenamed} returnFocus={action} />
+        </SidebarRowEdit>
+      </SidebarItem>
+    )
   return (
     <SidebarItem>
       {/* No preload on hover: it would ask the server for the session once
@@ -271,8 +302,14 @@ const ChatRow = memo(function ChatRow({
         render={<Link to="/c/$id" params={{ id }} preload={false} />}
         onClick={onPick}
       >
-        <span>{title ?? "New chat"}</span>
+        <span dir="auto">{name}</span>
       </SidebarRow>
+      <Menu>
+        <SidebarRowAction ref={action} aria-label={`Actions for ${name}`}>
+          <EllipsisIcon aria-hidden />
+        </SidebarRowAction>
+        <ChatMenuContent chat={chat} onRename={() => onRename(id)} />
+      </Menu>
     </SidebarItem>
   )
 })

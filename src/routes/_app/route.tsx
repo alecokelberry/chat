@@ -3,9 +3,11 @@
 // browser gets here; anyone else goes to /sign-in. The list loads with the
 // first page, again in the background on each navigation (a chat you left
 // may have been named since), and at once when the open chat's agent says
-// it changed (src/routes/_app/c.$id.tsx).
+// it changed (src/routes/_app/c.$id.tsx). ChatListProvider shares it with
+// the sidebar and the chat's header, and shows a rename or pin at once.
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
+import { ChatListProvider } from "@/components/chat/chat-list"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { SkipLink } from "@/components/ui/skip-link"
 import { getSession } from "@/lib/auth/session"
@@ -26,11 +28,11 @@ function AppLayout() {
   const chats = Route.useLoaderData()
   const { user, sidebarCollapsed } = Route.useRouteContext()
   return (
-    <>
+    <ChatListProvider chats={chats}>
       <SkipLink />
-      <ChatSidebar account={user} chats={chats} collapsed={sidebarCollapsed}>
+      <ChatSidebar account={user} collapsed={sidebarCollapsed}>
         <Outlet />
       </ChatSidebar>
-    </>
+    </ChatListProvider>
   )
 }

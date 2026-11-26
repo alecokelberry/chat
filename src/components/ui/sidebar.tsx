@@ -9,7 +9,10 @@
 // (data-instant).
 // A row is a ui-sdk Button rendering the router's link (ui-sdk's Button
 // docs, Links): a real link to browsers and screen readers, and a control
-// agents can find and press.
+// agents can find and press. A chat row's … (SidebarRowAction) sits over
+// its end: shown on hover, on focus and while its menu is open, and
+// always on touch screens, which have no hover; the title makes room for
+// it. While a chat is renamed, SidebarRowEdit takes the row's place.
 import * as React from "react"
 import { PanelLeftIcon } from "lucide-react"
 import {
@@ -24,6 +27,7 @@ import { useShortcut } from "@ui-sdk/react/shortcuts"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { Button, buttonVariants } from "@/components/ui/button"
+import { MenuTrigger } from "@/components/ui/menu"
 import {
   Tooltip,
   TooltipContent,
@@ -215,7 +219,46 @@ function SidebarGroup({
 
 function SidebarItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
-    <li data-slot="sidebar-item" className={cn("mx-1", className)} {...props} />
+    <li
+      data-slot="sidebar-item"
+      className={cn("group/item relative mx-1", className)}
+      {...props}
+    />
+  )
+}
+
+/** A chat row's 24px …, its menu's trigger, 6px from its end; a 40px
+ *  invisible touch area on touch screens. The trigger is the button
+ *  itself, not a Button inside it, so an agent sees one control per row's
+ *  menu, not two. */
+function SidebarRowAction({
+  className,
+  ...props
+}: React.ComponentProps<typeof MenuTrigger>) {
+  return (
+    <MenuTrigger
+      data-slot="sidebar-row-action"
+      className={cn(
+        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden [&>svg]:size-3.5 [&>svg]:shrink-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+/** A chat row being renamed: the row's 40px and wash, holding the field
+ *  (where the title sat) and its ✕ ✓. */
+function SidebarRowEdit({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sidebar-row-edit"
+      className={cn(
+        "flex h-10 w-full items-center gap-2 rounded-xl bg-sidebar-accent ps-3 pe-2 text-sidebar-accent-foreground",
+        className
+      )}
+      {...props}
+    />
   )
 }
 
@@ -236,10 +279,11 @@ const sidebarRowVariants = cva(
         // 36px circle.
         account:
           "gap-2 rounded-item px-2 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active active:text-foreground aria-expanded:bg-secondary-hover aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
-        // A chat: its title only, 12px in and 8px at the end, fading out
-        // at the end instead of an ellipsis. The open chat (the link's
-        // aria-current) keeps the hover's wash and full ink.
-        chat: "ps-3 pe-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
+        // A chat: its title only, 12px in and 8px at the end (36px while
+        // its … shows), fading out at the end instead of an ellipsis. The
+        // open chat (the link's aria-current) keeps the hover's wash and
+        // full ink, and so does a row while its menu is open.
+        chat: "ps-3 pe-2 group-focus-within/item:pe-9 group-hover/item:pe-9 group-has-data-open/item:bg-sidebar-accent group-has-data-open/item:pe-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground pointer-coarse:pe-9 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
       },
     },
     defaultVariants: { variant: "chat" },
@@ -272,6 +316,8 @@ export {
   SidebarHeader,
   SidebarItem,
   SidebarRow,
+  SidebarRowAction,
+  SidebarRowEdit,
   SidebarToggle,
   NEW_CHAT_SHORTCUT,
   useNewChatShortcut,
