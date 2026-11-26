@@ -427,9 +427,13 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
 // its ref.
 test("an agent can open a chat from the list", async ({ page }) => {
   await signInAsDev(page)
-  await expect(
-    sidebar(page).getByRole("link", { name: "Seeded for an agent" })
-  ).toBeVisible()
+  const seeded = sidebar(page).getByRole("link", {
+    name: "Seeded for an agent",
+  })
+  await expect(seeded).toBeVisible()
+  // The agent sees only what's on the screen, and the list grows with every
+  // chat the other tests make above this one.
+  await seeded.scrollIntoViewIfNeeded()
   const result = await page.evaluate(async () => {
     const { agent } = window
     const entries = agent
