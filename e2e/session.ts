@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from "@playwright/test"
+import { test as base, expect, type Locator, type Page } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
 
@@ -131,6 +131,22 @@ export async function expectNoHeldStart(page: Page) {
   )
   expect(leads.length).toBeGreaterThan(0)
   expect(Math.max(...leads)).toBeLessThanOrEqual(0)
+}
+
+/** Taps `item` in a sheet once it has finished sliding up, where the
+ *  item is, as a finger would: Playwright's own tap scrolls it into view
+ *  first, and the sheet's scroller reads that as a swipe. */
+export async function tapInSheet(sheet: Locator, item: Locator) {
+  await expect
+    .poll(() =>
+      sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
+    )
+    .toBe("1")
+  const box = await item.boundingBox()
+  if (box === null) throw new Error("The item has no box")
+  await sheet
+    .page()
+    .touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
 }
 
 /** Picks a model in the composer's picker, with a mouse: a popover (phones
