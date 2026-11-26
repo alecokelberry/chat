@@ -9,18 +9,23 @@
 // browser, in the one place the screen's width calls for (not both, which
 // would double 1,000 rows). The server renders the column with New Chat.
 // Each row is memoized, so a reloaded list re-renders only the rows that
-// changed. The drawer opens with a screenful of rows and adds the rest once
-// it has settled: mounting 1,000 at once froze the slide halfway.
+// changed. A tap on the phone header's button before the page's scripts
+// have run (a slow network, a cold start) isn't lost: a script in the
+// server's HTML (ScriptOnce) notes it, and the button replays it once React
+// has hydrated. The drawer opens with a screenful of rows and adds the rest
+// once it has settled: mounting 1,000 at once froze the slide halfway.
 import {
   memo,
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react"
-import { Link } from "@tanstack/react-router"
+import { Link, ScriptOnce } from "@tanstack/react-router"
 
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -38,6 +43,30 @@ import { groupChats } from "@/lib/chat/groups"
 import type { ChatSummary } from "@/lib/chat/store"
 
 const NO_CHATS: ChatSummary[] = []
+
+const TRIGGER_ID = "sidebar-trigger"
+
+/** Runs from the server's HTML, before React: notes a press on the phone
+ *  header's sidebar button until React takes over (takeEarlyTap). */
+const EARLY_TAP = `(() => {
+  const note = (event) => {
+    if (event.target.closest?.('#${TRIGGER_ID}')) early.tapped = true
+  }
+  const early = { tapped: false, stop: () => document.removeEventListener("click", note, true) }
+  window.sidebarEarlyTap = early
+  document.addEventListener("click", note, true)
+})()`
+
+/** Whether the sidebar button was pressed before React hydrated; stops
+ *  listening, since React's own handler takes it from here. */
+function takeEarlyTap(): boolean {
+  if (!("sidebarEarlyTap" in window)) return false
+  const early = window.sidebarEarlyTap
+  delete window.sidebarEarlyTap
+  if (typeof early !== "object" || early === null) return false
+  if ("stop" in early && typeof early.stop === "function") early.stop()
+  return "tapped" in early && early.tapped === true
+}
 
 /** More rows than the tallest phone shows: what the drawer opens with. */
 const FIRST_SCREEN = 40
@@ -72,6 +101,11 @@ export function ChatSidebar({
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
   const close = useCallback(() => setOpen(false), [])
+  // Replays a press from before hydration through the button itself.
+  const trigger = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (takeEarlyTap()) trigger.current?.click()
+  }, [])
   return (
     <div className="sticky top-0 flex h-dvh bg-background text-foreground">
       <Sidebar aria-label="Chats">
@@ -88,7 +122,8 @@ export function ChatSidebar({
           themeColor
         >
           <header className="box-content flex h-header shrink-0 items-center px-3 pt-safe md:hidden">
-            <SidebarDrawerTrigger />
+            <ScriptOnce>{EARLY_TAP}</ScriptOnce>
+            <SidebarDrawerTrigger id={TRIGGER_ID} ref={trigger} />
           </header>
           {phone === true && (
             <SidebarDrawerContent title="Chats">
