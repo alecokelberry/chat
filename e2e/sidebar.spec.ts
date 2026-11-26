@@ -304,6 +304,8 @@ test("a pin stays put when a stale list load lands", async ({ page }) => {
       .getByRole("region", { name: "Today" })
       .locator("a[aria-current=page]")
   ).toBeVisible()
+  // No list load still being fetched through the route when the test ends.
+  await page.unrouteAll({ behavior: "ignoreErrors" })
 })
 
 // The write is checked against the signed-in user: here the request names
@@ -427,18 +429,22 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
 // its ref.
 test("an agent can open a chat from the list", async ({ page }) => {
   await signInAsDev(page)
-  const seeded = sidebar(page).getByRole("link", {
-    name: "Seeded for an agent",
-  })
-  await expect(seeded).toBeVisible()
-  // The agent sees only what's on the screen, and the list grows with every
-  // chat the other tests make above this one.
-  await seeded.scrollIntoViewIfNeeded()
+  await expect(
+    sidebar(page).getByRole("link", { name: "Seeded for an agent" })
+  ).toBeVisible()
+  // The snapshot stops at 100 components, and the list grows with every
+  // chat the other tests make, so the agent asks for the row it wants.
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const entries = agent
-      .snapshot()
-      .filter((entry) => entry.offPage !== true && entry.ref !== "more")
+    const found = async (text: string) => {
+      const entries = await agent.query({ text })
+      if ("error" in entries) throw new Error(entries.error)
+      return entries.filter((entry) => entry.ref !== "more")
+    }
+    const entries = [
+      ...(await found("New Chat")),
+      ...(await found("Seeded for an agent")),
+    ]
     const row = entries.find((entry) => entry.label === "Seeded for an agent")
     const opened = await agent.act({
       steps: [{ ref: row?.ref ?? "", action: "press", args: [] }],
