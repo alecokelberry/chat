@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto"
+import type { Locator, Page } from "@playwright/test"
 
+import { BURSTS } from "@/lib/ai/mock"
+import { advanceReveal, revealedText } from "@/lib/chat/smooth-text"
 import {
   answeredBy,
   stoppedMetadata,
@@ -277,4 +280,135 @@ test("an agent can find the thinking step and open it", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /^Thought for \d+s$/ })
   ).toHaveAttribute("aria-expanded", "true")
+})
+
+// Smooth streaming (src/lib/chat/smooth-text.ts): the mock's "burst" reply
+// comes in three big chunks; the browser paces them out a word at a time.
+
+/** Keeps each text the last reply shows in window.replyTexts, from the
+ *  page's first paint, so a test can see how it was revealed. */
+async function recordReplyTexts(page: Page) {
+  await page.addInitScript(() => {
+    const seen: string[] = []
+    window.replyTexts = seen
+    new MutationObserver(() => {
+      const replies = document.querySelectorAll('[aria-label="Reply"]')
+      const text = replies[replies.length - 1]?.textContent ?? ""
+      if (text !== "" && text !== seen.at(-1)) seen.push(text)
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+  })
+}
+
+const replyTexts = (page: Page) => page.evaluate(() => window.replyTexts)
+
+/** The reply's caret: its animation's name, or null when there's none. */
+const caretOf = (reply: Locator) =>
+  reply.evaluate((article) => {
+    for (const element of article.querySelectorAll("*")) {
+      const after = getComputedStyle(element, "::after")
+      if (after.content === '""') return after.animationName
+    }
+    return null
+  })
+
+declare global {
+  interface Window {
+    replyTexts: string[]
+  }
+}
+
+const FULL = BURSTS.join("").trim()
+
+test("a bursty reply shows a word at a time, with a caret until it's all shown", async ({
+  page,
+}) => {
+  await recordReplyTexts(page)
+  await signInAsDev(page)
+  await send(page, "Hello burst")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect.poll(() => caretOf(reply)).toBe("caret-breathe")
+  await expect(reply).toHaveText(FULL, { timeout: 10_000 })
+  await expect.poll(() => caretOf(reply)).toBeNull()
+
+  // Many steps, not three bursts, and each ends at a whole word.
+  const texts = await replyTexts(page)
+  expect(texts.length).toBeGreaterThan(10)
+  for (const text of texts) {
+    expect(FULL.startsWith(text)).toBe(true)
+    expect(text === FULL || /\s/.test(FULL.charAt(text.length))).toBe(true)
+  }
+})
+
+test("reloading a finished chat shows its reply at once", async ({ page }) => {
+  await recordReplyTexts(page)
+  await signInAsDev(page)
+  await send(page, "Hello burst")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect(reply).toHaveText(FULL, { timeout: 10_000 })
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+
+  await page.reload()
+  await expect(reply).toHaveText(FULL)
+  expect(await replyTexts(page)).toEqual([FULL])
+  expect(await caretOf(reply)).toBeNull()
+})
+
+test("Stop shows what arrived at once, not paced", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, "Stop this burst")
+  const reply = page.getByRole("article", { name: "Reply" })
+  // The first burst has arrived; it's still being paced out.
+  await expect(reply).toContainText("This")
+  const stop = page.getByRole("button", { name: "Stop" })
+  const shown = await stop.evaluate(async (button: HTMLElement) => {
+    button.click()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    return document.querySelector('[aria-label="Reply"]')?.textContent
+  })
+  // Every burst that had arrived, whole: none of it held back.
+  const arrived = BURSTS.map((_, n) =>
+    BURSTS.slice(0, n + 1)
+      .join("")
+      .trim()
+  )
+  expect(arrived).toContain(shown)
+  await expect(reply).toHaveText(shown ?? "")
+  expect(await caretOf(reply)).toBeNull()
+})
+
+test("under reduced motion the caret holds still", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await signInAsDev(page)
+  await send(page, "Hello burst")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect.poll(() => caretOf(reply)).toBe("none")
+})
+
+test("advanceReveal drains a burst quickly but never slower than a floor", () => {
+  // 160 chars/s: about 2.5 chars a frame at 60fps, never past the end.
+  expect(advanceReveal(0, 5, 16)).toBeCloseTo(2.56, 1)
+  expect(advanceReveal(0, 10, 10_000)).toBe(10)
+  expect(advanceReveal(0, 2000, 16)).toBeGreaterThan(advanceReveal(0, 40, 16))
+  let position = 0
+  let frames = 0
+  while (position < 1500 && frames < 1000) {
+    position = advanceReveal(position, 1500, 16)
+    frames++
+  }
+  expect(frames * 16).toBeLessThan(1500)
+})
+
+test("revealedText shows whole words and splits a huge one", () => {
+  const text = "The quick brown fox"
+  expect(revealedText(text, 0)).toBe("")
+  expect(revealedText(text, 5)).toBe("The quick")
+  // The last word shows whole too, as far as it has arrived.
+  expect(revealedText(text, 17)).toBe(text)
+  expect(revealedText(text, 99)).toBe(text)
+  const long = `a ${"x".repeat(80)}`
+  expect(revealedText(long, 10)).toBe(long.slice(0, 10))
 })

@@ -49,11 +49,14 @@ const isBlank = (message: UIMessage) =>
 export function Thread({
   messages,
   busy,
+  stopped,
   error,
   onRetry,
 }: {
   messages: UIMessage[]
   busy: boolean
+  /** The last reply was cut off by Stop. */
+  stopped: boolean
   /** Why the last reply failed, if it did. */
   error: string | undefined
   /** Asks again for the last reply, replacing it. */
@@ -85,6 +88,7 @@ export function Thread({
             <ReplyMessage
               message={message}
               streaming={busy && message === last}
+              stopped={stopped && message === last}
               latest={message === last}
               // The error line has its own Retry.
               onRetry={
@@ -122,12 +126,15 @@ export function Thread({
 function ReplyMessage({
   message,
   streaming,
+  stopped,
   latest,
   onRetry,
 }: {
   message: UIMessage
   /** Still arriving. */
   streaming: boolean
+  /** Cut off by Stop. */
+  stopped: boolean
   latest: boolean
   onRetry: (() => void) | undefined
 }) {
@@ -138,7 +145,7 @@ function ReplyMessage({
       {text !== "" && (
         <article aria-label="Reply">
           <Suspense>
-            <Reply text={text} streaming={streaming} />
+            <Reply text={text} streaming={streaming} stopped={stopped} />
           </Suspense>
         </article>
       )}
