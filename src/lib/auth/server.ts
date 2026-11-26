@@ -86,6 +86,11 @@ function createAuth() {
       return url?.hostname.endsWith(PREVIEW_SUFFIX) === true ? [url.origin] : []
     },
     telemetry: { enabled: false },
+    // Better Auth otherwise reads every table's columns from D1 and compares
+    // them with its own on each fresh isolate's first session lookup, cookie
+    // or not. `pnpm run deploy` migrates before it deploys, so that only
+    // costs CPU (docs/decisions.md, Nov 26).
+    advanced: { database: { validateSchema: false } },
     plugins: [
       passkey({
         rpName: "Chat",
