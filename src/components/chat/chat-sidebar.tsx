@@ -38,8 +38,10 @@ import { EllipsisIcon } from "lucide-react"
 import { AccountMenu, type Account } from "@/components/chat/account-menu"
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
 import { useChatList, type ChatRef } from "@/components/chat/chat-list"
+import { BrandMark } from "@/components/ui/brand-mark"
 import { Menu } from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
+import { useThemeShortcut } from "@/components/ui/preferences"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   NEW_CHAT_SHORTCUT,
@@ -116,6 +118,7 @@ export function ChatSidebar({
   const navigate = useNavigate()
   // Navigating has no animation to skip: the page just swaps.
   useNewChatShortcut(() => void navigate({ to: "/" }))
+  useThemeShortcut()
   const { chats } = useChatList()
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
@@ -172,6 +175,9 @@ export function ChatSidebar({
           </header>
           {phone === true && (
             <SidebarDrawerContent title="Chats">
+              <div className="flex h-sidebar-header shrink-0 items-center px-3">
+                <BrandMark className="size-5" />
+              </div>
               <SidebarHeader>
                 <NewChatLink onClick={close} tooltip={false} />
               </SidebarHeader>
