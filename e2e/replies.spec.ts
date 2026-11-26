@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { expect, test } from "@playwright/test"
 
+import { answeredBy } from "@/lib/chat/reply-metadata"
 import { send, signInAsDev } from "./session"
 
 // What you can do with a reply (src/components/chat/reply-actions.tsx), and
@@ -33,6 +34,39 @@ test("Copy puts the reply's markdown on the clipboard and says so", async ({
   await expect(page.getByRole("article", { name: "Reply" })).toHaveText(copied)
   // It goes back to Copy after a moment.
   await expect(page.getByRole("button", { name: "Copy" })).toBeVisible()
+})
+
+test("a reply says who answered and how long it took, after a reload too", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, "Hello")
+  const actions = page.getByRole("toolbar", { name: "Reply actions" })
+  // The mock streams for about two and a half seconds.
+  await expect(actions).toContainText(/Super · \d\.\ds$/)
+  await page.reload()
+  await expect(actions).toContainText(/Super · \d\.\ds$/)
+})
+
+test("a stopped reply says how long it ran before Stop", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, "Hello")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect(reply).toContainText("talking")
+  await page.getByRole("button", { name: "Stop" }).click()
+  const actions = page.getByRole("toolbar", { name: "Reply actions" })
+  await expect(actions).toContainText(/Super · \d\.\ds$/)
+  await page.reload()
+  await expect(actions).toContainText(/Super · \d\.\ds$/)
+})
+
+test("answeredBy names the model, with tenths under ten seconds", () => {
+  expect(answeredBy({ model: "ultra", ms: 4249 })).toBe("Ultra · 4.2s")
+  expect(answeredBy({ model: "ultra", ms: 9960 })).toBe("Ultra · 10s")
+  expect(answeredBy({ model: "ultra", ms: 12_600 })).toBe("Ultra · 13s")
+  expect(answeredBy({ model: "super" })).toBe("Super")
+  expect(answeredBy({ model: "gpt" })).toBeUndefined()
+  expect(answeredBy(undefined)).toBeUndefined()
 })
 
 test("Retry replaces the last reply in place", async ({ page }) => {

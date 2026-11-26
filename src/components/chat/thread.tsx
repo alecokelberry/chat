@@ -1,10 +1,11 @@
 // The thread: a chat's messages, oldest first, in a log that opens at your
 // last message and brings each new one to the top, the reply growing under
 // it (message-scroller.tsx). Your messages sit in bubbles on the end side;
-// replies are markdown across the column (reply.tsx), each with its actions
-// under it once it has finished (reply-actions.tsx). Until a reply's first
-// word arrives, the waiting marker holds its place (pending-reply.tsx). A
-// failed reply ends the thread with one quiet line saying why, and Retry.
+// replies are markdown across the column (reply.tsx), each with its actions,
+// who answered and how long it took under it once it has finished
+// (reply-actions.tsx). Until a reply's first word arrives, the waiting
+// marker holds its place (pending-reply.tsx). A failed reply ends the
+// thread with one quiet line saying why, and Retry.
 // The markdown renderer loads in the browser only, starting as this module
 // does, so it's ready before the first message arrives over the WebSocket;
 // a reply waits for it rather than flash its raw markdown. The server never
@@ -17,6 +18,7 @@ import { CircleAlertIcon, RefreshCwIcon } from "lucide-react"
 import { PendingReply } from "@/components/chat/pending-reply"
 import { ReplyActions } from "@/components/chat/reply-actions"
 import { Button } from "@/components/ui/button"
+import { answeredBy } from "@/lib/chat/reply-metadata"
 import {
   MessageScroller,
   MessageScrollerItem,
@@ -83,6 +85,7 @@ export function Thread({
                 <ReplyActions
                   text={textOf(message)}
                   latest={message === last}
+                  answeredBy={answeredBy(message.metadata)}
                   // The error line has its own Retry.
                   onRetry={
                     message === last && error === undefined
