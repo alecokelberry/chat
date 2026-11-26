@@ -36,9 +36,12 @@ import { TITLE_MAX } from "@/lib/chat/list"
 export function ChatMenuContent({
   chat,
   onRename,
+  onPin,
 }: {
   chat: ChatRef
   onRename: () => void
+  /** Called as Pin or Unpin is chosen. */
+  onPin?: () => void
 }) {
   const list = useChatList()
   // Delete takes the …  away with its row (or header), so focus goes to
@@ -53,7 +56,12 @@ export function ChatMenuContent({
       }
     >
       <MenuGroup>
-        <MenuItem onSelect={() => list.pin(chat, !chat.pinned)}>
+        <MenuItem
+          onSelect={() => {
+            onPin?.()
+            list.pin(chat, !chat.pinned)
+          }}
+        >
           {chat.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
           {chat.pinned ? "Unpin" : "Pin"}
         </MenuItem>
