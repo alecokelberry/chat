@@ -164,6 +164,24 @@ test("an agent can open a chat from the list", async ({ page }) => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
+  // A tap on the sidebar button before the page's scripts have run isn't
+  // lost: the drawer opens once they have.
+  test("a tap before the page hydrates still opens the drawer", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    let release = () => {}
+    const scripts = new Promise<void>((resolve) => (release = resolve))
+    await page.route(/\.js(\?|$)/, async (route) => {
+      await scripts
+      await route.continue()
+    })
+    await page.goto("/", { waitUntil: "commit" })
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    release()
+    await expect(page.getByRole("dialog", { name: "Chats" })).toBeVisible()
+  })
+
   test("the list is a drawer from the start edge", async ({ page }) => {
     await signInAsDev(page)
     await send(page, "From my phone")
