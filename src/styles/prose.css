@@ -1,0 +1,170 @@
+/* Chat prose: shadcn's typeset preset (typeset.css) tuned for replies,
+   after Grok's, carried over from the archived Chat. 15/24 at every width
+   (text-base), 16px between blocks, 650 bold; headings 28, 20 and 16.5.
+   Rules and inline code use the alpha washes so they read on both themes.
+
+   Replies render through Streamdown (components/chat/reply.tsx) with its
+   own classes off, so its code blocks and tables are styled here, on its
+   data-streamdown hooks. */
+@layer components {
+  .typeset-docs {
+    --typeset-font-body: var(--font-sans);
+    --typeset-font-heading: var(--font-sans);
+    --typeset-font-mono: var(--font-mono);
+    --typeset-size: 0.9375rem;
+    --typeset-size-sm: 0.9375rem;
+    --typeset-leading: 1.6;
+    --typeset-flow: calc(16em / 15);
+    --typeset-h1: calc(28em / 15);
+    --typeset-h2: calc(20em / 15);
+    --typeset-h3: 1.1em;
+    --typeset-rule-color: var(--border-strong);
+    --typeset-code-bg: var(--accent);
+  }
+
+  /* Streamdown wraps the reply in one div; its first block sits flush at
+     the top like typeset's own first child. */
+  .typeset-docs > div > :first-child {
+    margin-block-start: 0;
+  }
+
+  /* Rhythm: h2 20/26 with 36px above (not at the top) and h3 16.5/21 with
+     32px above, both 8px over what they head; lists 20px in, items 4px +
+     4px, and 8px between back-to-back lists; inline code at 90%. */
+  .typeset-docs h2 {
+    line-height: calc(26 / 20);
+  }
+  .typeset-docs h3 {
+    line-height: 1.3;
+  }
+  .typeset-docs h2:not(:first-child) {
+    margin-block-start: --spacing(9);
+  }
+  .typeset-docs h3:not(:first-child) {
+    margin-block-start: --spacing(8);
+  }
+  .typeset-docs :is(h2, h3) + * {
+    margin-block-start: --spacing(2);
+  }
+  .typeset-docs :not(pre) > code {
+    font-size: 0.9em;
+  }
+  .typeset-docs :is(ul, ol) {
+    padding-inline-start: --spacing(5);
+  }
+  .typeset-docs li {
+    margin-inline-start: --spacing(1);
+    padding-inline-start: --spacing(1);
+  }
+  .typeset-docs :is(ul, ol) + :is(ul, ol) {
+    margin-block-start: --spacing(2);
+  }
+
+  /* Quotes: a 2px bar, 12px in, in secondary ink. */
+  .typeset-docs blockquote {
+    border-inline-start: 2px solid var(--sidebar-rail);
+    padding-inline-start: --spacing(3);
+    color: var(--muted-foreground);
+  }
+
+  /* Code blocks: a raised popover card (12px corners, a hairline) with the
+     language named in a 32px header. A long line scrolls inside the block,
+     never the page. Shiki colors each token through --sdm-c (light) and
+     --shiki-dark. */
+  .typeset-docs [data-streamdown="code-block"] {
+    margin-block-start: var(--typeset-flow);
+    border-radius: var(--radius-xl);
+    background-color: var(--popover);
+    box-shadow: 0 0 0 1px var(--border-strong);
+    overflow: hidden;
+    direction: ltr;
+  }
+  .typeset-docs [data-streamdown="code-block-header"] {
+    display: flex;
+    align-items: center;
+    height: --spacing(8);
+    padding-inline: --spacing(4);
+    border-block-end: 1px solid var(--border);
+    color: var(--muted-foreground);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    letter-spacing: var(--text-xs--letter-spacing);
+  }
+  .typeset-docs [data-streamdown="code-block-body"] {
+    overflow-x: auto;
+  }
+  .typeset-docs [data-streamdown="code-block-body"] pre {
+    margin: 0;
+    padding: --spacing(3) --spacing(4);
+    border-radius: 0;
+    background-color: transparent;
+    overflow: visible;
+    width: max-content;
+    min-width: 100%;
+  }
+  .typeset-docs [data-streamdown="code-block-body"] code > span {
+    display: block;
+  }
+  .typeset-docs [data-streamdown="code-block-body"] code span span {
+    color: var(--sdm-c, inherit);
+    @variant dark {
+      color: var(--shiki-dark, var(--sdm-c, inherit));
+    }
+  }
+
+  /* Tables, Grok's: an outlined card the width of the column (no fill,
+     16px corners, a hairline ring), header and rows alike at 15/24 with
+     10px / 16px cells, the header bold, rows split by half-pixel lines. A
+     wide table scrolls sideways inside its card. */
+  .typeset-docs [data-streamdown="table-wrapper"] {
+    margin-block-start: var(--typeset-flow);
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 0 0 1px var(--border-strong);
+    overflow: hidden;
+  }
+  .typeset-docs [data-streamdown="table-wrapper"] > div {
+    overflow-x: auto;
+  }
+  .typeset-docs [data-streamdown="table"] {
+    min-width: 100%;
+    margin: 0;
+    border: 0;
+  }
+  .typeset-docs [data-streamdown="table"] :is(th, td),
+  .typeset-docs
+    [data-streamdown="table"]
+    :is(th, td):is(:first-child, :last-child) {
+    padding: 0.625rem 1rem;
+    line-height: 1.5rem;
+  }
+  .typeset-docs [data-streamdown="table"] thead th {
+    font-weight: 650;
+    border-block-end: 0.5px solid var(--border-strong);
+  }
+  .typeset-docs [data-streamdown="table"] tbody td {
+    border-block-start: 0.5px solid var(--border-strong);
+  }
+  .typeset-docs [data-streamdown="table"] tbody tr:first-child td {
+    border-block-start: 0;
+  }
+  .typeset-docs [data-streamdown="table"] :is(td, th) code {
+    white-space: nowrap;
+  }
+
+  /* Math (KaTeX): a display formula is centred, 12px from its neighbours,
+     and scrolls sideways inside its own block when it's wider than the
+     column, never the page. */
+  .typeset-docs .katex {
+    font-size: 1.1em;
+  }
+  .typeset-docs .katex-display {
+    margin-block: --spacing(3);
+    padding-block: --spacing(1);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .typeset-docs .katex-error {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+}

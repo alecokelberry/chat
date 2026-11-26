@@ -1,25 +1,12 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
+import { send, signInAsDev } from "./session"
 
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
 // reload, and Stop keeps what arrived. The mock's reply ends in "Done."
 // after about two seconds (src/lib/ai/mock.ts).
-
-async function signInAsDev(page: Page) {
-  await page.goto("/sign-in")
-  await page.getByRole("button", { name: "Sign in as Dev" }).click()
-  await expect(page.getByRole("heading", { name: "Hi, Dev" })).toBeVisible()
-  // Typing before React hydrates is lost; the agent bridge sees the
-  // controls once it has.
-  await page.waitForFunction(() => window.agent.snapshot().length > 0)
-}
-
-async function send(page: Page, text: string) {
-  await page.getByRole("textbox", { name: "Message" }).fill(text)
-  await page.keyboard.press("Enter")
-}
 
 test("a new chat streams the reply and keeps it after a reload", async ({
   page,
