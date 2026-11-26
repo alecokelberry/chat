@@ -8,7 +8,7 @@ Closes #
 
 - **Before:**
   **After:**
-- **Ran:** <!-- the review skills that ran (code-review, security-review, break-ui, …) -->
+- **Ran:** <!-- the build skills that ran (break-ui, mobile-native, animate, …) -->
 
 ## Merge danger
 

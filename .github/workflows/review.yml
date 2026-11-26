@@ -42,7 +42,7 @@ jobs:
       # database (queries, migrations), secrets (the AI keys) or the chat
       # WebSocket route gets Opus at high effort and a `security-review` pass instead.
       - name: Pick the review depth
-        id: size
+        id: depth
         run: |
           RISKY=$(git diff --name-only origin/main...HEAD | grep -E \
             '^(src/lib/(auth|ai)/|src/lib/chat/(agent|route|store|list)\.ts|src/routes/(api/|_app/route\.tsx|sign-in|setup)|src/server\.ts|migrations/|drizzle\.config\.ts|wrangler[^/]*\.jsonc|\.github/workflows/)' || true)
@@ -71,10 +71,10 @@ jobs:
             - one summary with `gh pr comment`, headed "## Claude review", with the
               Standards and Spec sections and the one-line totals. If both axes are
               clean, say so in one line.
-            ${{ steps.size.outputs.risky == 'yes' && 'This PR touches sign-in, the database, secrets or the chat WebSocket route: also run the security-review skill on the diff and put its findings under a Security heading in the same summary.' || '' }}
+            ${{ steps.depth.outputs.risky == 'yes' && 'This PR touches a risky path (see the Pick the review depth step): also run the security-review skill on the diff and put its findings under a Security heading in the same summary.' || '' }}
             Only real findings: no praise, no restating the diff.
           claude_args: >-
-            ${{ steps.size.outputs.args }}
+            ${{ steps.depth.outputs.args }}
             --max-turns 60
             --allowedTools "Skill,Agent,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),Bash(git rev-parse:*),Bash(git show:*)"
             --disallowedTools "Edit,Write,WebFetch,WebSearch,Bash(pnpm:*),Bash(node:*),Bash(git push:*)"
