@@ -1,8 +1,10 @@
 import { expect, type Page } from "@playwright/test"
 
-// Helpers the chat tests share: sign in as Dev and wait for hydration, then
-// send a message from the composer. Also the types of ui-sdk's agent bridge
-// (window.agent, in `--mode test` builds).
+import { E2E_SETUP_CODE } from "../playwright.config"
+
+// Helpers the chat tests share: sign in as Dev or as the owner and wait for
+// hydration, then send a message from the composer. Also the types of
+// ui-sdk's agent bridge (window.agent, in `--mode test` builds).
 
 export async function signInAsDev(page: Page) {
   await page.goto("/sign-in")
@@ -14,6 +16,26 @@ export async function signInAsDev(page: Page) {
   await page.waitForFunction(
     () => "agent" in window && window.agent.snapshot().length > 0
   )
+}
+
+/** Signs in as the owner (Alec) by adding a passkey on /setup, through a
+ *  virtual authenticator. e2e/seed.sql gives the owner 1,000 chats. */
+export async function signInAsOwner(page: Page) {
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send("WebAuthn.enable")
+  await cdp.send("WebAuthn.addVirtualAuthenticator", {
+    options: {
+      protocol: "ctap2",
+      transport: "internal",
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  })
+  await page.goto(`/setup#${E2E_SETUP_CODE}`)
+  await page.getByRole("button", { name: "Add a passkey" }).click()
+  await expect(page.getByRole("heading", { name: "Hi, Alec" })).toBeVisible()
 }
 
 export async function send(page: Page, text: string) {
@@ -28,12 +50,14 @@ declare global {
 }
 
 type AgentBridge = {
-  snapshot: () => { label?: string; offPage?: boolean }[]
+  snapshot: () => { ref: string; label?: string; offPage?: boolean }[]
   act: (plan: {
     steps: { ref: string; action: string; args: unknown[] }[]
   }) => Promise<{ ok: boolean; error?: { message: string } }>
   query: (options: {
     within?: string
     text?: string
-  }) => Promise<{ error: string } | { items: { value: unknown }[] }[]>
+  }) => Promise<
+    { error: string } | { label?: string; items: { value: unknown }[] }[]
+  >
 }

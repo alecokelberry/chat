@@ -41,7 +41,7 @@ Motion is quick and functional.
 | Menus and tooltips (`popup-motion`: fade and 95% zoom from the trigger)                                     | `duration-menu` 120ms    | `ease-decelerate` |
 | Dialogs' scrims                                                                                             | `duration-pane` 200ms    | `ease-standard`   |
 | Sidebar collapse                                                                                            | `duration-sidebar` 200ms | `ease-spring`     |
-| Phone sidebar open (close: `duration-pane`)                                                                 | `duration-drawer` 300ms  | `ease-drawer`     |
+| Phone sidebar (ui-sdk's Drawer: it follows the finger and settles on its own iOS spring)                    | spring                   | spring            |
 | Toasts                                                                                                      | 500ms                    | `ease-out-quint`  |
 
 - Use transitions, not keyframes, so motion can be interrupted. The exception is a loop that shows work under way (the spinner, the "Thinking" shimmer), which nothing interrupts.
@@ -94,7 +94,7 @@ What Alec picked and why. New work starts here.
 
 ## Phones
 
-- iOS blurs the top edge unless a full-width, solid, sticky box covers it: a page's `main` is `sticky top-0 bg-background`.
+- iOS blurs the top edge unless a full-width, solid, sticky box covers it: a page's `main` is `sticky top-0 bg-background`, or, in the signed-in app, the shell around it (`chat-sidebar.tsx`).
 - Installed, the app paints under the notch and home indicator (`viewport-fit=cover`): a full-screen page pads with `safe-area` instead of `p-4`, and `theme-color` gives the status bar the page's `background`.
 - Text fields are at least 16px on touch screens, so iOS never zooms on focus.
 - Heights against the viewport are `svh` or `dvh`, never `vh`, which jumps when the iPhone keyboard opens.

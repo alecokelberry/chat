@@ -8,10 +8,12 @@ export const cn = createCn({
     theme: {
       spacing: [
         "icon",
+        "sidebar",
         "sidebar-header",
         "header",
         "header-content",
         "new-chat-top",
+        "new-chat-top-phone",
       ],
       radius: ["item", "overlay", "composer"],
       container: ["content", "composer", "signin"],

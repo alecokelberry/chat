@@ -7,7 +7,9 @@ test("Super answers through the AI Gateway @nvidia", async ({ page }) => {
   test.setTimeout(60_000)
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "Sign in as Dev" }).click()
-  await page.waitForFunction(() => window.agent.snapshot().length > 0)
+  await page.waitForFunction(
+    () => "agent" in window && window.agent.snapshot().length > 0
+  )
   await page
     .getByRole("textbox", { name: "Message" })
     .fill("Reply with exactly the word: pong")

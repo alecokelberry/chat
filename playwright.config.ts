@@ -30,7 +30,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   ...(smoke ? { grep: /@nvidia/ } : { grepInvert: /@nvidia/ }),
   webServer: {
-    command: `rm -rf .wrangler/state dist/server/.dev.vars && wrangler d1 migrations apply chat --local && vite preview --host localhost --port ${PORT} --strictPort`,
+    command: `rm -rf .wrangler/state dist/server/.dev.vars && wrangler d1 migrations apply chat --local && wrangler d1 execute chat --local --file e2e/seed.sql && vite preview --host localhost --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/sign-in`,
     reuseExistingServer: false,
     env: {

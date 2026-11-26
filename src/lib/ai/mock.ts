@@ -10,7 +10,8 @@
 // math instead, streamed the same way, so a test sees each half-written
 // piece (an open fence, an open formula) on its way. A message ending in
 // "(busy N)" gets a 429 for its first N calls, as a busy NVIDIA answers, so
-// a test can watch the quiet retry and the error after it.
+// a test can watch the quiet retry and the error after it. Asked for a chat's
+// title (generateText), it answers "Talking to the mock model" at once.
 import type { LanguageModel } from "ai"
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
@@ -71,9 +72,26 @@ function refuseIfBusy(message: string) {
   })
 }
 
+/** What the mock names every chat. */
+const TITLE = "Talking to the mock model"
+
 export function mockModel(modelId: string): LanguageModel {
   return new MockLanguageModelV4({
     modelId,
+    doGenerate: async () => ({
+      content: [{ type: "text", text: TITLE }],
+      finishReason: { unified: "stop", raw: undefined },
+      usage: {
+        inputTokens: {
+          total: 0,
+          noCache: 0,
+          cacheRead: undefined,
+          cacheWrite: undefined,
+        },
+        outputTokens: { total: 5, text: 5, reasoning: undefined },
+      },
+      warnings: [],
+    }),
     doStream: async ({ prompt, providerOptions }) => {
       const asked = prompt.at(-1)
       const message =

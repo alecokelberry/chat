@@ -1,6 +1,8 @@
-// A chat at /c/<id>: its thread and the composer, live over a WebSocket to
-// the chat's agent (src/lib/chat). Messages load from the agent, so the
-// server only checks the session and the browser renders the rest. A new
+// A chat at /c/<id>: its thread and the composer, beside the sidebar
+// (src/routes/_app/route.tsx, which also checks the session), live over a
+// WebSocket to the chat's agent (src/lib/chat). Messages load from the
+// agent, so the browser renders the rest. When the agent says the chat
+// list changed, the sidebar loads it again. A new
 // chat arrives from / with its first message in history state: it skips
 // loading (there's nothing yet), sends it, and clears the state so a
 // reload doesn't send it again. Each message carries its model in its
@@ -13,9 +15,9 @@ import { Suspense, useEffect, useRef, useState } from "react"
 import {
   createFileRoute,
   notFound,
-  redirect,
   useLocation,
   useNavigate,
+  useRouter,
 } from "@tanstack/react-router"
 import { useAgent } from "agents/react"
 import { useAgentChat } from "@cloudflare/ai-chat/react"
@@ -23,7 +25,7 @@ import { useAgentChat } from "@cloudflare/ai-chat/react"
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
-import { getSession } from "@/lib/auth/session"
+import { CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
 
 declare module "@tanstack/react-router" {
@@ -32,10 +34,9 @@ declare module "@tanstack/react-router" {
   }
 }
 
-export const Route = createFileRoute("/c/$id")({
-  beforeLoad: async ({ params }) => {
+export const Route = createFileRoute("/_app/c/$id")({
+  beforeLoad: ({ params }) => {
     if (!CHAT_ID.test(params.id)) throw notFound()
-    if ((await getSession()) === null) throw redirect({ to: "/sign-in" })
   },
   ssr: "data-only",
   component: ChatScreen,
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/c/$id")({
 function ChatScreen() {
   const { id } = Route.useParams()
   return (
-    <main className="sticky top-0 flex h-dvh flex-col bg-background safe-area text-foreground">
+    <main className="flex min-h-0 flex-1 flex-col safe-area max-md:pt-0">
       <Suspense>
         <Chat key={id} id={id} />
       </Suspense>
@@ -55,7 +56,14 @@ function ChatScreen() {
 function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
-  const agent = useAgent({ agent: "ChatAgent", basePath: `api/chats/${id}` })
+  const router = useRouter()
+  const agent = useAgent({
+    agent: "ChatAgent",
+    basePath: `api/chats/${id}`,
+    onMessage: (event) => {
+      if (event.data === CHATS_CHANGED) void router.invalidate()
+    },
+  })
   const {
     messages,
     sendMessage,
