@@ -20,7 +20,10 @@ test("⌘J starts a new chat from a saved chat", async ({ page }) => {
 
 test("New Chat's tooltip names ⌘J", async ({ page }) => {
   await signInAsDev(page)
-  await page.getByRole("link", { name: "New Chat" }).hover()
+  await page
+    .getByRole("link", { name: "New Chat", exact: true })
+    .first()
+    .hover()
   await expect(page.getByRole("tooltip")).toContainText(/⌘J|Ctrl\+J/)
 })
 
@@ -34,7 +37,7 @@ for (const path of ["/nope", "/c/not-a-chat"]) {
       page.getByRole("heading", { name: "Not found." })
     ).toBeVisible()
     await expect(page.getByRole("navigation", { name: "Chats" })).toBeVisible()
-    await page.getByRole("link", { name: "New Chat" }).last().click()
+    await page.getByRole("main").getByRole("link", { name: "New Chat" }).click()
     await expect(greeting(page)).toBeVisible()
   })
 }
