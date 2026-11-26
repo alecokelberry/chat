@@ -5,8 +5,12 @@
 // sits at the top of <body>; on the server it renders an inline script
 // that sets the attributes before the first paint, so CSS that selects
 // them is right from the start, with nothing to flash.
-// The status bar's theme-color follows the choice once the page's
-// scripts run; until then it follows the system, as in the archived Chat.
+// The status bar follows the choice too: an inline script in the head
+// (THEME_COLOR_SCRIPT) points the theme-color tags at the saved choice
+// before the first paint, and StatusBarColor keeps them in step after.
+// iOS 26 reads the bar's color when the app launches and again only when
+// a layer appears over the page, not when the page's colors change, so a
+// change also briefly shows an empty, invisible layer (nudgeStatusBar).
 import * as React from "react"
 // oxlint-disable-next-line no-restricted-imports -- preferences and storage have no entry of their own
 import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
@@ -17,8 +21,23 @@ import { useShortcut } from "@ui-sdk/react/shortcuts"
  *  app.css, repeated here because the server writes it into the head. */
 const THEME_COLOR = { light: "#f9f8f7", dark: "#1e1d1d" } as const
 
+/** Where createLocalStorage keeps the choice: "system", "light" or "dark". */
+const STORAGE_KEY = "theme"
+
+/** Runs in the head, right after the theme-color tags: a saved Light or
+ *  Dark points both at its color before the first paint, so a home-screen
+ *  app launches with the bar in the app's theme, not the phone's. */
+const THEME_COLOR_SCRIPT = `(() => {
+  try {
+    const colors = ${JSON.stringify(THEME_COLOR)}
+    const color = colors[localStorage.getItem(${JSON.stringify(STORAGE_KEY)})]
+    if (!color) return
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) meta.content = color
+  } catch {}
+})()`
+
 const colorScheme = createColorScheme({
-  storage: createLocalStorage("theme"),
+  storage: createLocalStorage(STORAGE_KEY),
   global: true,
 })
 
@@ -33,12 +52,12 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
 
 /** The theme-color metas (src/routes/__root.tsx) follow the system; a
  *  Light or Dark choice points both at its color. Each is swapped for a
- *  fresh copy rather than edited: iOS paints the status bar from a
- *  theme-color when it arrives and can miss an edit to one already there,
- *  so the bar kept the old theme until the app restarted. React never
+ *  fresh copy rather than edited: the phone drawer dims the tags it found
+ *  when it opened (ui-sdk's themeColor) and puts their old colors back when
+ *  it closes, which would undo a theme picked inside it. React never
  *  changes these tags after the first render, so it doesn't miss them. */
 function StatusBarColor() {
-  const { value } = usePreference(colorScheme)
+  const { value, resolved } = usePreference(colorScheme)
   React.useEffect(() => {
     const metas = document.querySelectorAll<HTMLMetaElement>(
       'meta[name="theme-color"]'
@@ -54,7 +73,37 @@ function StatusBarColor() {
       meta.replaceWith(fresh)
     }
   }, [value])
+  // On load too, which costs nothing and settles the launch color.
+  React.useEffect(() => nudgeStatusBar(), [resolved])
   return null
+}
+
+/** How long the nudge's layer stays: long enough for iOS to notice it. */
+const NUDGE_MS = 150
+
+/** Makes iOS read the status bar's color again, once the new colors are
+ *  painted: a full-screen manual popover, so in the top layer like a menu
+ *  sheet, but empty, clear and letting every tap through, shown for 150 ms.
+ *  A manual popover leaves open menus and focus alone. Returns its
+ *  cleanup. */
+function nudgeStatusBar() {
+  const layer = document.createElement("div")
+  layer.popover = "manual"
+  layer.ariaHidden = "true"
+  layer.dataset.slot = "status-bar-nudge"
+  layer.style.cssText =
+    "position:fixed;inset:0;width:auto;height:auto;margin:0;padding:0;border:0;background:transparent;pointer-events:none"
+  let timer = 0
+  const frame = requestAnimationFrame(() => {
+    document.body.appendChild(layer)
+    layer.showPopover()
+    timer = window.setTimeout(() => layer.remove(), NUDGE_MS)
+  })
+  return () => {
+    cancelAnimationFrame(frame)
+    clearTimeout(timer)
+    layer.remove()
+  }
 }
 
 /** Flips light and dark, from whichever is showing. */
@@ -83,6 +132,7 @@ function useThemeShortcut() {
 export {
   AppPreferences,
   THEME_COLOR,
+  THEME_COLOR_SCRIPT,
   useIsDark,
   useThemeShortcut,
   useToggleTheme,
