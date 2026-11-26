@@ -67,10 +67,10 @@
     color: var(--muted-foreground);
   }
 
-  /* Code blocks: a raised popover card (12px corners, a hairline) with the
-     language named in a 32px header. A long line scrolls inside the block,
-     never the page. Shiki colors each token through --sdm-c (light) and
-     --shiki-dark. */
+  /* Code blocks, the archived Chat's (Grok's): a raised popover card with
+     the language on a row above the code, no rule between. A long line
+     scrolls inside the block, never the page. Shiki colors each token
+     through --sdm-c (light) and --shiki-dark. */
   .typeset-docs [data-streamdown="code-block"] {
     margin-block-start: var(--typeset-flow);
     border-radius: var(--radius-xl);
@@ -83,19 +83,20 @@
     display: flex;
     align-items: center;
     height: --spacing(8);
-    padding-inline: --spacing(4);
-    border-block-end: 1px solid var(--border);
+    padding-inline: --spacing(3);
     color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    line-height: var(--text-xs--line-height);
-    letter-spacing: var(--text-xs--letter-spacing);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
   .typeset-docs [data-streamdown="code-block-body"] {
     overflow-x: auto;
   }
   .typeset-docs [data-streamdown="code-block-body"] pre {
     margin: 0;
-    padding: --spacing(3) --spacing(4);
+    padding: --spacing(1) --spacing(3) --spacing(3);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
     border-radius: 0;
     background-color: transparent;
     overflow: visible;
