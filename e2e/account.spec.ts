@@ -76,7 +76,7 @@ test.describe("on a computer", () => {
     page,
   }) => {
     await page.goto("/sign-in")
-    await expect(page.getByTestId("brand-mark")).toBeVisible()
+    await expect(page.locator("svg.lucide-message-square")).toBeVisible()
     const html = page.locator("html")
     const toggle = page.getByRole("button", { name: "Dark theme" })
     await expect(toggle).toHaveAttribute("aria-pressed", "false")
@@ -93,7 +93,9 @@ test.describe("on a computer", () => {
 
   test("D switches the theme, but not while typing", async ({ page }) => {
     await signInAsDev(page)
-    await expect(sidebar(page).getByTestId("brand-mark")).toBeVisible()
+    await expect(
+      sidebar(page).locator("svg.lucide-message-square")
+    ).toBeVisible()
     const html = page.locator("html")
     await expect(html).toHaveAttribute("data-color-scheme", "system")
     await page.keyboard.press("d")
@@ -165,6 +167,7 @@ test.describe("on a phone", () => {
     await signInAsDev(page)
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     const drawer = page.getByRole("dialog", { name: "Chats" })
+    await expect(drawer.locator("svg.lucide-message-square")).toBeVisible()
     await drawer.getByRole("button", { name: "Dev", exact: true }).tap()
     await expect(menu(page)).toContainText("dev@chat.test")
     await expect(menu(page)).toHaveAttribute("data-presentation", "sheet")

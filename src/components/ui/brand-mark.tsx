@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 function BrandMark({ className }: { className?: string }) {
   return (
     <MessageSquareIcon
-      data-testid="brand-mark"
       aria-hidden
       className={cn("shrink-0 text-foreground", className)}
     />
