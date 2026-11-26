@@ -1,8 +1,8 @@
 // The composer: where a message is written and sent. Enter sends and
 // Shift+Enter starts a new line (ui-sdk's submit shortcut); an empty
 // message doesn't send. While a reply streams, Send becomes Stop. The
-// model picker beside Send chooses who answers the message; it starts on
-// `defaultModel` (the chat's last model) and keeps your choice after.
+// model picker beside Send chooses who answers the message (the chat holds
+// the choice, so an edited question is answered by it too).
 //
 // Grok's one-row pill (the archived Chat's): 58px tall for one line, 12px
 // in, 29px corners, the text 20px from the start, then the model and a
@@ -21,26 +21,27 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ModelPicker } from "@/components/chat/model-picker"
-import { DEFAULT_MODEL, type ModelKey } from "@/lib/ai/models"
+import type { ModelKey } from "@/lib/ai/models"
 
 export function Composer({
   busy = false,
-  defaultModel = DEFAULT_MODEL,
+  model,
+  onModelChange,
   onSend,
   onStop,
 }: {
   busy?: boolean
-  defaultModel?: ModelKey
-  onSend: (text: string, model: ModelKey) => void
+  model: ModelKey
+  onModelChange: (model: ModelKey) => void
+  onSend: (text: string) => void
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
-  const [model, setModel] = useState(defaultModel)
   const message = text.trim()
 
   function send() {
     if (message === "" || busy) return
-    onSend(message, model)
+    onSend(message)
     setText("")
   }
 
@@ -61,7 +62,7 @@ export function Composer({
         value={text}
         onValueChange={setText}
       />
-      <ModelPicker value={model} onValueChange={setModel} />
+      <ModelPicker value={model} onValueChange={onModelChange} />
       {busy ? (
         <Tooltip type="label">
           <TooltipTrigger

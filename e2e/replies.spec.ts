@@ -35,13 +35,15 @@ test("Copy puts the reply's markdown on the clipboard and says so", async ({
   const thread = page.getByRole("log", { name: "Messages" })
   await expect(thread).toContainText("Done.")
 
-  await page.getByRole("button", { name: "Copy" }).click()
-  await expect(page.getByRole("button", { name: "Copied" })).toBeVisible()
+  // The reply's Copy, not its question's.
+  const actions = page.getByRole("toolbar", { name: "Reply actions" })
+  await actions.getByRole("button", { name: "Copy" }).click()
+  await expect(actions.getByRole("button", { name: "Copied" })).toBeVisible()
   const copied = await page.evaluate(() => navigator.clipboard.readText())
   expect(copied).toMatch(REPLY)
   await expect(page.getByRole("article", { name: "Reply" })).toHaveText(copied)
   // It goes back to Copy after a moment.
-  await expect(page.getByRole("button", { name: "Copy" })).toBeVisible()
+  await expect(actions.getByRole("button", { name: "Copy" })).toBeVisible()
 })
 
 test("a reply says who answered and how long it took, after a reload too", async ({
@@ -168,7 +170,11 @@ test("Retry replaces the last reply in place", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 
   // Every reply has Copy; only the last one has Retry.
-  await expect(page.getByRole("button", { name: "Copy" })).toHaveCount(2)
+  await expect(
+    page
+      .getByRole("toolbar", { name: "Reply actions" })
+      .getByRole("button", { name: "Copy" })
+  ).toHaveCount(2)
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(1)
 
   await page.getByRole("button", { name: "Retry" }).click()
@@ -272,8 +278,10 @@ test("an agent can find a reply's actions, and Retry needs a person", async ({
   const result = await page.evaluate(async () => {
     const { agent } = window
     const entries = agent.snapshot().filter((entry) => entry.offPage !== true)
+    // The question has a Copy too; the reply's comes after it.
+    const copy = entries.findLast((entry) => entry.label === "Copy")?.ref ?? ""
     const copied = await agent.act({
-      steps: [{ ref: "Copy", action: "press", args: [] }],
+      steps: [{ ref: copy, action: "press", args: [] }],
     })
     const retried = await agent.act({
       steps: [{ ref: "Retry", action: "press", args: [] }],
