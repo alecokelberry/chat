@@ -114,7 +114,9 @@ export function ChatSidebar({
         </SidebarHeader>
         {phone === false && <ChatList chats={chats} />}
       </Sidebar>
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Relative: a chat's title pill sits over this column's top, in the
+          phone's header row (src/routes/_app/c.$id.tsx). */}
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <SidebarDrawer
           open={open && phone === true}
           onOpenChange={setOpen}
