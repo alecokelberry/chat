@@ -3,7 +3,7 @@
 // (drizzle-kit, drizzle.config.ts) writes its migrations into migrations/. The
 // chat's agent writes it (src/lib/chat/agent.ts): a send adds the chat or
 // moves it up, and the first reply gives it a title. The sidebar reads it,
-// and its menu renames and pins (src/lib/chat/list.ts).
+// and its menu renames, pins and deletes (src/lib/chat/list.ts).
 import { and, desc, eq, isNull } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/d1"
 import {
@@ -105,6 +105,19 @@ export async function updateChat(
   const rows = await db(d1)
     .update(chat)
     .set(fields)
+    .where(isChat(owner))
+    .returning({ id: chat.id })
+  return rows.length > 0
+}
+
+/** Takes the chat off the user's list for good. Whether the user had
+ *  the chat. */
+export async function deleteChatRow(
+  d1: D1Database,
+  owner: ChatOwner
+): Promise<boolean> {
+  const rows = await db(d1)
+    .delete(chat)
     .where(isChat(owner))
     .returning({ id: chat.id })
   return rows.length > 0

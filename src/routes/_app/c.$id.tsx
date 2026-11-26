@@ -2,7 +2,8 @@
 // (src/routes/_app/route.tsx, which also checks the session), live over a
 // WebSocket to the chat's agent (src/lib/chat). Messages load from the
 // agent, so the browser renders the rest. When the agent says the chat
-// list changed, the sidebar loads it again. A new
+// list changed, the sidebar loads it again; when it says the chat is being
+// deleted (from another tab), this tab goes to a new chat. A new
 // chat arrives from / with its first message in history state: it skips
 // loading (there's nothing yet), sends it, and clears the state so a
 // reload doesn't send it again. Each message carries its model in its
@@ -39,7 +40,7 @@ import { Button } from "@/components/ui/button"
 import { HeaderTitle, HeaderTitleEdit } from "@/components/ui/header-title"
 import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
-import { CHATS_CHANGED } from "@/lib/chat/events"
+import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
 
 declare module "@tanstack/react-router" {
@@ -120,6 +121,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
     basePath: `api/chats/${id}`,
     onMessage: (event) => {
       if (event.data === CHATS_CHANGED) void router.invalidate()
+      if (event.data === CHAT_DELETED) void router.navigate({ to: "/" })
     },
   })
   const {

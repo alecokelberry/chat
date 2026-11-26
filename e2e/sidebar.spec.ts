@@ -373,6 +373,147 @@ test("the header's … menu pins and renames in the pill", async ({ page }) => {
   await page.keyboard.press("Escape")
 })
 
+// Delete (chat-list.tsx): the row goes at once and a toast offers Undo;
+// the chat is deleted for good only once the toast closes without it.
+/** The toasts showing, not the ones on their way out. */
+const toasts = (page: Page) =>
+  page
+    .getByRole("region", { name: "Notifications" })
+    .locator("[data-slot=toast]:not([data-ending-style])")
+
+const rowFor = (page: Page, path: string) =>
+  sidebar(page).locator(`a[href="${path}"]`)
+
+/** Deletes the chat at `path` from its row, for good: each test that
+ *  makes a chat it keeps deletes it, since the agent test sees only the
+ *  first 100 controls. */
+async function deleteForGood(page: Page, path: string) {
+  await rowFor(page, path).hover()
+  await sidebar(page)
+    .getByRole("listitem")
+    .filter({ has: page.locator(`a[href="${path}"]`) })
+    .getByRole("button", { name: /^Actions for / })
+    .click()
+  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+  await expect(toasts(page)).toContainText("Chat deleted")
+  // The row's … went with it, so focus goes to the page.
+  await expect(page.locator("#main")).toBeFocused()
+  await page.evaluate(() => window.toast.dismiss())
+  await expect(toasts(page)).toHaveCount(0)
+  await page.reload()
+  await expect(rowFor(page, path)).toHaveCount(0)
+}
+
+/** What the chat's agent holds, as the browser loads it. */
+const savedMessages = (page: Page, id: string) =>
+  page.evaluate(async (id) => {
+    const response = await fetch(`/api/chats/${id}/get-messages`)
+    const messages: unknown[] = await response.json()
+    return messages.length
+  }, id)
+
+test("Delete hides the open chat at once, and Undo puts it back", async ({
+  page,
+}) => {
+  await startChat(page, "Delete then undo")
+  const path = new URL(page.url()).pathname
+
+  await openRow(page).hover()
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+  await expect(rowFor(page, path)).toHaveCount(0)
+  // The open chat was the one deleted: a new chat, with focus on the page.
+  await expect(page).toHaveURL(/\/$/)
+  await expect(greeting(page)).toBeVisible()
+  await expect(page.locator("#main")).toBeFocused()
+  await expect(toasts(page)).toContainText("Chat deleted")
+
+  await toasts(page).getByRole("button", { name: "Undo" }).click()
+  await expect(toasts(page)).toHaveCount(0)
+  await expect(rowFor(page, path)).toHaveText(TITLE)
+  await page.reload()
+  await expect(rowFor(page, path)).toHaveText(TITLE)
+  await deleteForGood(page, path)
+})
+
+test("once the toast closes, a deleted chat and its messages are gone", async ({
+  page,
+}) => {
+  await startChat(page, "Delete me for good")
+  const path = new URL(page.url()).pathname
+  const id = path.split("/").at(-1) ?? ""
+  expect(await savedMessages(page, id)).toBe(2)
+
+  // From the header's … this time.
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+  await expect(rowFor(page, path)).toHaveCount(0)
+  await expect(toasts(page)).toContainText("Chat deleted")
+  // As if it timed out, without the wait.
+  await page.evaluate(() => window.toast.dismiss())
+  await expect(toasts(page)).toHaveCount(0)
+
+  await expect.poll(() => savedMessages(page, id)).toBe(0)
+  await page.reload()
+  await expect(greeting(page)).toBeVisible()
+  await expect(rowFor(page, path)).toHaveCount(0)
+})
+
+// The delete is checked against the signed-in user: here the request names
+// a chat that isn't theirs, so it fails, the row comes back and a toast
+// says so.
+test("a delete that fails brings the chat back and says so", async ({
+  page,
+}) => {
+  await startChat(page, "Fail my delete")
+  const path = new URL(page.url()).pathname
+  const id = path.split("/").at(-1) ?? ""
+  await page.route(/\/_serverFn\//, (route) =>
+    route.request().method() === "POST"
+      ? route.continue({
+          postData: route
+            .request()
+            .postData()
+            ?.replace(id, "00000000-0000-4000-8000-00000000dead"),
+        })
+      : route.continue()
+  )
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+  await expect(rowFor(page, path)).toHaveCount(0)
+  await page.evaluate(() => window.toast.dismiss())
+  await expect(page.getByText("Couldn't delete the chat")).toBeVisible()
+  await expect(rowFor(page, path)).toHaveText(TITLE)
+  expect(await savedMessages(page, id)).toBe(2)
+  await page.unrouteAll()
+  await page.evaluate(() => window.toast.dismiss())
+  await deleteForGood(page, path)
+})
+
+// ui-sdk's agent test: Delete is marked as a person's to press, so an
+// agent's press is refused and the chat stays.
+test("an agent can't delete a chat", async ({ page }) => {
+  await signInAsDev(page)
+  const row = sidebar(page).getByRole("link", { name: "Seeded for an agent" })
+  await expect(row).toBeVisible()
+  const result = await page.evaluate(async () => {
+    // Pressing a menu's item by its text opens the menu to find it.
+    const deleted = await window.agent.act({
+      steps: [
+        {
+          ref: "Actions for Seeded for an agent",
+          action: "press",
+          args: ["Delete"],
+        },
+      ],
+    })
+    return deleted.error?.message ?? ""
+  })
+  expect(result).toMatch(/Needs a person: "Delete this chat"/)
+  await expect(row).toBeVisible()
+  await expect(toasts(page)).toHaveCount(0)
+})
+
 // ui-sdk's agent test: each row's menu is a named control an agent can
 // open, and its actions are named.
 test("an agent can open a row's menu", async ({ page }) => {
@@ -426,7 +567,8 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
 // ui-sdk's agent test: rows are controls an agent can find and press. A
 // row's title is also in its menu's name ("Actions for …"), and a label
 // matches every label holding its words, so the agent picks the row by
-// its ref.
+// its ref. It finds the row by query: the snapshot lists only the first
+// 100 controls, and other tests' chats can fill those.
 test("an agent can open a chat from the list", async ({ page }) => {
   await signInAsDev(page)
   await expect(
@@ -436,25 +578,25 @@ test("an agent can open a chat from the list", async ({ page }) => {
   // chat the other tests make, so the agent asks for the row it wants.
   const result = await page.evaluate(async () => {
     const { agent } = window
-    const found = async (text: string) => {
-      const entries = await agent.query({ text })
-      if ("error" in entries) throw new Error(entries.error)
-      return entries.filter((entry) => entry.ref !== "more")
-    }
-    const entries = [
-      ...(await found("New Chat")),
-      ...(await found("Seeded for an agent")),
-    ]
-    const row = entries.find((entry) => entry.label === "Seeded for an agent")
+    const labels = agent
+      .snapshot()
+      .filter((entry) => entry.offPage !== true && entry.ref !== "more")
+      .map((entry) => entry.label)
+    const found = await agent.query({ text: "Seeded for an agent" })
+    const matches = "error" in found ? [] : found
+    const row = matches.find((entry) => entry.label === "Seeded for an agent")
     const opened = await agent.act({
       steps: [{ ref: row?.ref ?? "", action: "press", args: [] }],
     })
-    return { labels: entries.map((entry) => entry.label), opened: opened.ok }
+    return {
+      labels,
+      found: matches.map((entry) => entry.label),
+      opened: opened.ok,
+    }
   })
   expect(result.labels.every(Boolean)).toBe(true)
-  expect(result.labels).toEqual(
-    expect.arrayContaining(["New Chat", "Actions for Seeded for an agent"])
-  )
+  expect(result.labels).toContain("New Chat")
+  expect(result.found).toContain("Actions for Seeded for an agent")
   expect(result.opened).toBe(true)
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(

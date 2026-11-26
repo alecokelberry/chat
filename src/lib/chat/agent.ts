@@ -15,7 +15,12 @@
 // chat that already has a title, a rename's included, keeps it.
 // After either, it tells its open tabs CHATS_CHANGED, so their sidebars
 // load the list again; a rename or pin from the menu asks it to as well
-// (chatsChanged).
+// (chatsChanged). Deleting the chat from the menu ends with deleteChat:
+// its tabs are told to leave, and a schedule (a durable alarm, retried if
+// it fails) runs the SDK's destroy(), which wipes the agent's storage
+// (messages, stream buffers, everything) and evicts it. Not destroy()
+// itself in the RPC: it aborts the agent right after, which can beat the
+// RPC's answer and make the Worker see a failure.
 //
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
@@ -30,7 +35,7 @@ import type { UIMessage } from "ai"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
-import { CHATS_CHANGED } from "@/lib/chat/events"
+import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   isUntitled,
@@ -59,6 +64,20 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  the Worker (src/lib/chat/list.ts): browsers can't call it. */
   chatsChanged() {
     this.broadcast(CHATS_CHANGED)
+  }
+
+  /** Tells this chat's open tabs to leave, then deletes everything the
+   *  agent keeps, for good, as soon as the schedule runs. An RPC method,
+   *  for the Worker (src/lib/chat/list.ts), once it has deleted the
+   *  chat's row. */
+  async deleteChat() {
+    this.broadcast(CHAT_DELETED)
+    await this.schedule(0, "wipe")
+  }
+
+  /** What deleteChat's schedule runs. */
+  async wipe() {
+    await this.destroy()
   }
 
   override async onChatMessage(

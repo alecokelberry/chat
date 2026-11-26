@@ -1,11 +1,19 @@
 // The chat list the signed-in pages share (the sidebar and the open
-// chat's header), with its two changes, rename and pin. A change shows at
-// once, over the loaded list, while a server function writes it
-// (src/lib/chat/list.ts); the list then loads again, and the chat's agent
-// tells its other open tabs to as well. A change stays shown until a load
-// has it: a load that was already on its way when the write finished comes
-// back without it, and dropping the change then would flick the row back
-// and forth. A failed write drops it and says so in a toast.
+// chat's header), with its changes: rename, pin and delete. A rename or
+// pin shows at once, over the loaded list, while a server function writes
+// it (src/lib/chat/list.ts); the list then loads again, and the chat's
+// agent tells its other open tabs to as well. A change stays shown until a
+// load has it: a load that was already on its way when the write finished
+// comes back without it, and dropping the change then would flick the row
+// back and forth. A failed write drops it and says so in a toast.
+//
+// Delete has Undo instead of a confirm (docs/decisions.md): the chat
+// leaves the list at once (deleting the open one goes to a new chat) and
+// a toast, "Chat deleted", offers Undo for its five seconds, longer while
+// the pointer or focus is on it. Undo puts the chat back where it was.
+// Only once the toast closes without Undo does the server delete it, so a
+// tab closed mid-toast keeps the chat. The menu sends focus to the page
+// (chat-actions.tsx); after going to a new chat, so does this.
 import {
   createContext,
   use,
@@ -19,16 +27,17 @@ import {
 import { useRouter } from "@tanstack/react-router"
 
 import { toast } from "@/components/ui/toast"
-import { pinChat, renameChat } from "@/lib/chat/list"
+import { deleteChat, pinChat, renameChat } from "@/lib/chat/list"
 import type { ChatSummary } from "@/lib/chat/store"
 
-/** What renaming and pinning need of a chat. */
+/** What the menu's actions need of a chat. */
 export type ChatRef = Pick<ChatSummary, "id" | "title" | "pinned">
 
 type ChatList = {
   chats: ChatSummary[]
   rename: (chat: ChatRef, title: string) => void
   pin: (chat: ChatRef, pinned: boolean) => void
+  delete: (chat: ChatRef) => void
 }
 
 const ChatListContext = createContext<ChatList | null>(null)
@@ -71,6 +80,16 @@ function applyChanges(chats: ChatSummary[], changes: Change[]): ChatSummary[] {
     )
 }
 
+/** Moves focus to the page's <main> once a new chat has replaced the
+ *  deleted one, if the menu's focus went with the old page. */
+function focusNewPage() {
+  if (
+    document.activeElement === null ||
+    document.activeElement === document.body
+  )
+    document.getElementById("main")?.focus()
+}
+
 export function ChatListProvider({
   chats: loaded,
   children,
@@ -78,9 +97,18 @@ export function ChatListProvider({
   chats: ChatSummary[]
   children: ReactNode
 }) {
+  // Deleted, but still waiting on their toast.
+  const [deleting, setDeleting] = useState<ReadonlySet<string>>(new Set())
+  const listed = useMemo(
+    () =>
+      deleting.size === 0
+        ? loaded
+        : loaded.filter((chat) => !deleting.has(chat.id)),
+    [loaded, deleting]
+  )
   const [changes, setChanges] = useState<Change[]>([])
   const router = useRouter()
-  const chats = useMemo(() => applyChanges(loaded, changes), [loaded, changes])
+  const chats = useMemo(() => applyChanges(listed, changes), [listed, changes])
   // A change goes once a load has it, or its chat is gone (adjusting state
   // while rendering, as React's docs suggest, so no frame shows both).
   const [seen, setSeen] = useState(loaded)
@@ -142,8 +170,42 @@ export function ChatListProvider({
           () => pinChat({ data: { id: chat.id, pinned } }),
           pinned ? "Couldn't pin the chat" : "Couldn't unpin the chat"
         ),
+      delete: ({ id }) => {
+        const hide = (hidden: boolean) =>
+          setDeleting((all) => {
+            const next = new Set(all)
+            if (hidden) next.add(id)
+            else next.delete(id)
+            return next
+          })
+        hide(true)
+        if (router.state.location.pathname === `/c/${id}`)
+          void router.navigate({ to: "/" }).then(focusNewPage)
+        let undone = false
+        toast("Chat deleted", {
+          action: {
+            label: "Undo",
+            onAction: () => {
+              undone = true
+              hide(false)
+            },
+          },
+          onDismiss: () => {
+            if (undone) return
+            void (async () => {
+              try {
+                await deleteChat({ data: { id } })
+              } catch {
+                toast.error("Couldn't delete the chat")
+              }
+              await router.invalidate()
+              hide(false)
+            })()
+          },
+        })
+      },
     }),
-    [change]
+    [change, router]
   )
   const list = useMemo(() => ({ chats, ...actions }), [chats, actions])
   return <ChatListContext value={list}>{children}</ChatListContext>

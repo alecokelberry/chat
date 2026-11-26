@@ -68,7 +68,7 @@ WCAG 2.2 AA is the floor. Lint can't check it; axe catches some, so check the re
 
 ## Which ui-sdk part
 
-Every control is a ui-sdk part, so keyboards, screen readers and agents all see it. Pick from the ui-sdk skill's table; anything pressable is a Button, never a raw `<button>`, and a destructive action confirms in an AlertDialog.
+Every control is a ui-sdk part, so keyboards, screen readers and agents all see it. Pick from the ui-sdk skill's table; anything pressable is a Button, never a raw `<button>`, and a destructive action offers Undo in a toast instead of a confirm (Delete), or confirms in an AlertDialog where nothing can be put back.
 
 - **Names:** every control has one, from its label part or `aria-label` on an icon-only one. Labels differ where they sit, so a row's menu is "Actions for <chat title>", not "Actions".
 - **State:** style from `data-slot` and state attributes, and animate popups with `data-starting-style` and `data-ending-style` from `--transform-origin`. An async action returns its Promise, so the part shows `data-pending` itself.
