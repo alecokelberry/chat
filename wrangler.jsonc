@@ -29,13 +29,13 @@
   },
   // DEV_SIGN_IN is "1" only in .dev.vars and e2e: the local Dev sign-in.
   // MOCK_MODEL likewise: the mock model in place of NVIDIA (src/lib/ai).
-  // PASSKEY_RP_ID is the domain passkeys belong to: the account's
-  // workers.dev domain, so live and every Preview share it; locally
-  // "localhost" (src/lib/auth/server.ts).
+  // PASSKEY_RP_ID is the site passkeys belong to: live's own address, so
+  // a Preview (never under it) can't ask for live's passkey, and the phone
+  // offers only live's here; locally "localhost" (src/lib/auth/server.ts).
   "vars": {
     "DEV_SIGN_IN": "0",
     "MOCK_MODEL": "0",
-    "PASSKEY_RP_ID": "alecokelberry.workers.dev",
+    "PASSKEY_RP_ID": "chat.alecokelberry.workers.dev",
   },
   // One Durable Object per chat, its messages in its own SQLite
   // (src/lib/chat).
@@ -53,7 +53,9 @@
   ],
   // A Preview is a branch's own copy of the Worker: nothing above carries
   // over, so it lists its own vars and bindings. It runs on chat-preview,
-  // never the live database, and has its own secrets (README.md).
+  // never the live database, and has its own secrets (README.md). Its
+  // passkeys belong to the account's workers.dev domain, the one site every
+  // Preview's address sits under, and only chat-preview knows them.
   "previews": {
     "vars": {
       "DEV_SIGN_IN": "0",
