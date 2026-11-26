@@ -2,11 +2,11 @@ import type { Page } from "@playwright/test"
 
 import {
   expect,
+  expectNoHeldStart,
   recordStartTimes,
   send,
   signInAsDev,
   signInAsOwner,
-  startTimeLeads,
   test,
 } from "./session"
 
@@ -211,9 +211,7 @@ test.describe("on a phone", () => {
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     const drawer = page.getByRole("dialog", { name: "Chats" })
     await expect.poll(async () => (await drawer.boundingBox())?.x).toBe(0)
-    const leads = await startTimeLeads(page)
-    expect(leads.length).toBeGreaterThan(0)
-    expect(Math.max(...leads)).toBeLessThanOrEqual(0)
+    await expectNoHeldStart(page)
   })
 
   // ui-sdk's agent test: the drawer's trigger is named and an agent can

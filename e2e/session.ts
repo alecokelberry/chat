@@ -98,13 +98,15 @@ export async function recordStartTimes(page: Page) {
   })
 }
 
-/** The leads recordStartTimes saw, in milliseconds. */
-export async function startTimeLeads(page: Page): Promise<number[]> {
-  return page.evaluate(() =>
+/** Checks that an open set its start times, none of them ahead of now. */
+export async function expectNoHeldStart(page: Page) {
+  const leads: number[] = await page.evaluate(() =>
     "startTimeLeads" in window && Array.isArray(window.startTimeLeads)
       ? window.startTimeLeads
       : []
   )
+  expect(leads.length).toBeGreaterThan(0)
+  expect(Math.max(...leads)).toBeLessThanOrEqual(0)
 }
 
 export async function send(page: Page, text: string) {

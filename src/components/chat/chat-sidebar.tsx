@@ -70,7 +70,7 @@ export function ChatSidebar({
 }) {
   const phone = usePhone()
   const [open, setOpen] = useState(false)
-  const [settled, setSettled] = useState(false)
+  const [opened, setOpened] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   return (
     <div className="sticky top-0 flex h-dvh bg-background text-foreground">
@@ -84,7 +84,7 @@ export function ChatSidebar({
         <SidebarDrawer
           open={open && phone === true}
           onOpenChange={setOpen}
-          onOpenChangeComplete={setSettled}
+          onOpenChangeComplete={setOpened}
           themeColor
         >
           <header className="box-content flex h-header shrink-0 items-center px-3 pt-safe md:hidden">
@@ -97,7 +97,7 @@ export function ChatSidebar({
               </SidebarHeader>
               <ChatList
                 chats={chats}
-                limit={settled ? undefined : FIRST_SCREEN}
+                limit={opened ? undefined : FIRST_SCREEN}
                 onPick={close}
               />
             </SidebarDrawerContent>

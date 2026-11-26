@@ -2,10 +2,10 @@ import type { Page } from "@playwright/test"
 
 import {
   expect,
+  expectNoHeldStart,
   recordStartTimes,
   send,
   signInAsDev,
-  startTimeLeads,
   test,
 } from "./session"
 
@@ -107,10 +107,7 @@ test.describe("on a phone", () => {
         sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
       )
       .toBe("1")
-    const leads = await startTimeLeads(page)
-    // The first frame's time is set once the slide runs.
-    expect(leads.length).toBeGreaterThan(0)
-    expect(Math.max(...leads)).toBeLessThanOrEqual(0)
+    await expectNoHeldStart(page)
   })
 
   test("the models open in a sheet, and the chosen one answers", async ({
