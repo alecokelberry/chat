@@ -3,8 +3,10 @@
 // and code longer than 16 lines folds behind Show more / Show less. This
 // is Streamdown's `code` override (reply.tsx); an inline `code` passes
 // straight through. The fold counts lines of the finished block, so a
-// block still being written never folds under the reader.
-import { useState, type ComponentProps } from "react"
+// block still being written never folds under the reader. Streamdown's
+// scrolling body is made a labelled, focusable region after each render, so
+// long lines scroll from the keyboard (WCAG 2.1.1).
+import { useEffect, useRef, useState, type ComponentProps } from "react"
 import { defaultComponents, useIsCodeFenceIncomplete } from "streamdown"
 
 import { CopyAction } from "@/components/chat/message-action"
@@ -42,11 +44,21 @@ function Block(props: ComponentProps<typeof defaultComponents.code>) {
   const [open, setOpen] = useState(false)
   const foldable =
     !incomplete && code.replace(/\n$/, "").split("\n").length > FOLD_LINES
+  const block = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const body = block.current?.querySelector(
+      '[data-streamdown="code-block-body"]'
+    )
+    body?.setAttribute("tabindex", "0")
+    body?.setAttribute("role", "region")
+    body?.setAttribute("aria-label", "Code")
+  })
   return (
     <div
+      ref={block}
       data-slot="code-block"
       data-folded={foldable && !open ? "" : undefined}
-      className="relative"
+      className="relative [&_[data-streamdown=code-block-body]:focus-visible]:ring-2 [&_[data-streamdown=code-block-body]:focus-visible]:ring-ring [&_[data-streamdown=code-block-body]:focus-visible]:outline-hidden"
     >
       <defaultComponents.code {...props} />
       {code !== "" && (

@@ -334,8 +334,10 @@
       color: var(--typeset-muted);
     }
 
-    /* Math. */
-    &:where(math[display="block"]) {
+    /* Math. KaTeX's hidden MathML copy (for screen readers) is left out:
+       it's clipped to a pixel, and a scroller there would be a tab stop
+       that shows nothing (axe: scrollable-region-focusable). */
+    &:where(math[display="block"]:not(.katex-mathml *)) {
       margin-block-start: var(--typeset-flow);
       margin-block-end: 0;
       overflow-x: auto;
