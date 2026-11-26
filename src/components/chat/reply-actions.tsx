@@ -1,8 +1,9 @@
 // The icon row under a reply: Copy puts the reply's markdown on the
 // clipboard (the icon swaps to a check and its name to "Copied" for a
 // moment), and Retry, on the last reply only, asks the same model again and
-// replaces it. Under the last reply the row always shows; under earlier
-// ones on hover or focus (always on touch).
+// replaces it. Then who answered and how long it took ("Super · 4.2s").
+// Under the last reply the row always shows; under earlier ones on hover
+// or focus (always on touch).
 import { useEffect, useState, type ReactNode } from "react"
 import { CheckIcon, CopyIcon, RefreshCwIcon } from "lucide-react"
 
@@ -21,11 +22,14 @@ import { cn } from "@/lib/utils"
 export function ReplyActions({
   text,
   latest,
+  answeredBy,
   onRetry,
 }: {
   /** The reply's markdown. */
   text: string
   latest: boolean
+  /** Who answered and how long it took, once known. */
+  answeredBy?: string
   /** Shown only when given: the last reply, with nothing streaming. */
   onRetry?: () => void
 }) {
@@ -71,6 +75,11 @@ export function ReplyActions({
         >
           <RefreshCwIcon aria-hidden />
         </ReplyAction>
+      )}
+      {answeredBy !== undefined && (
+        <span className="ms-1.5 text-xs text-muted-foreground tabular-nums">
+          {answeredBy}
+        </span>
       )}
     </MessageToolbar>
   )

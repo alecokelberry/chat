@@ -11,16 +11,21 @@
 // in, Lightning names it (if that fails, the next reply tries again).
 // After either, it tells its open tabs CHATS_CHANGED, so their sidebars
 // load the list again.
+//
+// Each reply's metadata records who answered and how long it took, from
+// the send to the last word, or to Stop or a failure, so the chat shows
+// it after a reload too.
 import {
   AIChatAgent,
   type ChatResponseResult,
   type OnChatMessageOptions,
 } from "@cloudflare/ai-chat"
-import { MessageType } from "@cloudflare/ai-chat/types"
 import type { UIMessage } from "ai"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
+import { lastModel } from "@/lib/ai/models"
 import { CHATS_CHANGED } from "@/lib/chat/events"
+import { startedAt, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   isUntitled,
   setFirstTitle,
@@ -48,27 +53,44 @@ export class ChatAgent extends AIChatAgent<Env> {
     _onFinish: unknown,
     options?: OnChatMessageOptions
   ) {
+    const started = Date.now()
+    const model = lastModel(this.messages).key
     await touchChat(this.env.DB, this.owner)
     this.broadcast(CHATS_CHANGED)
     const result = await streamReply(this.messages, options?.abortSignal)
-    return result.toUIMessageStreamResponse({ onError: replyError })
+    return result.toUIMessageStreamResponse({
+      onError: replyError,
+      messageMetadata: ({ part }): ReplyMetadata | undefined => {
+        if (part.type === "start") return { model, started }
+        // At each step's end, not the reply's: the SDK replaces the finish
+        // chunk's metadata on its way to the browser.
+        if (part.type === "finish-step") return { ms: Date.now() - started }
+        return undefined
+      },
+    })
   }
 
   override async onChatResponse(result: ChatResponseResult) {
-    if (result.status === "aborted") this.settleStoppedTab()
+    if (result.status === "aborted" || result.status === "error")
+      await this.saveTimeOf(result.message)
     if (result.status !== "error") await this.nameIfUntitled()
   }
 
-  // The tab that pressed Stop stops showing words at once, but the server
-  // keeps the words that reach it before the Stop does, and the SDK sends
-  // the saved reply to every tab but that one. Sending it there too makes
-  // the screen settle on what was saved.
-  private settleStoppedTab() {
-    this.broadcast(
-      JSON.stringify({
-        type: MessageType.CF_AGENT_CHAT_MESSAGES,
-        messages: this.messages,
-      })
+  // A stopped or failed reply ends without a finish, so its time is the
+  // time to Stop or to the failure. The tab that pressed Stop stops
+  // showing words at once, but the server keeps the words that reach it
+  // before the Stop does, and the SDK sends the saved reply to every tab
+  // but that one. Saving the time sends the reply to every tab, so that
+  // one settles on what was saved too.
+  private async saveTimeOf(reply: UIMessage) {
+    const started = startedAt(reply.metadata) ?? Date.now()
+    const saved =
+      typeof reply.metadata === "object" ? reply.metadata : undefined
+    const ended = { ...saved, ms: Date.now() - started }
+    await this.persistMessages(
+      this.messages.map((message) =>
+        message.id === reply.id ? { ...message, metadata: ended } : message
+      )
     )
   }
 
