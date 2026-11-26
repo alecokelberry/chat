@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
-import { send, signInAsDev, signInAsOwner } from "./session"
+import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
 
 // The chat list (src/components/chat/chat-sidebar.tsx, src/lib/chat) on the
 // mock model: a send puts its chat at the top, the first reply names it

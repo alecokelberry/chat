@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./session"
 
 // A file that isn't there (an old build's chunk, a browser's favicon guess)
 // gets a bare 404 from src/server.ts, not a rendered page.

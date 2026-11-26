@@ -1,6 +1,5 @@
-import { expect, test } from "@playwright/test"
-
 import { SECURITY_HEADERS } from "../src/start"
+import { expect, test } from "./session"
 
 // The security headers from src/start.ts, on a page and on /api.
 

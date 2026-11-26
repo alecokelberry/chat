@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
-import { send, signInAsDev } from "./session"
+import { expect, send, signInAsDev, test } from "./session"
 
 // The chat screen's feel, as the archived Chat had it: where a new chat's
 // greeting sits, what a tap does to the composer on a phone, the waiting

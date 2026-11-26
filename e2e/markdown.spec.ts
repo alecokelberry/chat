@@ -1,11 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { expect, test } from "@playwright/test"
-
 import { prepareMarkdown } from "@/lib/chat/markdown"
 
-import { send, signInAsDev } from "./session"
+import { expect, send, signInAsDev, test } from "./session"
 
 // Replies render as markdown, with highlighted code and math, in the
 // browser only (src/components/chat/reply.tsx). The mock model answers a
