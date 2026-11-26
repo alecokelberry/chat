@@ -3,9 +3,11 @@
 // first send makes the chat: a fresh id, then /c/<id> with the message and
 // its model in history state, which that page sends once it's connected
 // (src/routes/_app/c.$id.tsx).
+import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { Composer } from "@/components/chat/composer"
+import { DEFAULT_MODEL } from "@/lib/ai/models"
 
 export const Route = createFileRoute("/_app/")({
   component: NewChat,
@@ -13,6 +15,7 @@ export const Route = createFileRoute("/_app/")({
 
 function NewChat() {
   const navigate = useNavigate()
+  const [model, setModel] = useState(DEFAULT_MODEL)
   return (
     // The archived Chat's (Grok's): the greeting 30% down and the composer
     // 28px under it, both staying put while the composer grows; the page
@@ -27,7 +30,9 @@ function NewChat() {
       </h1>
       <div className="mx-auto w-full max-w-composer px-2 sm:px-0">
         <Composer
-          onSend={(text, model) =>
+          model={model}
+          onModelChange={setModel}
+          onSend={(text) =>
             void navigate({
               to: "/c/$id",
               params: { id: crypto.randomUUID() },

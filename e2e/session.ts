@@ -47,6 +47,14 @@ export { expect }
 export const greeting = (page: Page) =>
   page.getByRole("heading", { name: "What can I help with?" })
 
+/** The thread's questions, oldest first. */
+export const questions = (page: Page) =>
+  page.getByRole("article", { name: "Your message" })
+
+/** The thread's replies, oldest first. */
+export const replies = (page: Page) =>
+  page.getByRole("article", { name: "Reply" })
+
 /** Checks that a new chat shows, signed in as `name`: the account row at
  *  the column's bottom names them. A phone hides the column (its drawer
  *  has its own row), so this finds the row hidden too. */
