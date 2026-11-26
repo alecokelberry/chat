@@ -3,10 +3,11 @@
 // and code longer than 16 lines folds behind Show more / Show less. This
 // is Streamdown's `code` override (reply.tsx); an inline `code` passes
 // straight through. The fold counts lines of the finished block, so a
-// block still being written never folds under the reader. Streamdown's
-// scrolling body is made a labelled, focusable region after each render, so
-// long lines scroll from the keyboard (WCAG 2.1.1).
-import { useEffect, useRef, useState, type ComponentProps } from "react"
+// block still being written never folds under the reader. Streamdown hands
+// the props it doesn't use to its scrolling body, so tabIndex, role and a
+// label there make long lines scroll from the keyboard (WCAG 2.1.1), and
+// React keeps them through its re-renders. e2e/a11y.spec.ts fails without.
+import { useState, type ComponentProps } from "react"
 import { defaultComponents, useIsCodeFenceIncomplete } from "streamdown"
 
 import { CopyAction } from "@/components/chat/message-action"
@@ -40,27 +41,23 @@ export function Code(props: ComponentProps<typeof defaultComponents.code>) {
 
 function Block(props: ComponentProps<typeof defaultComponents.code>) {
   const code = codeText(props.children)
+  const language = /language-(\S+)/.exec(props.className ?? "")?.[1] ?? "Code"
   const incomplete = useIsCodeFenceIncomplete()
   const [open, setOpen] = useState(false)
   const foldable =
     !incomplete && code.replace(/\n$/, "").split("\n").length > FOLD_LINES
-  const block = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const body = block.current?.querySelector(
-      '[data-streamdown="code-block-body"]'
-    )
-    body?.setAttribute("tabindex", "0")
-    body?.setAttribute("role", "region")
-    body?.setAttribute("aria-label", "Code")
-  })
   return (
     <div
-      ref={block}
       data-slot="code-block"
       data-folded={foldable && !open ? "" : undefined}
       className="relative [&_[data-streamdown=code-block-body]:focus-visible]:ring-2 [&_[data-streamdown=code-block-body]:focus-visible]:ring-ring [&_[data-streamdown=code-block-body]:focus-visible]:outline-hidden"
     >
-      <defaultComponents.code {...props} />
+      <defaultComponents.code
+        {...props}
+        tabIndex={0}
+        role="region"
+        aria-label={`${language} code`}
+      />
       {code !== "" && (
         <MessageToolbar
           aria-label="Code actions"
