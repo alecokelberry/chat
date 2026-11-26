@@ -173,6 +173,7 @@
   /* Sizes. */
   --spacing-icon: 20px; /* icons in icon buttons, nav rows, toggles */
   --spacing-sidebar: 254px; /* the sidebar's column and phone drawer */
+  --spacing-sidebar-rail: 56px; /* the collapsed column */
   --spacing-sidebar-header: 56px;
   --spacing-header: var(--header-height);
   --spacing-header-content: calc(var(--header-height) + 1.5rem);
@@ -479,6 +480,14 @@
 }
 @utility duration-drawer {
   transition-duration: var(--duration-drawer);
+}
+
+/* The computer's sidebar collapsing to its rail and back (DESIGN.md ›
+   Motion): its width moves the chat beside it. */
+@utility transition-sidebar {
+  transition-property: width;
+  transition-timing-function: var(--ease-spring);
+  transition-duration: var(--duration-sidebar);
 }
 
 /* An icon swap (copy to check): fades and scales, never eases its color, so

@@ -8,12 +8,13 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { getSession } from "@/lib/auth/session"
 import { getChats } from "@/lib/chat/list"
+import { isSidebarCollapsed } from "@/lib/sidebar"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
     const user = await getSession()
     if (user === null) throw redirect({ to: "/sign-in" })
-    return { user }
+    return { user, sidebarCollapsed: isSidebarCollapsed() }
   },
   loader: () => getChats(),
   component: AppLayout,
@@ -21,8 +22,9 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const chats = Route.useLoaderData()
+  const { sidebarCollapsed } = Route.useRouteContext()
   return (
-    <ChatSidebar chats={chats}>
+    <ChatSidebar chats={chats} collapsed={sidebarCollapsed}>
       <Outlet />
     </ChatSidebar>
   )

@@ -6,6 +6,7 @@ import type * as React from "react"
 import {
   Tooltip as TooltipPrimitive,
   TooltipContent as TooltipContentPrimitive,
+  TooltipShortcut,
   TooltipTrigger,
 } from "@ui-sdk/react/tooltip"
 
@@ -39,4 +40,4 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent }
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipShortcut }
