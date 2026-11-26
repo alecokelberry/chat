@@ -1,0 +1,78 @@
+# Claude reviews each pull request once, when it opens (or leaves draft),
+# with the repo's own `code-review` skill: Standards against
+# CODING_STANDARDS.md and AGENTS.md, Spec against the issue it closes.
+# Findings land as inline comments plus one summary comment.
+#
+# It runs on Alec's Claude subscription (CLAUDE_CODE_OAUTH_TOKEN from
+# `claude setup-token`), so it costs nothing extra but uses his limits:
+# review effort follows the diff's size, and later pushes aren't
+# re-reviewed. It is advice, not a gate: the ruleset requires only
+# `verify`. Fork and Dependabot PRs get no secrets, so they're skipped.
+name: review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Up to 200 changed lines: Sonnet at medium effort. More: Opus at high.
+      # Generated and vendored files don't count.
+      - name: Size the review
+        id: size
+        run: |
+          LINES=$(git diff --numstat origin/main...HEAD -- . \
+            ':!pnpm-lock.yaml' ':!src/routeTree.gen.ts' ':!worker-configuration.d.ts' \
+            ':!migrations/meta/**' ':!.claude/skills/**' \
+            | awk '{ n += $1 + $2 } END { print n + 0 }')
+          echo "$LINES lines to review"
+          if [ "$LINES" -le 200 ]; then
+            echo "args=--model sonnet --effort medium" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--model opus --effort high" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Run the `code-review` skill with `origin/main` as the fixed point. The spec is the
+            issue the PR body closes (`gh issue view <n>`); if it closes none, skip the Spec
+            axis and write "Spec: no issue" in the summary. Nobody can answer questions here,
+            so never ask. Read only; change no files.
+
+            Then post the findings on the PR:
+            - each finding tied to a line: an inline comment on that line
+              (mcp__github_inline_comment__create_inline_comment, confirmed: true);
+            - one summary with `gh pr comment`, headed "## Claude review", with the
+              Standards and Spec sections and the one-line totals. If both axes are
+              clean, say so in one line.
+            Only real findings: no praise, no restating the diff.
+          claude_args: >-
+            ${{ steps.size.outputs.args }}
+            --max-turns 60
+            --allowedTools "Skill,Agent,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),Bash(git rev-parse:*),Bash(git show:*)"
+            --disallowedTools "Edit,Write,WebFetch,WebSearch,Bash(pnpm:*),Bash(node:*),Bash(git push:*)"
