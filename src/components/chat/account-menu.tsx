@@ -62,12 +62,15 @@ export function AccountMenu({
           render={
             <MenuTrigger
               render={
-                <SidebarRow variant="account" aria-label={account.name} />
+                <SidebarRow
+                  variant="account"
+                  aria-label={tooltip ? account.name : undefined}
+                />
               }
             />
           }
         >
-          <Avatar>
+          <Avatar aria-hidden>
             <AvatarFallback>{initialsOf(account.name)}</AvatarFallback>
           </Avatar>
           <span>{account.name}</span>

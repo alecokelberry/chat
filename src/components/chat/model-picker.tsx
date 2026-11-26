@@ -23,6 +23,7 @@ export function ModelPicker({
   value: ModelKey
   onValueChange: (model: ModelKey) => void
 }) {
+  const current = MODELS.find((model) => model.key === value)?.name ?? ""
   return (
     <Select<ModelKey>
       items={items}
@@ -31,7 +32,8 @@ export function ModelPicker({
         if (model !== null) onValueChange(model)
       }}
     >
-      <SelectTrigger aria-label="Model">
+      {/* The name holds the button's visible text (WCAG 2.5.3). */}
+      <SelectTrigger aria-label={`Model: ${current}`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
