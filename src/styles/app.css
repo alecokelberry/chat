@@ -420,6 +420,12 @@
   contain-intrinsic-size: auto 10rem;
 }
 
+/* A phone sheet's bottom padding: 12px, or the home indicator's height on
+   a phone that has one. */
+@utility safe-area-bottom {
+  padding-bottom: max(--spacing(3), env(safe-area-inset-bottom));
+}
+
 /* Named durations (Tailwind has no --duration-* namespace). */
 @utility duration-fast {
   transition-duration: var(--duration-fast);
