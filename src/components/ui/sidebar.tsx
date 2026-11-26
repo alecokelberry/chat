@@ -23,6 +23,7 @@ import {
   DrawerTrigger,
 } from "@ui-sdk/react/drawer"
 import { Button as ButtonPrimitive } from "@ui-sdk/react/button"
+import { BrandMark } from "@/components/ui/brand-mark"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -108,6 +109,8 @@ function SidebarToggle({
           <TooltipShortcut className="text-muted-foreground" />
         </TooltipContent>
       </Tooltip>
+      {/* The app's mark, at the column's end; the rail has no room. */}
+      <BrandMark className="ms-auto me-1 size-5 group-data-collapsed/sidebar:hidden" />
     </div>
   )
 }
