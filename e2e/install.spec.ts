@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
+
+import { expect, test } from "./session"
 
 // Installing to the Home Screen: the manifest gives the app its name, icon
 // and colors, and the head points iOS at the same icon and colors. Colors

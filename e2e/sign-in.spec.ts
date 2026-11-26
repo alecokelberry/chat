@@ -1,6 +1,7 @@
-import { expect, test, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
+import { expect, test } from "./session"
 
 // Signing in (src/lib/auth): only a signed-in browser reaches Chat, the
 // first passkey needs the setup code, and the passkey then signs in.
@@ -29,15 +30,20 @@ test("signed out, Chat sends you to sign in", async ({ page }) => {
   ).toBeVisible()
 })
 
-test("a wrong setup code adds no passkey", async ({ page }) => {
-  await addAuthenticator(page)
-  await page.goto("/setup#not-it")
-  await page.getByRole("button", { name: "Add a passkey" }).click()
-  await expect(page.getByRole("alert")).toHaveText(
-    "That setup code isn't right."
-  )
-  await page.goto("/")
-  await expect(page).toHaveURL(/\/sign-in$/)
+test.describe(() => {
+  // The server refuses the code, and the browser logs the 401.
+  test.use({ allowedProblems: [/status of 401/] })
+
+  test("a wrong setup code adds no passkey", async ({ page }) => {
+    await addAuthenticator(page)
+    await page.goto("/setup#not-it")
+    await page.getByRole("button", { name: "Add a passkey" }).click()
+    await expect(page.getByRole("alert")).toHaveText(
+      "That setup code isn't right."
+    )
+    await page.goto("/")
+    await expect(page).toHaveURL(/\/sign-in$/)
+  })
 })
 
 test("the owner adds a passkey with the setup code and signs in with it", async ({

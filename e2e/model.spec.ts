@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
-import { send, signInAsDev } from "./session"
+import { expect, send, signInAsDev, test } from "./session"
 
 // The model picker in the composer (src/components/chat/model-picker.tsx)
 // on the mock model, whose reply opens with the model id it was asked for

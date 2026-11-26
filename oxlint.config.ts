@@ -128,6 +128,51 @@ export default defineConfig({
   },
   overrides: [
     {
+      // e2e tests take `test` and `expect` from e2e/session.ts, which
+      // fails a test on page errors and shares sign-in; a spec that
+      // imports Playwright's own would skip both.
+      files: ["e2e/**"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["@ui-sdk/**"],
+                message:
+                  "Use components/ui, not ui-sdk directly. Add or extend a component there (DESIGN.md).",
+              },
+            ],
+            paths: [
+              {
+                name: "@playwright/test",
+                importNames: ["test", "expect"],
+                message:
+                  "Import test and expect from ./session: it fails on page errors and shares sign-in.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      files: ["e2e/session.ts"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["@ui-sdk/**"],
+                message:
+                  "Use components/ui, not ui-sdk directly. Add or extend a component there (DESIGN.md).",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
       // components/ui owns component styling and wraps ui-sdk.
       files: ["src/components/ui/**"],
       rules: {

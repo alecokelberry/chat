@@ -1,10 +1,47 @@
-import { expect, type Page } from "@playwright/test"
+import { test as base, expect, type Page } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
 
-// Helpers the chat tests share: sign in as Dev or as the owner and wait for
-// hydration, then send a message from the composer. Also the types of
-// ui-sdk's agent bridge (window.agent, in `--mode test` builds).
+// What every e2e test shares, so parallel work never grows its own copy:
+// `test` and `expect` (specs import them from here, not from
+// @playwright/test; lint enforces it), signing in as Dev or as the owner
+// with a wait for hydration, and sending a message from the composer. Also
+// the types of ui-sdk's agent bridge (window.agent, in `--mode test` builds).
+//
+// `test` fails any test whose pages threw, logged an error, or logged a
+// ui-sdk warning: the test build keeps ui-sdk's development checks
+// (vite.config.ts), which catch misuse the types can't. A test that
+// expects one lists it in `allowedProblems`.
+
+export const test = base.extend<{
+  allowedProblems: RegExp[]
+  pageProblems: void
+}>({
+  allowedProblems: [[], { option: true }],
+  pageProblems: [
+    async ({ context, allowedProblems }, use) => {
+      const problems: string[] = []
+      context.on("weberror", (error) => {
+        problems.push(`Uncaught: ${error.error().message}`)
+      })
+      context.on("console", (message) => {
+        const text = message.text()
+        const isProblem =
+          message.type() === "error" ||
+          (message.type() === "warning" && text.startsWith("[ui-sdk]"))
+        if (isProblem) problems.push(`console.${message.type()}: ${text}`)
+      })
+      await use()
+      const unexpected = problems.filter(
+        (problem) => !allowedProblems.some((allowed) => allowed.test(problem))
+      )
+      expect(unexpected, "the page reported problems").toEqual([])
+    },
+    { auto: true },
+  ],
+})
+
+export { expect }
 
 export async function signInAsDev(page: Page) {
   await page.goto("/sign-in")

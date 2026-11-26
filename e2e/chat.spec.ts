@@ -1,7 +1,7 @@
-import { expect, test, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 import { REPLY } from "../src/lib/ai/mock"
-import { send, signInAsDev, signInAsOwner } from "./session"
+import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
 
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
