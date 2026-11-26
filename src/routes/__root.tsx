@@ -1,5 +1,6 @@
 // The document every page renders into: fonts, tokens, and the color
 // scheme following the system (a theme toggle comes with the shell). The
+// page tracks whether focus came from the keyboard (FocusModality). The
 // head also makes it installable: public/manifest.webmanifest names the app
 // and its icons, iOS reads the apple-touch-icon, and theme-color paints the
 // status bar in the page's background, light or dark (--background). The
@@ -11,6 +12,8 @@ import "@/components/ui/dev-agent"
 
 import type { ReactNode } from "react"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+
+import { FocusModality } from "@/components/ui/focus-modality"
 
 import appCss from "@/styles/app.css?url"
 
@@ -54,6 +57,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <FocusModality />
         <Scripts />
       </body>
     </html>

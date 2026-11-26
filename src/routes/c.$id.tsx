@@ -55,6 +55,10 @@ function Chat({ id }: { id: string }) {
   const { messages, sendMessage, stop, status, isStreaming } = useAgentChat({
     agent,
     getInitialMessages: isNew ? null : undefined,
+    // A new chat has no reply to pick back up. Trying anyway races its
+    // first send and ends it early, so the screen would look idle until
+    // the first word.
+    resume: !isNew,
   })
   const navigate = useNavigate()
   const sent = useRef(false)
@@ -74,7 +78,9 @@ function Chat({ id }: { id: string }) {
   return (
     <>
       <Thread messages={messages} busy={busy} failed={status === "error"} />
-      <div className="mx-auto w-full max-w-content">
+      {/* 24px in and up from the screen's edges on a phone, in line with
+          the thread's text; 16px in on a computer. */}
+      <div className="mx-auto w-full max-w-composer px-2 pb-2 sm:px-0">
         <Composer
           busy={busy}
           defaultModel={firstMessage?.model ?? lastModel(messages).key}

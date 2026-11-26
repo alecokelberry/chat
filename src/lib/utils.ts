@@ -6,9 +6,15 @@ import { createCn } from "cn/config"
 export const cn = createCn({
   extend: {
     theme: {
-      spacing: ["icon", "sidebar-header", "header", "header-content"],
-      radius: ["item", "overlay"],
-      container: ["content", "signin"],
+      spacing: [
+        "icon",
+        "sidebar-header",
+        "header",
+        "header-content",
+        "new-chat-top",
+      ],
+      radius: ["item", "overlay", "composer"],
+      container: ["content", "composer", "signin"],
       ease: [
         "standard",
         "decelerate",

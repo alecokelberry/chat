@@ -42,6 +42,9 @@
 /* Focus rings show for keyboard focus only: after a click (data-pointer,
    focus-modality.tsx) just text fields keep theirs. */
 @custom-variant focus-visible (&:focus-visible:where(:root:not([data-pointer]) *, input, textarea, select, [contenteditable="true"]));
+/* Since the last Tab or arrow key: for a ring around a text field's box
+   (the composer), which a tap or click mustn't draw. */
+@custom-variant keyboard (&:where(:root:not([data-pointer]) *));
 
 /* The design system's tokens (DESIGN.md). Raw values live in :root and
    its dark variant; @theme inline turns them into utilities. A new name also goes in
@@ -132,6 +135,7 @@
   --radius-3xl: 24px;
   --radius-item: 10px; /* list and sidebar rows */
   --radius-overlay: 20px; /* menus and dialogs */
+  --radius-composer: 29px; /* half its 58px one-line height: Grok's pill */
 
   /* Elevation and blur. */
   --shadow-elevated: var(--elevated-shadow);
@@ -160,7 +164,7 @@
   --duration-fast: 120ms; /* hover, press */
   --duration-base: 180ms;
   --duration-menu: 120ms; /* menus and tooltips, in and out */
-  --duration-pane: 200ms; /* dialogs, scrims, the composer's focus */
+  --duration-pane: 200ms; /* dialogs and scrims */
   --duration-spin: 300ms; /* the theme icon's spin */
   --duration-sidebar: 200ms; /* collapse and expand */
   --duration-drawer: 300ms; /* the phone sidebar opening; closing is duration-pane */
@@ -172,6 +176,11 @@
   --spacing-header: var(--header-height);
   --spacing-header-content: calc(var(--header-height) + 1.5rem);
   --container-content: 730px; /* Grok's reply column */
+  --container-composer: 764px; /* Grok's composer; the thread's column too */
+  /* A new chat's greeting sits 30% down the screen (the page's 1rem
+     padding and this), so it stays put while the composer under it grows
+     (Grok's). svh, so the iPhone keyboard doesn't move it. */
+  --spacing-new-chat-top: calc(30svh - 1rem);
   --container-signin: 384px;
 }
 
@@ -397,6 +406,20 @@
   padding-left: max(--spacing(4), env(safe-area-inset-left));
 }
 
+/* Scroll bars keep their room on both edges, so the centered thread never
+   shifts when it starts to scroll. */
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable both-edges;
+}
+
+/* A thread's turn: the browser skips laying out and painting it while it's
+   out of view, so a long chat stays quick; it remembers the turn's last
+   height, guessing 10rem before it has one. */
+@utility offscreen-turn {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 10rem;
+}
+
 /* Named durations (Tailwind has no --duration-* namespace). */
 @utility duration-fast {
   transition-duration: var(--duration-fast);
@@ -468,5 +491,54 @@
     @media (prefers-reduced-motion: no-preference) {
       scale: 0.95;
     }
+  }
+}
+
+/* The spinner (ui/spinner.tsx): eight dots turning one step at a time.
+   Reduced motion holds it still. */
+@keyframes spin-steps {
+  to {
+    rotate: -360deg;
+  }
+}
+@utility spin-steps {
+  animation: spin-steps 0.8s steps(8) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* A label still at work ("Thinking"): a soft highlight sweeping across
+   its text. Reduced motion shows plain text. */
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@utility shimmer {
+  --shimmer-highlight: oklch(from currentColor l c h / calc(alpha * 0.2));
+  background-image: linear-gradient(
+    110deg,
+    currentColor calc(50% - 3ch - 40px),
+    var(--shimmer-highlight) 50%,
+    currentColor calc(50% + 3ch + 40px)
+  );
+  background-size: calc(200% + 6ch + 80px) 100%;
+  background-repeat: no-repeat;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s linear infinite;
+  @variant dark {
+    --shimmer-highlight: oklch(
+      from currentColor max(0.8, calc(l + 0.4)) c h / calc(alpha + 0.4)
+    );
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
   }
 }
