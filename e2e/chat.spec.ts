@@ -1,12 +1,14 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
+import { REPLY } from "../src/lib/ai/mock"
 import { send, signInAsDev } from "./session"
 
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
-// reload, and Stop keeps what arrived. The mock's reply ends in "Done."
-// after under three seconds (src/lib/ai/mock.ts).
+// reload (even mid-reply, and in a second tab), and Stop keeps what
+// arrived. The mock's reply ends in "Done." after under three seconds
+// (src/lib/ai/mock.ts).
 
 test("a new chat streams the reply and keeps it after a reload", async ({
   page,
@@ -26,6 +28,66 @@ test("a new chat streams the reply and keeps it after a reload", async ({
   await page.reload()
   await expect(thread).toContainText("Hello there")
   await expect(thread).toContainText("Done.")
+})
+
+// The mock's whole reply, once: it opens by naming the model, which has no
+// spaces, then says REPLY (whose only special characters are dots).
+const WHOLE_REPLY = new RegExp(
+  String.raw`^This is the mock model talking, as \S+ with thinking (on|off)\. ` +
+    REPLY.replaceAll(".", String.raw`\.`) +
+    "$"
+)
+
+// Mid-reply: the text so far is there and Stop is showing, and more text
+// arrives than was there at first, before the end.
+async function expectStillStreaming(page: Page) {
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect(reply).toContainText("This is the mock")
+  await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
+  const soFar = await reply.innerText()
+  expect(soFar).not.toContain("Done.")
+  await expect(reply).not.toHaveText(soFar)
+  await expect(reply).not.toContainText("Done.")
+}
+
+test("a reload mid-reply shows the text so far, then keeps streaming", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, "Keep going")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect(reply).toContainText("mock")
+
+  await page.reload()
+  await expectStillStreaming(page)
+  await expect(reply).toHaveText(WHOLE_REPLY)
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+
+  // And it was saved whole, once.
+  await page.reload()
+  await expect(reply).toHaveText(WHOLE_REPLY)
+})
+
+test("a second tab on the chat shows the same reply streaming", async ({
+  page,
+  context,
+}) => {
+  await signInAsDev(page)
+  await send(page, "Two tabs")
+  await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "mock"
+  )
+
+  const other = await context.newPage()
+  await other.goto(page.url())
+  await expectStillStreaming(other)
+  await expectStillStreaming(page)
+  for (const tab of [page, other]) {
+    await expect(tab.getByRole("article", { name: "Reply" })).toHaveText(
+      WHOLE_REPLY
+    )
+  }
 })
 
 test("Stop ends the reply and keeps what arrived", async ({ page }) => {

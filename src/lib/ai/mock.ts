@@ -13,7 +13,7 @@ import type { LanguageModel } from "ai"
 import { simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 
-const REPLY =
+export const REPLY =
   "It sends one word at a time, slowly enough that a test can watch the reply stream in, press Stop partway through, and check what was kept. Done."
 
 const MARKDOWN_REPLY = `## Some markdown
