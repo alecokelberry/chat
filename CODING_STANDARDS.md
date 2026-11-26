@@ -34,7 +34,7 @@ Polished at every size (1440 and 390), in light and dark, by mouse, touch and ke
 
 **ui-sdk first.** Read `node_modules/@ui-sdk/react/docs/llms.txt`, the `ui-sdk` skill and each component's page before using it. Flag anything against DESIGN.md › Which ui-sdk part, a part, behavior or hook built by hand that ui-sdk ships, and a popup opened from a click handler where a `create*Controller()` or `payload` belongs. Every control a person can use, links included, is one `window.agent.snapshot()` lists by name: a link is a Button whose `render` is the router's `Link` (ui-sdk's Button docs › Links), never a bare `Link`. When a lint rule and ui-sdk's docs disagree, the docs win: fix the rule in its own commit.
 
-**Skills, by what changed.** Load each that applies and say which ran, in the PR's Evidence (`Ran: …`). Most UI changes hit several rows.
+**Skills, by what changed.** For building, not review: the build thread loads each that applies and says which ran, in the PR's Evidence (`Ran: …`). Review reads the result against this page and doesn't load them. Most UI changes hit several rows.
 
 | The diff touches                                                                   | Run                                        | What it catches here                                                                                   |
 | ---------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
