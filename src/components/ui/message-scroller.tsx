@@ -40,7 +40,7 @@ function MessageScroller({
       >
         <ScrollAreaContent
           ref={content}
-          className="mx-auto flex h-max min-h-full w-full max-w-composer flex-col gap-6 px-2 pt-2 pb-6 sm:px-6"
+          className="mx-auto flex h-max min-h-full w-full max-w-composer flex-col gap-6 px-2 pt-2 pb-6 sm:px-6 md:pt-header-content"
         >
           {children}
           <div ref={spacer} aria-hidden className="-mt-6 shrink-0" />
