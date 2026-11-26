@@ -53,7 +53,7 @@ function MenuItem({
   return (
     <MenuItemPrimitive
       className={cn(
-        "relative flex min-h-8 items-center gap-3.5 rounded-xl px-2 py-0.75 text-sm outline-hidden select-none in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-pending:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+        "relative flex min-h-8 items-center gap-3.5 rounded-xl px-2 py-0.75 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-disabled:opacity-50 data-pending:opacity-50 highlighted:bg-accent highlighted:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
         className
       )}
       {...props}

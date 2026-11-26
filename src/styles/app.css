@@ -45,6 +45,11 @@
 /* Since the last Tab or arrow key: for a ring around a text field's box
    (the composer), which a tap or click mustn't draw. */
 @custom-variant keyboard (&:where(:root:not([data-pointer]) *));
+/* A list or menu row ui-sdk highlights (data-highlighted: under the mouse,
+   or reached by arrow keys), but not after a touch: ui-sdk keeps the row a
+   finger tapped highlighted, which read as stuck on an iPhone. A finger
+   gets the press (active:) instead, as native rows do. */
+@custom-variant highlighted (&[data-highlighted]:where(:root:not([data-pointer="touch"]) *));
 
 /* The design system's tokens (DESIGN.md). Raw values live in :root and
    its dark variant; @theme inline turns them into utilities. A new name also goes in
@@ -372,8 +377,10 @@
   }
   /* Native on a phone: no tap flash (controls have their own press
      states), no font inflation in landscape, and no page bounce or
-     pull-to-refresh behind the app's own scrollers. */
+     pull-to-refresh behind the app's own scrollers. The page's color sits
+     on <html> too, since Safari on iOS 26 tints its bars from it. */
   html {
+    @apply bg-background;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;

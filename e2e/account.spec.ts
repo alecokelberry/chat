@@ -30,6 +30,12 @@ test.describe("on a computer", () => {
     await expect(menu(page)).toContainText("Dev")
     await expect(menu(page)).toContainText("dev@chat.test")
 
+    // iOS repaints the status bar from a theme-color that arrives, so
+    // Theme swaps the tags for fresh ones rather than editing them.
+    const firstTag = await page
+      .locator('meta[name="theme-color"]')
+      .first()
+      .elementHandle()
     await menu(page).getByRole("menuitem", { name: "Theme" }).click()
     // It stays open, so the sun and moon can be seen trading places.
     await expect(menu(page)).toBeVisible()
@@ -39,6 +45,7 @@ test.describe("on a computer", () => {
     const statusBar = page.locator('meta[name="theme-color"]')
     await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
     await expect(statusBar.last()).toHaveAttribute("content", "#1e1d1d")
+    expect(await firstTag.evaluate((tag) => tag.isConnected)).toBe(false)
 
     // A reload paints dark from the start: the page's background is dark
     // before any of the app's scripts have run.
@@ -119,5 +126,27 @@ test.describe("on a phone", () => {
     await expect(menu(page)).toContainText("dev@chat.test")
     await expect(menu(page)).toHaveAttribute("data-presentation", "sheet")
     await expectNoHeldStart(page)
+
+    // A tapped Theme shows its press, then lets go like a native row: the
+    // highlight ui-sdk keeps on the tapped row isn't painted after a touch.
+    // Tapped where the row is once the sheet has slid up, as a finger would
+    // (Playwright's own tap scrolls first, which the sheet reads as a swipe).
+    const theme = menu(page).getByRole("menuitem", { name: "Theme" })
+    await expect
+      .poll(() =>
+        menu(page).evaluate((el) =>
+          el.style.getPropertyValue("--drawer-progress")
+        )
+      )
+      .toBe("1")
+    const box = await theme.boundingBox()
+    if (box === null) throw new Error("Theme has no box")
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    await expect(theme).toHaveAttribute("data-highlighted")
+    await expect(theme).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
   })
 })
