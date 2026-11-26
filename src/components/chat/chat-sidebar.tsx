@@ -96,6 +96,11 @@ function takeEarlyTap(): boolean {
   return "tapped" in early && early.tapped === true
 }
 
+/** The row whose Pin or Unpin was just chosen. Pinning moves the row to
+ *  another group, so it is built again and the … that had focus is gone:
+ *  the new row's … takes focus (ChatRow). */
+let movedRow: { id: string; until: number } | null = null
+
 /** More rows than the tallest phone shows: what the drawer opens with. */
 const FIRST_SCREEN = 40
 
@@ -293,6 +298,11 @@ const ChatRow = memo(function ChatRow({
   const chat = { id, title, pinned }
   const action = useRef<HTMLButtonElement>(null)
   const name = title ?? "New chat"
+  useEffect(() => {
+    if (movedRow?.id !== id) return
+    if (Date.now() < movedRow.until) action.current?.focus()
+    movedRow = null
+  }, [id])
   if (renaming)
     return (
       <SidebarItem>
@@ -315,7 +325,13 @@ const ChatRow = memo(function ChatRow({
         <SidebarRowAction ref={action} aria-label={`Actions for ${name}`}>
           <EllipsisIcon aria-hidden />
         </SidebarRowAction>
-        <ChatMenuContent chat={chat} onRename={() => onRename(id)} />
+        <ChatMenuContent
+          chat={chat}
+          onRename={() => onRename(id)}
+          onPin={() => {
+            movedRow = { id, until: Date.now() + 3000 }
+          }}
+        />
       </Menu>
     </SidebarItem>
   )
