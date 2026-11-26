@@ -10,8 +10,8 @@
 // a toast, "Chat deleted", offers Undo for its five seconds, longer while
 // the pointer or focus is on it. Undo puts the chat back where it was.
 // Only once the toast closes without Undo does the server delete it, so a
-// tab closed mid-toast keeps the chat. Focus left on the gone row's …
-// goes to the page.
+// tab closed mid-toast keeps the chat. The menu sends focus to the page
+// (chat-actions.tsx); after going to a new chat, so does this.
 import {
   createContext,
   use,
@@ -35,7 +35,7 @@ type ChatList = {
   chats: ChatSummary[]
   rename: (chat: ChatRef, title: string) => void
   pin: (chat: ChatRef, pinned: boolean) => void
-  remove: (chat: ChatRef) => void
+  delete: (chat: ChatRef) => void
 }
 
 const ChatListContext = createContext<ChatList | null>(null)
@@ -61,16 +61,14 @@ function applyChange(chats: ChatSummary[], change: Change): ChatSummary[] {
     )
 }
 
-/** Moves focus to the page's <main> if it was on something now gone,
- *  like a deleted row's …, once the menu has closed. */
-function keepFocusOnPage() {
-  requestAnimationFrame(() => {
-    if (
-      document.activeElement === null ||
-      document.activeElement === document.body
-    )
-      document.getElementById("main")?.focus()
-  })
+/** Moves focus to the page's <main> once a new chat has replaced the
+ *  deleted one, if the menu's focus went with the old page. */
+function focusNewPage() {
+  if (
+    document.activeElement === null ||
+    document.activeElement === document.body
+  )
+    document.getElementById("main")?.focus()
 }
 
 export function ChatListProvider({
@@ -124,7 +122,7 @@ export function ChatListProvider({
           () => pinChat({ data: { id: chat.id, pinned } }),
           pinned ? "Couldn't pin the chat" : "Couldn't unpin the chat"
         ),
-      remove: ({ id }) => {
+      delete: ({ id }) => {
         const hide = (hidden: boolean) =>
           setDeleting((all) => {
             const next = new Set(all)
@@ -134,8 +132,7 @@ export function ChatListProvider({
           })
         hide(true)
         if (router.state.location.pathname === `/c/${id}`)
-          void router.navigate({ to: "/" }).then(keepFocusOnPage)
-        else keepFocusOnPage()
+          void router.navigate({ to: "/" }).then(focusNewPage)
         let undone = false
         toast("Chat deleted", {
           action: {

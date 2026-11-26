@@ -3,9 +3,9 @@
 // list: a 256px popover with 20px corners, 8px in, a hairline and two soft
 // drops, that fades and zooms in from its trigger (popup-motion), 6px
 // away. Rows are 32px with 12px corners and 16px muted icons; a pending
-// row dims, and a destructive one (Delete) is red. On a phone it's a sheet from the bottom instead (presentation
-// "auto", DESIGN.md › Phones), with 48px rows and padding clear of the
-// home indicator, moved only by ui-sdk's own translate. As a popover it's
+// row dims, and a destructive one (Delete) is red. On a phone it's a
+// sheet from the bottom instead (presentation "auto", DESIGN.md ›
+// Phones), with 48px rows and padding clear of the home indicator, moved only by ui-sdk's own translate. As a popover it's
 // `fixed` from the first frame, since popups render in place and Safari
 // painted one inside its trigger's row for a few frames.
 import type * as React from "react"

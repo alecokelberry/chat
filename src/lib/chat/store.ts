@@ -110,22 +110,17 @@ export async function updateChat(
   return rows.length > 0
 }
 
-/** Whether the user has the chat. */
-export async function hasChat(
+/** Takes the chat off the user's list for good. Whether the user had
+ *  the chat. */
+export async function deleteChatRow(
   d1: D1Database,
   owner: ChatOwner
 ): Promise<boolean> {
-  const row = await db(d1)
-    .select({ id: chat.id })
-    .from(chat)
+  const rows = await db(d1)
+    .delete(chat)
     .where(isChat(owner))
-    .get()
-  return row !== undefined
-}
-
-/** Takes the chat off the user's list for good. */
-export async function deleteChatRow(d1: D1Database, owner: ChatOwner) {
-  await db(d1).delete(chat).where(isChat(owner))
+    .returning({ id: chat.id })
+  return rows.length > 0
 }
 
 /** The user's chats, pinned ones first, then latest activity first, so

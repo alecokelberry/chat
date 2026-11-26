@@ -40,11 +40,20 @@ export function ChatMenuContent({
   chat: ChatRef
   onRename: () => void
 }) {
-  const { pin, remove } = useChatList()
+  const list = useChatList()
+  // Delete takes the …  away with its row (or header), so focus goes to
+  // the page instead; the rest return it to the ….
+  const deleting = useRef(false)
   return (
-    <MenuContent align="end" side="bottom">
+    <MenuContent
+      align="end"
+      side="bottom"
+      finalFocus={() =>
+        deleting.current ? document.getElementById("main") : null
+      }
+    >
       <MenuGroup>
-        <MenuItem onSelect={() => pin(chat, !chat.pinned)}>
+        <MenuItem onSelect={() => list.pin(chat, !chat.pinned)}>
           {chat.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
           {chat.pinned ? "Unpin" : "Pin"}
         </MenuItem>
@@ -71,7 +80,10 @@ export function ChatMenuContent({
       <MenuItem
         destructive
         data-agent-confirm="Delete this chat"
-        onSelect={() => remove(chat)}
+        onSelect={() => {
+          deleting.current = true
+          list.delete(chat)
+        }}
       >
         <Trash2Icon aria-hidden />
         Delete

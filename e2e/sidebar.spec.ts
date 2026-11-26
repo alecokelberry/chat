@@ -333,6 +333,8 @@ async function deleteForGood(page: Page, path: string) {
     .click()
   await menu(page).getByRole("menuitem", { name: "Delete" }).click()
   await expect(toasts(page)).toContainText("Chat deleted")
+  // The row's … went with it, so focus goes to the page.
+  await expect(page.locator("#main")).toBeFocused()
   await page.evaluate(() => window.toast.dismiss())
   await expect(toasts(page)).toHaveCount(0)
   await page.reload()
