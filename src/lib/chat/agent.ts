@@ -13,8 +13,9 @@
 // load the list again.
 //
 // Each reply's metadata records who answered and how long it took, from
-// the send to the last word, or to Stop or a failure, so the chat shows
-// it after a reload too.
+// the send to the last word, or to Stop or a failure, and how long the
+// model thought, from its first thought to the end of its last (or to
+// Stop), so the chat shows them after a reload too.
 import {
   AIChatAgent,
   type ChatResponseResult,
@@ -25,7 +26,7 @@ import type { UIMessage } from "ai"
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
 import { CHATS_CHANGED } from "@/lib/chat/events"
-import { startedAt, type ReplyMetadata } from "@/lib/chat/reply-metadata"
+import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   isUntitled,
   setFirstTitle,
@@ -58,10 +59,17 @@ export class ChatAgent extends AIChatAgent<Env> {
     await touchChat(this.env.DB, this.owner)
     this.broadcast(CHATS_CHANGED)
     const result = await streamReply(this.messages, options?.abortSignal)
+    let thinking: number | undefined
     return result.toUIMessageStreamResponse({
       onError: replyError,
       messageMetadata: ({ part }): ReplyMetadata | undefined => {
         if (part.type === "start") return { model, started }
+        if (part.type === "reasoning-start" && thinking === undefined) {
+          thinking = Date.now()
+          return { thinking }
+        }
+        if (part.type === "reasoning-end" && thinking !== undefined)
+          return { thought: Date.now() - thinking }
         // At each step's end, not the reply's: the SDK replaces the finish
         // chunk's metadata on its way to the browser.
         if (part.type === "finish-step") return { ms: Date.now() - started }
@@ -83,10 +91,7 @@ export class ChatAgent extends AIChatAgent<Env> {
   // but that one. Saving the time sends the reply to every tab, so that
   // one settles on what was saved too.
   private async saveTimeOf(reply: UIMessage) {
-    const started = startedAt(reply.metadata) ?? Date.now()
-    const saved =
-      typeof reply.metadata === "object" ? reply.metadata : undefined
-    const ended = { ...saved, ms: Date.now() - started }
+    const ended = stoppedMetadata(reply.metadata, Date.now())
     await this.persistMessages(
       this.messages.map((message) =>
         message.id === reply.id ? { ...message, metadata: ended } : message

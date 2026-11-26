@@ -1,23 +1,28 @@
 // The mock model: stands in for NVIDIA when MOCK_MODEL is "1" (e2e and, if
 // you like, local dev), so tests never call NVIDIA. It waits half a second
 // before the first word, so a test sees the waiting marker, then streams a
-// fixed reply a word at a time, under three seconds in all, ending in
-// "Done.", so a test can watch it arrive and stop it partway. The reply
-// opens by saying which model id it stands in for and whether the request
-// turned thinking on, so a test can check what a real call would have
-// asked NVIDIA for. A message that mentions "markdown" gets a reply with a
-// heading, a list, a table, a link, code and
-// math instead, streamed the same way, so a test sees each half-written
-// piece (an open fence, an open formula) on its way. A message ending in
-// "(busy N)" gets a 429 for its first N calls, as a busy NVIDIA answers, so
-// a test can watch the quiet retry and the error after it. Asked for a chat's
-// title (generateText), it answers "Talking to the mock model" at once.
+// fixed reply a word at a time, under three seconds in all (five with
+// thinking), ending in "Done.", so a test can watch it arrive and stop it
+// partway. The reply opens by saying which model id it stands in for and
+// whether the request turned thinking on, so a test can check what a real
+// call would have asked NVIDIA for. With thinking on, it first thinks
+// aloud (REASONING), streamed the same way, as NVIDIA streams
+// reasoning_content. A message that mentions "markdown" gets a reply with
+// a heading, a list, a table, a link, code and math instead, streamed the
+// same way, so a test sees each half-written piece (an open fence, an open
+// formula) on its way. A message ending in "(busy N)" gets a 429 for its
+// first N calls, as a busy NVIDIA answers, so a test can watch the quiet
+// retry and the error after it. Asked for a chat's title (generateText),
+// it answers "Talking to the mock model" at once.
 import type { LanguageModel } from "ai"
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 
 export const REPLY =
   "It sends one word at a time, slowly enough that a test can watch the reply stream in, press Stop partway through, and check what was kept. Done."
+
+const REASONING =
+  "The mock model is thinking it over, a word at a time, so a test sees the step say Thinking… and then how long it took."
 
 const MARKDOWN_REPLY = `## Some markdown
 
@@ -101,16 +106,30 @@ export function mockModel(modelId: string): LanguageModel {
               .join("")
           : ""
       refuseIfBusy(message)
+      const thinking = thinks(providerOptions?.nvidia?.chat_template_kwargs)
       const text = message.includes("markdown")
         ? MARKDOWN_REPLY
-        : `This is the mock model talking, as ${modelId} with thinking ${thinks(providerOptions?.nvidia?.chat_template_kwargs) ? "on" : "off"}. ${REPLY}`
+        : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${REPLY}`
       // Each word keeps the space or newline after it.
-      const words = text.split(/(?<=\s)/)
+      const wordsOf = (line: string) => line.split(/(?<=\s)/)
+      const words = wordsOf(text)
+      const thoughts = thinking ? wordsOf(REASONING) : []
       return {
         stream: simulateReadableStream({
           initialDelayInMs: 500,
           chunkDelayInMs: 60,
           chunks: [
+            ...(thinking
+              ? [
+                  { type: "reasoning-start" as const, id: "thinking" },
+                  ...thoughts.map((delta) => ({
+                    type: "reasoning-delta" as const,
+                    id: "thinking",
+                    delta,
+                  })),
+                  { type: "reasoning-end" as const, id: "thinking" },
+                ]
+              : []),
             { type: "text-start", id: "reply" },
             ...words.map((delta) => ({
               type: "text-delta" as const,
@@ -129,9 +148,9 @@ export function mockModel(modelId: string): LanguageModel {
                   cacheWrite: undefined,
                 },
                 outputTokens: {
-                  total: words.length,
+                  total: thoughts.length + words.length,
                   text: words.length,
-                  reasoning: undefined,
+                  reasoning: thoughts.length,
                 },
               },
             },

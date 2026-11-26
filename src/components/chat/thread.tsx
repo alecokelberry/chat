@@ -3,22 +3,25 @@
 // it (message-scroller.tsx). Your messages sit in bubbles on the end side;
 // replies are markdown across the column (reply.tsx), each with its actions,
 // who answered and how long it took under it once it has finished
-// (reply-actions.tsx). Until a reply's first word arrives, the waiting
-// marker holds its place (pending-reply.tsx). A failed reply ends the
-// thread with one quiet line saying why, and Retry.
+// (reply-actions.tsx). A model that thinks shows its reasoning above the
+// reply in a closed step, "Thinking…" until the answer's first word, then
+// how long it thought (ui/reply-step.tsx). Until a reply's first word or
+// thought arrives, the waiting marker holds its place (pending-reply.tsx).
+// A failed reply ends the thread with one quiet line saying why, and Retry.
 // The markdown renderer loads in the browser only, starting as this module
 // does, so it's ready before the first message arrives over the WebSocket;
 // a reply waits for it rather than flash its raw markdown. The server never
 // imports it (the import.meta.env.SSR branch drops it from the Worker's
 // build) and never renders a chat's messages (the route is data-only).
 import { lazy, Suspense } from "react"
-import type { UIMessage } from "ai"
-import { CircleAlertIcon, RefreshCwIcon } from "lucide-react"
+import type { ReasoningUIPart, UIMessage } from "ai"
+import { BrainIcon, CircleAlertIcon, RefreshCwIcon } from "lucide-react"
 
 import { PendingReply } from "@/components/chat/pending-reply"
 import { ReplyActions } from "@/components/chat/reply-actions"
 import { Button } from "@/components/ui/button"
-import { answeredBy } from "@/lib/chat/reply-metadata"
+import { ReplyStep } from "@/components/ui/reply-step"
+import { answeredBy, thoughtFor } from "@/lib/chat/reply-metadata"
 import {
   MessageScroller,
   MessageScrollerItem,
@@ -34,6 +37,15 @@ function loadReply() {
 const textOf = (message: UIMessage) =>
   message.parts.map((part) => (part.type === "text" ? part.text : "")).join("")
 
+const thoughtsOf = (message: UIMessage) =>
+  message.parts.filter(
+    (part): part is ReasoningUIPart => part.type === "reasoning"
+  )
+
+/** A reply with no words or thoughts yet. */
+const isBlank = (message: UIMessage) =>
+  textOf(message) === "" && thoughtsOf(message).length === 0
+
 export function Thread({
   messages,
   busy,
@@ -48,7 +60,7 @@ export function Thread({
   onRetry: () => void
 }) {
   const last = messages.at(-1)
-  const waiting = busy && (last?.role !== "assistant" || textOf(last) === "")
+  const waiting = busy && (last?.role !== "assistant" || isBlank(last))
   return (
     <MessageScroller
       role="log"
@@ -66,35 +78,19 @@ export function Thread({
               {textOf(message)}
             </article>
           </MessageScrollerItem>
-        ) : textOf(message) === "" ? null : (
-          // A reply with no words yet: the waiting marker stands in for it.
+        ) : isBlank(message) ? null : (
+          // A reply with no words or thoughts yet: the waiting marker stands
+          // in for it.
           <MessageScrollerItem key={message.id}>
-            <div
-              data-slot="message"
-              className="group/message flex flex-col gap-2.5"
-            >
-              <article aria-label="Reply">
-                <Suspense>
-                  <Reply
-                    text={textOf(message)}
-                    streaming={busy && message === last}
-                  />
-                </Suspense>
-              </article>
-              {!(busy && message === last) && (
-                <ReplyActions
-                  text={textOf(message)}
-                  latest={message === last}
-                  answeredBy={answeredBy(message.metadata)}
-                  // The error line has its own Retry.
-                  onRetry={
-                    message === last && error === undefined
-                      ? onRetry
-                      : undefined
-                  }
-                />
-              )}
-            </div>
+            <ReplyMessage
+              message={message}
+              streaming={busy && message === last}
+              latest={message === last}
+              // The error line has its own Retry.
+              onRetry={
+                message === last && error === undefined ? onRetry : undefined
+              }
+            />
           </MessageScrollerItem>
         )
       )}
@@ -118,5 +114,69 @@ export function Thread({
         </div>
       )}
     </MessageScroller>
+  )
+}
+
+/** A reply: what the model thought, its markdown, then its actions once
+ *  it has finished. */
+function ReplyMessage({
+  message,
+  streaming,
+  latest,
+  onRetry,
+}: {
+  message: UIMessage
+  /** Still arriving. */
+  streaming: boolean
+  latest: boolean
+  onRetry: (() => void) | undefined
+}) {
+  const text = textOf(message)
+  return (
+    <div data-slot="message" className="group/message flex flex-col gap-2.5">
+      <Thinking message={message} running={streaming && text === ""} />
+      {text !== "" && (
+        <article aria-label="Reply">
+          <Suspense>
+            <Reply text={text} streaming={streaming} />
+          </Suspense>
+        </article>
+      )}
+      {!streaming && (
+        <ReplyActions
+          text={text}
+          latest={latest}
+          answeredBy={answeredBy(message.metadata)}
+          onRetry={onRetry}
+        />
+      )}
+    </div>
+  )
+}
+
+/** A reply's reasoning, if the model thought. Nothing for an empty
+ *  thought. */
+function Thinking({
+  message,
+  running,
+}: {
+  message: UIMessage
+  /** Still thinking: the reply is arriving and has no words yet. */
+  running: boolean
+}) {
+  const thoughts = thoughtsOf(message)
+  const text = thoughts
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join("\n\n")
+  if (thoughts.length === 0 || (!running && text === "")) return null
+  return (
+    <ReplyStep
+      icon={<BrainIcon />}
+      label={running ? "Thinking…" : thoughtFor(message.metadata)}
+      running={running}
+    >
+      {text}
+    </ReplyStep>
   )
 }

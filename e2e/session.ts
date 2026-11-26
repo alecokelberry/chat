@@ -125,6 +125,19 @@ export async function expectNoHeldStart(page: Page) {
   expect(Math.max(...leads)).toBeLessThanOrEqual(0)
 }
 
+/** Picks a model in the composer's picker, with a mouse: a popover (phones
+ *  get a sheet, e2e/model.spec.ts). */
+export async function pickModel(page: Page, name: string) {
+  const picker = page.getByRole("combobox", { name: "Model" })
+  await picker.click()
+  await expect(page.locator('[data-slot="select-content"]')).toHaveAttribute(
+    "data-presentation",
+    "popover"
+  )
+  await page.getByRole("option", { name }).click()
+  await expect(picker).toContainText(name)
+}
+
 export async function send(page: Page, text: string) {
   await page.getByRole("textbox", { name: "Message" }).fill(text)
   await page.keyboard.press("Enter")
