@@ -4,7 +4,8 @@
 // chat arrives from / with its first message in history state: it skips
 // loading (there's nothing yet), sends it, and clears the state so a
 // reload doesn't send it again. Each message carries its model in its
-// metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last.
+// metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last,
+// and Retry, which regenerates the last reply in place, asks the same one.
 // A reload (or a second tab) while a reply streams picks it up where it is:
 // useAgentChat asks the agent to resume, and the agent replays the chunks
 // it has kept, then streams the rest.
@@ -55,7 +56,15 @@ function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
   const agent = useAgent({ agent: "ChatAgent", basePath: `api/chats/${id}` })
-  const { messages, sendMessage, stop, status, isStreaming } = useAgentChat({
+  const {
+    messages,
+    sendMessage,
+    regenerate,
+    stop,
+    status,
+    error,
+    isStreaming,
+  } = useAgentChat({
     agent,
     getInitialMessages: isNew ? null : undefined,
     // A new chat has no reply to pick back up. Trying anyway races its
@@ -80,7 +89,14 @@ function Chat({ id }: { id: string }) {
   const busy = status === "submitted" || status === "streaming" || isStreaming
   return (
     <>
-      <Thread messages={messages} busy={busy} failed={status === "error"} />
+      <Thread
+        messages={messages}
+        busy={busy}
+        error={
+          status === "error" ? (error?.message ?? "Request failed.") : undefined
+        }
+        onRetry={() => void regenerate()}
+      />
       {/* 24px in and up from the screen's edges on a phone, in line with
           the thread's text; 16px in on a computer. */}
       <div className="mx-auto w-full max-w-composer px-2 pb-2 sm:px-0">

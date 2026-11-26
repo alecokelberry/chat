@@ -8,9 +8,11 @@
 // asked NVIDIA for. A message that mentions "markdown" gets a reply with a
 // heading, a list, a table, a link, code and
 // math instead, streamed the same way, so a test sees each half-written
-// piece (an open fence, an open formula) on its way.
+// piece (an open fence, an open formula) on its way. A message ending in
+// "(busy N)" gets a 429 for its first N calls, as a busy NVIDIA answers, so
+// a test can watch the quiet retry and the error after it.
 import type { LanguageModel } from "ai"
-import { simulateReadableStream } from "ai"
+import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 
 export const REPLY =
@@ -47,18 +49,43 @@ const thinks = (kwargs: unknown) =>
   "enable_thinking" in kwargs &&
   kwargs.enable_thinking === true
 
+const BUSY = /\(busy (\d+)\)/
+
+/** Calls still to refuse, per message. Lives as long as the isolate: each
+ *  test sends a message of its own. */
+const busyCalls = new Map<string, number>()
+
+/** Throws NVIDIA's 429 while this message's busy calls last. */
+function refuseIfBusy(message: string) {
+  const busy = BUSY.exec(message)
+  if (busy === null) return
+  const left = busyCalls.get(message) ?? Number(busy[1])
+  if (left === 0) return
+  busyCalls.set(message, left - 1)
+  throw new APICallError({
+    message: "Too Many Requests",
+    url: "https://mock.invalid/v1/chat/completions",
+    requestBodyValues: {},
+    statusCode: 429,
+    isRetryable: true,
+  })
+}
+
 export function mockModel(modelId: string): LanguageModel {
   return new MockLanguageModelV4({
     modelId,
     doStream: async ({ prompt, providerOptions }) => {
       const asked = prompt.at(-1)
-      const text =
-        asked?.role === "user" &&
-        asked.content.some(
-          (part) => part.type === "text" && part.text.includes("markdown")
-        )
-          ? MARKDOWN_REPLY
-          : `This is the mock model talking, as ${modelId} with thinking ${thinks(providerOptions?.nvidia?.chat_template_kwargs) ? "on" : "off"}. ${REPLY}`
+      const message =
+        asked?.role === "user"
+          ? asked.content
+              .map((part) => (part.type === "text" ? part.text : ""))
+              .join("")
+          : ""
+      refuseIfBusy(message)
+      const text = message.includes("markdown")
+        ? MARKDOWN_REPLY
+        : `This is the mock model talking, as ${modelId} with thinking ${thinks(providerOptions?.nvidia?.chat_template_kwargs) ? "on" : "off"}. ${REPLY}`
       // Each word keeps the space or newline after it.
       const words = text.split(/(?<=\s)/)
       return {
