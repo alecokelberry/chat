@@ -31,7 +31,11 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
 }
 
 /** The theme-color metas (src/routes/__root.tsx) follow the system; a
- *  Light or Dark choice points both at its color. */
+ *  Light or Dark choice points both at its color. Each is swapped for a
+ *  fresh copy rather than edited: iOS paints the status bar from a
+ *  theme-color when it arrives and can miss an edit to one already there,
+ *  so the bar kept the old theme until the app restarted. React never
+ *  changes these tags after the first render, so it doesn't miss them. */
 function StatusBarColor() {
   const { value } = usePreference(colorScheme)
   React.useEffect(() => {
@@ -40,7 +44,13 @@ function StatusBarColor() {
     )
     for (const meta of metas) {
       const own = meta.media.includes("dark") ? "dark" : "light"
-      meta.content = THEME_COLOR[value === "system" ? own : value]
+      const content = THEME_COLOR[value === "system" ? own : value]
+      if (meta.content === content) continue
+      const fresh = document.createElement("meta")
+      fresh.name = "theme-color"
+      fresh.media = meta.media
+      fresh.content = content
+      meta.replaceWith(fresh)
     }
   }, [value])
   return null
