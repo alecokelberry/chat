@@ -14,7 +14,8 @@ import { expect, pickModel, send, signInAsDev, test } from "./session"
 // What you can do with a reply (src/components/chat/reply-actions.tsx), and
 // what happens when NVIDIA is busy (src/lib/ai), on the mock model. A
 // message ending in "(busy N)" makes the mock answer its first N calls for
-// that message with a 429 (src/lib/ai/mock.ts); each test's message is
+// that message with a 429, "(silent N)" never answers its first N, and
+// "(stalls)" stops partway (src/lib/ai/mock.ts); each test's message is
 // unique, so a rerun starts fresh.
 
 // The mock's plain reply: no markdown in it, so the clipboard's text is
@@ -215,6 +216,44 @@ test("busy twice, the error shows in the chat and Retry answers", async ({
   await expect(page.getByRole("article", { name: "Your message" })).toHaveText(
     question
   )
+})
+
+test("a silent NVIDIA ends in an error, and Retry answers", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, unique("Hello (silent 1)"))
+
+  // The mock's call never answers; the reply gives up after its quiet
+  // limit (short on the mock), not hours later.
+  const error = page.getByRole("alert")
+  await expect(error).toContainText("NVIDIA isn't answering", {
+    timeout: 10_000,
+  })
+  // The waiting marker is gone.
+  await expect(
+    page.getByRole("log", { name: "Messages" }).getByRole("status")
+  ).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+
+  await error.getByRole("button", { name: "Retry" }).click()
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done."
+  )
+  await expect(error).toHaveCount(0)
+})
+
+test("a reply NVIDIA stops sending partway ends in an error", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, unique("Hello (stalls)"))
+
+  const error = page.getByRole("alert")
+  await expect(error).toContainText("NVIDIA isn't answering", {
+    timeout: 10_000,
+  })
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 })
 
 // ui-sdk's agent test: a reply's actions are named, Copy works for an

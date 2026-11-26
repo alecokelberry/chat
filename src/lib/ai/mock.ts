@@ -12,14 +12,24 @@
 // same way, so a test sees each half-written piece (an open fence, an open
 // formula) on its way. A message ending in "(busy N)" gets a 429 for its
 // first N calls, as a busy NVIDIA answers, so a test can watch the quiet
-// retry and the error after it. A message that mentions "burst" gets
+// retry and the error after it. One ending in "(silent N)" gets no answer
+// at all for its first N calls, as a hung NVIDIA does, and one that
+// mentions "(stalls)" stops after a few words and never ends, so a test
+// can watch the silence limit (src/lib/ai/silence.ts) end each. A message
+// that mentions "burst" gets
 // BURSTS, three big chunks 600ms apart, as NVIDIA often sends them, so a
 // test can watch the browser pace them out (src/lib/chat/smooth-text.ts).
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
-import type { LanguageModel } from "ai"
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
+
+type LanguageModelV4StreamPart =
+  Awaited<
+    ReturnType<MockLanguageModelV4["doStream"]>
+  >["stream"] extends ReadableStream<infer Part>
+    ? Part
+    : never
 
 export const REPLY =
   "It sends one word at a time, slowly enough that a test can watch the reply stream in, press Stop partway through, and check what was kept. Done."
@@ -96,10 +106,53 @@ function refuseIfBusy(message: string) {
   })
 }
 
+const SILENT = /\(silent (\d+)\)/
+
+/** Calls still to leave unanswered, per message, like busyCalls. */
+const silentCalls = new Map<string, number>()
+
+/** Whether to leave this call unanswered: while this message's silent
+ *  calls last. */
+function staysSilent(message: string) {
+  const silent = SILENT.exec(message)
+  if (silent === null) return false
+  const left = silentCalls.get(message) ?? Number(silent[1])
+  if (left === 0) return false
+  silentCalls.set(message, left - 1)
+  return true
+}
+
+/** Never answers: the request hangs until it's cancelled. */
+const hang = (signal: AbortSignal | undefined) =>
+  new Promise<never>((_, reject) =>
+    signal?.addEventListener("abort", () => reject(signal.reason), {
+      once: true,
+    })
+  )
+
+/** A few words, then nothing, and no end. */
+const stall = () =>
+  new ReadableStream<LanguageModelV4StreamPart>({
+    start(controller) {
+      controller.enqueue({ type: "text-start", id: "reply" })
+      for (const delta of wordsOf(REPLY).slice(0, 5))
+        controller.enqueue({ type: "text-delta", id: "reply", delta })
+    },
+  })
+
+/** The failure a message asks for, if any: NVIDIA's 429 (thrown), a call
+ *  that never answers, or a reply that stops partway. */
+function failureFor(message: string, abortSignal: AbortSignal | undefined) {
+  refuseIfBusy(message)
+  if (staysSilent(message)) return hang(abortSignal)
+  if (message.includes("(stalls)")) return { stream: stall() }
+  return undefined
+}
+
 /** What the mock names every chat. */
 const TITLE = "Talking to the mock model"
 
-export function mockModel(modelId: string): LanguageModel {
+export function mockModel(modelId: string): MockLanguageModelV4 {
   return new MockLanguageModelV4({
     modelId,
     doGenerate: async () => ({
@@ -116,7 +169,7 @@ export function mockModel(modelId: string): LanguageModel {
       },
       warnings: [],
     }),
-    doStream: async ({ prompt, providerOptions }) => {
+    doStream: async ({ prompt, providerOptions, abortSignal }) => {
       const asked = prompt.at(-1)
       const message =
         asked?.role === "user"
@@ -124,7 +177,8 @@ export function mockModel(modelId: string): LanguageModel {
               .map((part) => (part.type === "text" ? part.text : ""))
               .join("")
           : ""
-      refuseIfBusy(message)
+      const failure = failureFor(message, abortSignal)
+      if (failure !== undefined) return failure
       const thinking = thinks(providerOptions?.nvidia?.chat_template_kwargs)
       const bursty = message.includes("burst")
       const words = bursty
