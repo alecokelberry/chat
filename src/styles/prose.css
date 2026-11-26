@@ -71,13 +71,19 @@
      the language on a row above the code, no rule between. A long line
      scrolls inside the block, never the page. Shiki colors each token
      through --sdm-c (light) and --shiki-dark. */
-  .typeset-docs [data-streamdown="code-block"] {
+  .typeset-docs [data-slot="code-block"] {
     margin-block-start: var(--typeset-flow);
     border-radius: var(--radius-xl);
     background-color: var(--popover);
     box-shadow: 0 0 0 1px var(--border-strong);
     overflow: hidden;
     direction: ltr;
+  }
+  .typeset-docs [data-streamdown="code-block"] {
+    margin: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
   }
   .typeset-docs [data-streamdown="code-block-header"] {
     display: flex;
@@ -91,6 +97,17 @@
   }
   .typeset-docs [data-streamdown="code-block-body"] {
     overflow-x: auto;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    @apply scroll-fade-x;
+  }
+  /* Folded: the first 16 lines (the pre's 4px above and 12px below
+     included); Show more lifts it. */
+  .typeset-docs
+    [data-slot="code-block"][data-folded]
+    [data-streamdown="code-block-body"] {
+    max-height: calc(16lh + 1rem);
+    overflow-y: hidden;
   }
   .typeset-docs [data-streamdown="code-block-body"] pre {
     margin: 0;
@@ -123,7 +140,7 @@
     box-shadow: 0 0 0 1px var(--border-strong);
     overflow: hidden;
   }
-  .typeset-docs [data-streamdown="table-wrapper"] > div {
+  .typeset-docs [data-streamdown="table-wrapper"] > [data-slot="table-scroll"] {
     overflow-x: auto;
   }
   .typeset-docs [data-streamdown="table"] {

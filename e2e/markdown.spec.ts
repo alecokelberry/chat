@@ -146,3 +146,61 @@ test("prepareMarkdown writes math as remark-math reads it and names languages", 
     expect(prepareMarkdown(text)).toBe(text)
   }
 })
+
+test("code copies and folds, and a table copies and saves", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  await signInAsDev(page)
+
+  // A short block: Copy takes exactly the code, and doesn't fold.
+  await send(page, "Show me some markdown")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect(reply).toContainText("Done.", { timeout: 15_000 })
+  await expect(reply.getByRole("button", { name: "Show more" })).toHaveCount(0)
+  const codeActions = reply.getByRole("toolbar", { name: "Code actions" })
+  await codeActions.getByRole("button", { name: "Copy" }).click()
+  await expect(
+    codeActions.getByRole("button", { name: "Copied" })
+  ).toBeVisible()
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toMatch(/^const answer: number = 42\nconst sentence = /)
+  expect(copied.endsWith("\n")).toBe(false)
+
+  // The table: rows and columns, tab-separated, and a CSV download.
+  const table = reply.locator('[data-streamdown="table-wrapper"]')
+  await table.hover()
+  const tableActions = table.getByRole("toolbar", { name: "Table actions" })
+  await tableActions.getByRole("button", { name: "Copy table" }).click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "Name\tValue\nalpha\t1"
+  )
+  const download = page.waitForEvent("download")
+  await tableActions.getByRole("button", { name: "Save as CSV" }).click()
+  const file = await download
+  expect(file.suggestedFilename()).toBe("table.csv")
+  const path = await file.path()
+  const csv = readFileSync(path, "utf8")
+  expect(csv.trim().split(/\r?\n/)).toEqual(["Name,Value", "alpha,1"])
+})
+
+test("a long block folds behind Show more, by keyboard too", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, "Show me long code")
+  const reply = page.getByRole("article", { name: "Reply" })
+  await expect(reply).toContainText("Done.", { timeout: 15_000 })
+  const body = reply.locator('[data-streamdown="code-block-body"]')
+  const height = async () => (await body.boundingBox())?.height ?? 0
+  const folded = await height()
+  const more = reply.getByRole("button", { name: "Show more" })
+  await more.focus()
+  await page.keyboard.press("Enter")
+  await expect(reply.getByRole("button", { name: "Show less" })).toBeVisible()
+  expect(await height()).toBeGreaterThan(folded + 40)
+  await page.keyboard.press("Enter")
+  await expect(more).toBeVisible()
+  expect(await height()).toBeCloseTo(folded, 0)
+})

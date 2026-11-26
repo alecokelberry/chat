@@ -243,6 +243,7 @@ function ChatList({
   return (
     <ScrollArea
       aria-label="Chat list"
+      fade
       className="flex-1 group-data-collapsed/sidebar:hidden"
     >
       <div className="pb-2">
