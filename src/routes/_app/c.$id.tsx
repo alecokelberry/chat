@@ -16,22 +16,28 @@
 // it has kept, then streams the rest. Once the chat has a title (from the
 // sidebar's list), it sits in a pill at the top: over the thread, which
 // fades out under it, on a computer, and in the header row beside the
-// sidebar button on a phone.
-import { Suspense, useEffect, useRef, useState } from "react"
+// sidebar button on a phone. At the header's end, the chat's … holds the
+// same actions as its sidebar row (chat-actions.tsx); Rename there edits
+// the title in the pill.
+import { memo, Suspense, useEffect, useRef, useState } from "react"
 import {
   createFileRoute,
-  getRouteApi,
   useLocation,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router"
 import { useAgent } from "agents/react"
 import { useAgentChat } from "@cloudflare/ai-chat/react"
+import { EllipsisIcon } from "lucide-react"
 
+import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
+import { useChatList, type ChatRef } from "@/components/chat/chat-list"
 import { NotFoundPage } from "@/components/error-page"
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
-import { HeaderTitle } from "@/components/ui/header-title"
+import { Button } from "@/components/ui/button"
+import { HeaderTitle, HeaderTitleEdit } from "@/components/ui/header-title"
+import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
@@ -47,13 +53,9 @@ export const Route = createFileRoute("/_app/c/$id")({
   component: ChatScreen,
 })
 
-const appRoute = getRouteApi("/_app")
-
 function ChatScreen() {
   const { id } = Route.useParams()
-  const title = appRoute.useLoaderData({
-    select: (chats) => chats.find((chat) => chat.id === id)?.title,
-  })
+  const chat = useChatList().chats.find((listed) => listed.id === id)
   // Not an id a chat can have: the not-found page, inside the shell.
   if (!CHAT_ID.test(id)) return <NotFoundPage />
   return (
@@ -64,13 +66,7 @@ function ChatScreen() {
       tabIndex={-1}
       className="flex min-h-0 flex-1 flex-col safe-area pt-0 outline-hidden"
     >
-      {typeof title === "string" && (
-        // Taps go through to the page and the phone's sidebar button, 88px
-        // clear of the pill on either side.
-        <header className="pointer-events-none absolute inset-x-0 top-0 z-10 box-content flex h-header items-center justify-center px-22 pt-safe md:bg-linear-to-b md:from-background md:from-60%">
-          <HeaderTitle>{title}</HeaderTitle>
-        </header>
-      )}
+      {chat !== undefined && <ChatHeader key={id} chat={chat} />}
       <Suspense>
         <Chat key={id} id={id} />
       </Suspense>
@@ -78,7 +74,44 @@ function ChatScreen() {
   )
 }
 
-function Chat({ id }: { id: string }) {
+/** The pill once the chat has a title, and the chat's … at the end. */
+function ChatHeader({ chat }: { chat: ChatRef }) {
+  const [renaming, setRenaming] = useState(false)
+  const actions = useRef<HTMLButtonElement>(null)
+  return (
+    // Taps go through to the page and the phone's sidebar button, 88px
+    // clear of the pill on either side.
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-10 box-content flex h-header items-center justify-center px-22 pt-safe md:bg-linear-to-b md:from-background md:from-60%">
+      {renaming ? (
+        <HeaderTitleEdit>
+          <RenameField
+            chat={chat}
+            onClose={() => setRenaming(false)}
+            returnFocus={actions}
+          />
+        </HeaderTitleEdit>
+      ) : (
+        chat.title !== null && <HeaderTitle>{chat.title}</HeaderTitle>
+      )}
+      <div className="pointer-events-auto absolute end-4 bottom-0 flex h-header items-center">
+        <Menu>
+          <MenuTrigger
+            render={
+              <Button ref={actions} size="header" aria-label="Chat actions" />
+            }
+          >
+            <EllipsisIcon aria-hidden />
+          </MenuTrigger>
+          <ChatMenuContent chat={chat} onRename={() => setRenaming(true)} />
+        </Menu>
+      </div>
+    </header>
+  )
+}
+
+// Memoized: the screen re-renders whenever the chat list changes (its
+// header reads it), and the thread needn't.
+const Chat = memo(function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
   const router = useRouter()
@@ -162,4 +195,4 @@ function Chat({ id }: { id: string }) {
       </div>
     </>
   )
-}
+})

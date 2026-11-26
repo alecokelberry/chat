@@ -5,6 +5,7 @@
 // to go. A toast is --toast with a hairline ring, 12px corners, a 12px
 // title and a light action button (Undo). No close button: toasts time
 // out or swipe away. The stack's motion is `toast-stack` in app.css.
+// App code shows one with `toast()` from here.
 //
 // The region is hidden from agents (it drops its name while empty). Test
 // builds put toast() on window, so e2e can show one before a feature does.
@@ -54,4 +55,4 @@ function Toasts() {
   )
 }
 
-export { Toasts }
+export { Toasts, toast }

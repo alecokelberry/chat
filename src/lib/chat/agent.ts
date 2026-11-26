@@ -14,7 +14,8 @@
 // in, Lightning names it (if that fails, the next reply tries again). A
 // chat that already has a title, a rename's included, keeps it.
 // After either, it tells its open tabs CHATS_CHANGED, so their sidebars
-// load the list again.
+// load the list again; a rename or pin from the menu asks it to as well
+// (chatsChanged).
 //
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
@@ -52,6 +53,12 @@ export class ChatAgent extends AIChatAgent<Env> {
   private get owner(): ChatOwner {
     const at = this.name.lastIndexOf(":")
     return { userId: this.name.slice(0, at), id: this.name.slice(at + 1) }
+  }
+
+  /** Tells this chat's open tabs the list changed. An RPC method, for
+   *  the Worker (src/lib/chat/list.ts): browsers can't call it. */
+  chatsChanged() {
+    this.broadcast(CHATS_CHANGED)
   }
 
   override async onChatMessage(

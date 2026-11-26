@@ -2,8 +2,8 @@
 // activity, per user. The table here is the schema: `pnpm db:generate`
 // (drizzle-kit, drizzle.config.ts) writes its migrations into migrations/. The
 // chat's agent writes it (src/lib/chat/agent.ts): a send adds the chat or
-// moves it up, and the first reply gives it a title. The sidebar reads it
-// (src/lib/chat/list.ts).
+// moves it up, and the first reply gives it a title. The sidebar reads it,
+// and its menu renames and pins (src/lib/chat/list.ts).
 import { and, desc, eq, isNull } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/d1"
 import {
@@ -92,6 +92,22 @@ export async function setFirstTitle(
     .update(chat)
     .set({ title })
     .where(and(isChat(owner), isNull(chat.title)))
+}
+
+/** Renames, pins or unpins the chat. A renamed chat keeps its title:
+ *  Lightning names only a chat without one. Whether the user has the
+ *  chat. */
+export async function updateChat(
+  d1: D1Database,
+  owner: ChatOwner,
+  fields: Partial<Pick<ChatSummary, "title" | "pinned">>
+): Promise<boolean> {
+  const rows = await db(d1)
+    .update(chat)
+    .set(fields)
+    .where(isChat(owner))
+    .returning({ id: chat.id })
+  return rows.length > 0
 }
 
 /** The user's chats, pinned ones first, then latest activity first, so

@@ -48,6 +48,13 @@ const buttonVariants = cva(
         // touch area (40px on touch screens).
         action:
           "size-5 after:absolute after:-inset-2 pointer-coarse:after:-inset-2.5 [&_svg:not([class*='size-'])]:size-3.5",
+        // Grok's header buttons (a chat's …): a 28px pill, 20px glyph, a
+        // 40px invisible touch area.
+        header:
+          "size-7 after:absolute after:-inset-1.5 [&_svg:not([class*='size-'])]:size-icon",
+        // ✕ and ✓ beside a field being edited: a 24px pill, 14px glyph, a
+        // 32px invisible touch area (40px on touch screens).
+        edit: "size-6 after:absolute after:-inset-1 pointer-coarse:after:-inset-2 [&_svg:not([class*='size-'])]:size-3.5",
         // The variant brings its own size (prompt).
         none: "",
       },
