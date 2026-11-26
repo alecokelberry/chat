@@ -3,6 +3,12 @@
 // message doesn't send. While a reply streams, Send becomes Stop. The
 // model picker beside Send chooses who answers the message; it starts on
 // `defaultModel` (the chat's last model) and keeps your choice after.
+//
+// Grok's one-row pill (the archived Chat's): 58px tall for one line, 12px
+// in, 29px corners, the text 20px from the start, then the model and a
+// 32px Send at the end; longer text grows the row and they stay on its
+// last line. A tap doesn't change it (the caret shows where you are): only
+// keyboard focus rings it (the keyboard variant, focus-modality.tsx).
 import { useState } from "react"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
@@ -34,7 +40,7 @@ export function Composer({
 
   return (
     <form
-      className="flex items-end gap-2 rounded-3xl border border-border-strong bg-surface p-2.25 ps-5 transition-shadow duration-pane focus-within:ring-2 focus-within:ring-ring"
+      className="flex items-end gap-1 rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
       onSubmit={(event) => {
         event.preventDefault()
         send()

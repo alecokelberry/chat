@@ -1,6 +1,8 @@
 // Textarea: ui-sdk's textarea (form, submit shortcut, auto-resize) with the
 // design system's look: bare text on whatever surface holds it, like the
-// composer's, at 16px on touch screens so iOS never zooms on focus.
+// composer's, at 16px on touch screens so iOS never zooms on focus. One
+// line is 32px (a 24px line, 4px above and below) beside the composer's
+// 32px Send; it grows to 400px, then scrolls.
 import type * as React from "react"
 import { Textarea as TextareaPrimitive } from "@ui-sdk/react/textarea"
 
@@ -13,7 +15,7 @@ function Textarea({
   return (
     <TextareaPrimitive
       className={cn(
-        "max-h-60 min-h-10 w-full resize-none bg-transparent py-2 field-text text-foreground outline-hidden placeholder:text-muted-foreground",
+        "max-h-100 min-h-8 w-full resize-none bg-transparent px-2 py-1 field-text text-foreground outline-hidden placeholder:text-muted-foreground",
         className
       )}
       {...props}

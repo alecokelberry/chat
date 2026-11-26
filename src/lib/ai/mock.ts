@@ -1,11 +1,12 @@
 // The mock model: stands in for NVIDIA when MOCK_MODEL is "1" (e2e and, if
-// you like, local dev), so tests never call NVIDIA. It streams a fixed
-// reply a word at a time, under three seconds in all, ending in "Done.", so
-// a test can watch it arrive and stop it partway. The reply opens by saying
-// which model id it stands in for and whether the request turned thinking
-// on, so a test can check what a real call would have asked NVIDIA for. A
-// message that mentions
-// "markdown" gets a reply with a heading, a list, a table, a link, code and
+// you like, local dev), so tests never call NVIDIA. It waits half a second
+// before the first word, so a test sees the waiting marker, then streams a
+// fixed reply a word at a time, under three seconds in all, ending in
+// "Done.", so a test can watch it arrive and stop it partway. The reply
+// opens by saying which model id it stands in for and whether the request
+// turned thinking on, so a test can check what a real call would have
+// asked NVIDIA for. A message that mentions "markdown" gets a reply with a
+// heading, a list, a table, a link, code and
 // math instead, streamed the same way, so a test sees each half-written
 // piece (an open fence, an open formula) on its way.
 import type { LanguageModel } from "ai"
@@ -62,7 +63,7 @@ export function mockModel(modelId: string): LanguageModel {
       const words = text.split(/(?<=\s)/)
       return {
         stream: simulateReadableStream({
-          initialDelayInMs: 100,
+          initialDelayInMs: 500,
           chunkDelayInMs: 60,
           chunks: [
             { type: "text-start", id: "reply" },
