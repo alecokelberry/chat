@@ -377,8 +377,10 @@
   }
   /* Native on a phone: no tap flash (controls have their own press
      states), no font inflation in landscape, and no page bounce or
-     pull-to-refresh behind the app's own scrollers. */
+     pull-to-refresh behind the app's own scrollers. The page's color sits
+     on <html> too, since Safari on iOS 26 tints its bars from it. */
   html {
+    @apply bg-background;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;

@@ -30,6 +30,12 @@ test.describe("on a computer", () => {
     await expect(menu(page)).toContainText("Dev")
     await expect(menu(page)).toContainText("dev@chat.test")
 
+    // iOS repaints the status bar from a theme-color that arrives, so
+    // Theme swaps the tags for fresh ones rather than editing them.
+    const firstTag = await page
+      .locator('meta[name="theme-color"]')
+      .first()
+      .elementHandle()
     await menu(page).getByRole("menuitem", { name: "Theme" }).click()
     // It stays open, so the sun and moon can be seen trading places.
     await expect(menu(page)).toBeVisible()
@@ -39,6 +45,7 @@ test.describe("on a computer", () => {
     const statusBar = page.locator('meta[name="theme-color"]')
     await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
     await expect(statusBar.last()).toHaveAttribute("content", "#1e1d1d")
+    expect(await firstTag.evaluate((tag) => tag.isConnected)).toBe(false)
 
     // A reload paints dark from the start: the page's background is dark
     // before any of the app's scripts have run.
