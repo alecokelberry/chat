@@ -94,9 +94,8 @@ function createAuth() {
     plugins: [
       passkey({
         rpName: "Chat",
-        // alecokelberry.workers.dev live and in Previews (workers.dev is the
-        // public suffix, so one account's subdomains can share it), so one
-        // passkey works on both; localhost locally.
+        // The site passkeys belong to: one per database, so the phone
+        // offers one passkey (wrangler.jsonc).
         rpID: env.PASSKEY_RP_ID,
         registration: {
           // Signed in, a passkey joins your own account. Signed out, only
