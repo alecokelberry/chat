@@ -36,5 +36,19 @@
         ]
       }
     ]
+  },
+  "skillOverrides": {
+    "animation-vocabulary": "name-only",
+    "apple-design": "name-only",
+    "find-animation-opportunities": "name-only",
+    "improve-animations": "name-only",
+    "remove-animations": "name-only",
+    "choreograph": "name-only",
+    "gestures": "name-only",
+    "animation-performance": "name-only",
+    "mobile-native": "name-only",
+    "break-ui": "name-only",
+    "wizard": "name-only",
+    "codebase-design": "name-only"
   }
 }
