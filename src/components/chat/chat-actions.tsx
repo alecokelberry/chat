@@ -29,15 +29,23 @@ import { TITLE_MAX } from "@/lib/chat/list"
 export function ChatMenuContent({
   chat,
   onRename,
+  onPin,
 }: {
   chat: ChatRef
   onRename: () => void
+  /** Called as Pin or Unpin is chosen. */
+  onPin?: () => void
 }) {
   const { pin } = useChatList()
   return (
     <MenuContent align="end" side="bottom">
       <MenuGroup>
-        <MenuItem onSelect={() => pin(chat, !chat.pinned)}>
+        <MenuItem
+          onSelect={() => {
+            onPin?.()
+            pin(chat, !chat.pinned)
+          }}
+        >
           {chat.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
           {chat.pinned ? "Unpin" : "Pin"}
         </MenuItem>

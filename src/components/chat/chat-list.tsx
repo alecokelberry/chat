@@ -1,16 +1,17 @@
 // The chat list the signed-in pages share (the sidebar and the open
 // chat's header), with its two changes, rename and pin. A change shows at
-// once (React's useOptimistic) while a server function writes it
+// once, over the loaded list, while a server function writes it
 // (src/lib/chat/list.ts); the list then loads again, and the chat's agent
-// tells its other open tabs to as well. A failed write puts the list back
-// and says so in a toast.
+// tells its other open tabs to as well. A change stays shown until a load
+// has it: a load that was already on its way when the write finished comes
+// back without it, and dropping the change then would flick the row back
+// and forth. A failed write drops it and says so in a toast.
 import {
   createContext,
   use,
   useCallback,
   useMemo,
-  useOptimistic,
-  useTransition,
+  useState,
   type ReactNode,
 } from "react"
 import { useRouter } from "@tanstack/react-router"
@@ -38,11 +39,28 @@ export function useChatList(): ChatList {
 
 type Change = Pick<ChatSummary, "id"> & Partial<ChatSummary>
 
-/** The list with one chat changed, sorted the way the server sorts it
+/** How long a change that no load has confirmed stays shown, in case
+ *  something else changed the chat meanwhile. */
+const SHOWN_FOR = 10_000
+
+/** Whether `chat` already has everything in `change`. */
+function has(chat: ChatSummary, change: Change): boolean {
+  const fields: Record<string, unknown> = chat
+  return Object.entries(change).every(([key, value]) => fields[key] === value)
+}
+
+/** The list with the changes applied, sorted the way the server sorts it
  *  (listChats): pins first, then latest activity, then id. */
-function applyChange(chats: ChatSummary[], change: Change): ChatSummary[] {
+function applyChanges(chats: ChatSummary[], changes: Change[]): ChatSummary[] {
+  if (changes.length === 0) return chats
   return chats
-    .map((chat) => (chat.id === change.id ? { ...chat, ...change } : chat))
+    .map((chat) =>
+      changes.reduce<ChatSummary>(
+        (shown, change) =>
+          change.id === shown.id ? { ...shown, ...change } : shown,
+        chat
+      )
+    )
     .toSorted(
       (a, b) =>
         Number(b.pinned) - Number(a.pinned) ||
@@ -58,21 +76,35 @@ export function ChatListProvider({
   chats: ChatSummary[]
   children: ReactNode
 }) {
-  const [chats, showChange] = useOptimistic(loaded, applyChange)
-  const [, startTransition] = useTransition()
+  const [changes, setChanges] = useState<Change[]>([])
   const router = useRouter()
+  const chats = useMemo(() => applyChanges(loaded, changes), [loaded, changes])
+  // A change goes once a load has it, or its chat is gone (adjusting state
+  // while rendering, as React's docs suggest, so no frame shows both).
+  const [seen, setSeen] = useState(loaded)
+  if (seen !== loaded) {
+    setSeen(loaded)
+    const waiting = changes.filter((change) => {
+      const chat = loaded.find(({ id }) => id === change.id)
+      return chat !== undefined && !has(chat, change)
+    })
+    if (waiting.length !== changes.length) setChanges(waiting)
+  }
   const change = useCallback(
-    (next: Change, write: () => Promise<unknown>, failed: string) =>
-      startTransition(async () => {
-        showChange(next)
-        try {
-          await write()
-        } catch {
-          toast.error(failed)
-        }
-        await router.invalidate()
-      }),
-    [router, showChange]
+    async (next: Change, write: () => Promise<unknown>, failed: string) => {
+      const drop = () =>
+        setChanges((shown) => shown.filter((other) => other !== next))
+      setChanges((shown) => [...shown, next])
+      setTimeout(drop, SHOWN_FOR)
+      try {
+        await write()
+      } catch {
+        drop()
+        toast.error(failed)
+      }
+      await router.invalidate()
+    },
+    [router]
   )
   // The actions don't change with the list, so the sidebar's memoized
   // rows, which take them, don't re-render when it reloads.
@@ -81,14 +113,14 @@ export function ChatListProvider({
       rename: (chat, title) => {
         const clean = title.trim()
         if (clean === "" || clean === chat.title) return
-        change(
+        void change(
           { id: chat.id, title: clean },
           () => renameChat({ data: { id: chat.id, title: clean } }),
           "Couldn't rename the chat"
         )
       },
       pin: (chat, pinned) =>
-        change(
+        void change(
           { id: chat.id, pinned },
           () => pinChat({ data: { id: chat.id, pinned } }),
           pinned ? "Couldn't pin the chat" : "Couldn't unpin the chat"

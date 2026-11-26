@@ -245,6 +245,58 @@ test("Pin moves a chat to Pinned and Unpin moves it back", async ({ page }) => {
   await expect(link).toHaveCount(1)
 })
 
+// A list load already on its way when the pin is written comes back
+// without it. The row must stay pinned through that load, not go back to
+// Today for a moment and then return; and the … that had focus is built
+// again with the row, so the new one takes focus.
+test("a pin stays put when a stale list load lands", async ({ page }) => {
+  await startChat(page, "Pin through a stale load")
+  let latest: { body: Buffer; headers: Record<string, string> } | null = null
+  let stale = false
+  await page.route(/\/_serverFn\//, async (route) => {
+    if (route.request().method() !== "GET") return route.continue()
+    if (stale && latest !== null) {
+      stale = false
+      return route.fulfill({ ...latest, status: 200 })
+    }
+    const response = await route.fetch()
+    latest = { body: await response.body(), headers: response.headers() }
+    return route.fulfill({ response })
+  })
+  // A load of the list from before the pin.
+  await sidebar(page)
+    .getByRole("link", { name: "New Chat", exact: true })
+    .click()
+  await expect.poll(() => latest).not.toBeNull()
+  await page.goBack()
+  await expect(openRow(page)).toBeVisible()
+
+  await page.evaluate(() => {
+    const seen: string[] = []
+    Object.assign(window, { seen })
+    const look = () => {
+      const row = document.querySelector("nav a[aria-current=page]")
+      const group = row?.closest("section")?.querySelector("h2")?.textContent
+      if (typeof group === "string" && seen.at(-1) !== group) seen.push(group)
+      requestAnimationFrame(look)
+    }
+    look()
+  })
+  stale = true
+  await openRow(page).hover()
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Pin" }).click()
+  await expect(
+    sidebar(page)
+      .getByRole("region", { name: "Pinned" })
+      .locator("a[aria-current=page]")
+  ).toBeVisible()
+  await expect(rowMenu(page)).toBeFocused()
+  await page.waitForTimeout(500)
+  const seen = await page.evaluate(() => Reflect.get(window, "seen"))
+  expect(seen).toEqual(["Today", "Pinned"])
+})
+
 // The write is checked against the signed-in user: here the request names
 // a chat that isn't theirs, so it fails, the row goes back and a toast
 // says so.
