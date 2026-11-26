@@ -5,6 +5,10 @@
 // (src/lib/chat/groups.ts), newest first; a chat without a title yet shows
 // "New chat".
 //
+// On a computer the column collapses to a rail from its toggle or ⌘B (Ctrl+B
+// elsewhere), remembered in a cookie (src/lib/sidebar.ts). The list stays
+// mounted but hidden in the rail, so expanding never builds 1,000 rows.
+//
 // The list needs the browser's time zone, so it renders only in the
 // browser, in the one place the screen's width calls for (not both, which
 // would double 1,000 rows). The server renders the column with New Chat.
@@ -38,8 +42,15 @@ import {
   SidebarHeader,
   SidebarItem,
   SidebarRow,
+  SidebarToggle,
 } from "@/components/ui/sidebar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { groupChats } from "@/lib/chat/groups"
+import { saveSidebarCollapsed } from "@/lib/sidebar"
 import type { ChatSummary } from "@/lib/chat/store"
 
 const NO_CHATS: ChatSummary[] = []
@@ -92,9 +103,12 @@ function usePhone(): boolean | null {
 
 export function ChatSidebar({
   chats,
+  collapsed: startCollapsed,
   children,
 }: {
   chats: ChatSummary[]
+  /** Whether the computer's column starts as a rail. */
+  collapsed: boolean
   children: ReactNode
 }) {
   const phone = usePhone()
@@ -106,12 +120,33 @@ export function ChatSidebar({
   useEffect(() => {
     if (takeEarlyTap()) trigger.current?.click()
   }, [])
+  const [collapsed, setCollapsed] = useState(startCollapsed)
+  const [instant, setInstant] = useState(false)
+  function toggle(fromKeyboard: boolean) {
+    setInstant(fromKeyboard)
+    setCollapsed(!collapsed)
+    saveSidebarCollapsed(!collapsed)
+  }
+  // The shortcut's snap lasts two frames, past the width change, so a
+  // later change animates unless it asks not to.
+  useEffect(() => {
+    if (!instant) return
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setInstant(false))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [instant])
   return (
     <div className="sticky top-0 flex h-dvh bg-background text-foreground">
-      <Sidebar aria-label="Chats">
-        <SidebarHeader>
-          <NewChatLink />
-        </SidebarHeader>
+      <Sidebar aria-label="Chats" collapsed={collapsed} instant={instant}>
+        <SidebarToggle
+          collapsed={collapsed}
+          shortcut={phone === false}
+          onToggle={toggle}
+        />
+        <div className="px-2.5">
+          <NewChatLink tooltip={collapsed} />
+        </div>
         {phone === false && <ChatList chats={chats} />}
       </Sidebar>
       {/* Relative: a chat's title pill sits over this column's top, in the
@@ -146,12 +181,30 @@ export function ChatSidebar({
   )
 }
 
-function NewChatLink({ onClick }: { onClick?: () => void }) {
+function NewChatLink({
+  onClick,
+  tooltip = false,
+}: {
+  onClick?: () => void
+  /** Named in a tooltip, for the rail, where its label is hidden. */
+  tooltip?: boolean
+}) {
   return (
-    <SidebarRow variant="raised" render={<Link to="/" />} onClick={onClick}>
-      <NewChatGlyph />
-      <span>New Chat</span>
-    </SidebarRow>
+    <Tooltip disabled={!tooltip}>
+      <TooltipTrigger
+        render={
+          <SidebarRow
+            variant="raised"
+            render={<Link to="/" />}
+            onClick={onClick}
+          />
+        }
+      >
+        <NewChatGlyph />
+        <span>New Chat</span>
+      </TooltipTrigger>
+      <TooltipContent side="right">New Chat</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -175,7 +228,10 @@ function ChatList({
   const shown = useDeferredValue(listed, NO_CHATS)
   const groups = useMemo(() => groupChats(shown, Date.now()), [shown])
   return (
-    <ScrollArea aria-label="Chat list" className="flex-1">
+    <ScrollArea
+      aria-label="Chat list"
+      className="flex-1 group-data-collapsed/sidebar:hidden"
+    >
       <div className="pb-2">
         {groups.map((group) => (
           <SidebarGroup key={group.label} label={group.label}>
