@@ -105,6 +105,8 @@ function Chat({ id }: { id: string }) {
   })
   const navigate = useNavigate()
   const sent = useRef(false)
+  // Stop shows the cut-off reply as it arrived, not paced (thread.tsx).
+  const [stopped, setStopped] = useState(false)
 
   useEffect(() => {
     if (firstMessage === undefined || sent.current) return
@@ -123,10 +125,14 @@ function Chat({ id }: { id: string }) {
       <Thread
         messages={messages}
         busy={busy}
+        stopped={stopped}
         error={
           status === "error" ? (error?.message ?? "Request failed.") : undefined
         }
-        onRetry={() => void regenerate()}
+        onRetry={() => {
+          setStopped(false)
+          void regenerate()
+        }}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
           the thread's text; 16px in on a computer. */}
@@ -134,10 +140,14 @@ function Chat({ id }: { id: string }) {
         <Composer
           busy={busy}
           defaultModel={firstMessage?.model ?? lastModel(messages).key}
-          onSend={(text, model) =>
+          onSend={(text, model) => {
+            setStopped(false)
             void sendMessage({ text, metadata: { model } })
-          }
-          onStop={stop}
+          }}
+          onStop={() => {
+            setStopped(true)
+            return stop()
+          }}
         />
       </div>
     </>

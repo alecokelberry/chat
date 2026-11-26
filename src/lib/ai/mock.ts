@@ -12,8 +12,11 @@
 // same way, so a test sees each half-written piece (an open fence, an open
 // formula) on its way. A message ending in "(busy N)" gets a 429 for its
 // first N calls, as a busy NVIDIA answers, so a test can watch the quiet
-// retry and the error after it. Asked for a chat's title (generateText),
-// it answers "Talking to the mock model" at once.
+// retry and the error after it. A message that mentions "burst" gets
+// BURSTS, three big chunks 600ms apart, as NVIDIA often sends them, so a
+// test can watch the browser pace them out (src/lib/chat/smooth-text.ts).
+// Asked for a chat's title (generateText), it answers "Talking to the mock
+// model" at once.
 import type { LanguageModel } from "ai"
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
@@ -47,6 +50,22 @@ $$
 $$
 
 Done.`
+
+/** A reply in three bursts of whole words. */
+export const BURSTS = [
+  "This reply arrives in bursts, ",
+  "a dozen words at a time with a pause between each, ",
+  "the way a busy model often sends them. Done.",
+]
+
+/** Each word keeps the space or newline after it. */
+const wordsOf = (line: string) => line.split(/(?<=\s)/)
+
+/** The mock's reply to a message (wordsOf splits it for streaming). */
+const replyTo = (message: string, modelId: string, thinking: boolean) =>
+  message.includes("markdown")
+    ? MARKDOWN_REPLY
+    : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -107,17 +126,15 @@ export function mockModel(modelId: string): LanguageModel {
           : ""
       refuseIfBusy(message)
       const thinking = thinks(providerOptions?.nvidia?.chat_template_kwargs)
-      const text = message.includes("markdown")
-        ? MARKDOWN_REPLY
-        : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${REPLY}`
-      // Each word keeps the space or newline after it.
-      const wordsOf = (line: string) => line.split(/(?<=\s)/)
-      const words = wordsOf(text)
+      const bursty = message.includes("burst")
+      const words = bursty
+        ? BURSTS
+        : wordsOf(replyTo(message, modelId, thinking))
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
         stream: simulateReadableStream({
           initialDelayInMs: 500,
-          chunkDelayInMs: 60,
+          chunkDelayInMs: bursty ? 600 : 60,
           chunks: [
             ...(thinking
               ? [

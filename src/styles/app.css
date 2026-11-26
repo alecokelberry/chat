@@ -716,3 +716,32 @@
     -webkit-text-fill-color: currentColor;
   }
 }
+
+/* A streaming reply's caret (reply.tsx): a quiet dot at the end of the
+   last line of prose (paragraph, heading, quote or last list item) that
+   breathes while words arrive. Not drawn after a code block or table,
+   which grow on their own. The archived Chat's. Reduced motion holds it
+   still. */
+@keyframes caret-breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+@utility stream-caret {
+  & > * > :where(p, h1, h2, h3, h4, h5, h6):last-child::after,
+  & > * > blockquote:last-child > :where(p):last-child::after,
+  & > * > :where(ul, ol):last-child > li:last-child::after {
+    content: "";
+    display: inline-block;
+    width: 0.5em;
+    height: 0.5em;
+    margin-inline-start: 0.3em;
+    border-radius: 9999px;
+    background-color: var(--foreground);
+    vertical-align: 0.05em;
+    animation: caret-breathe 1s var(--ease-standard) infinite;
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+}

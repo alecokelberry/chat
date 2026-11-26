@@ -45,7 +45,7 @@ Motion is quick and functional.
 | Phone sidebar (ui-sdk's Drawer: it follows the finger and settles on its own iOS spring)                    | spring                   | spring            |
 | Toasts (`toast-stack`: slide in from their edge, leave the way they're swiped)                              | `duration-toast` 500ms   | `ease-out-quint`  |
 
-- Use transitions, not keyframes, so motion can be interrupted. The exception is a loop that shows work under way (the spinner, the "Thinking" shimmer), which nothing interrupts.
+- Use transitions, not keyframes, so motion can be interrupted. The exception is a loop that shows work under way (the spinner, the "Thinking" shimmer, a streaming reply's caret breathing once a second), which nothing interrupts. Under reduced motion these loops hold still.
 - Animate only `transform`/`scale` and `opacity` on things that move. The exception is a Collapsible's height, the way ui-sdk animates it.
 - Keyboard-triggered actions (⌘K, send, switching chats) never animate.
 - Touch feedback starts on pointerdown (`ui/press-feedback.tsx`, mounted once by the root; `active:` matches `data-pressing`) and lasts at least 90ms, so a quick tap on iOS always shows. A scroll taking over or a finger sliding 12px off the control lets it go.
