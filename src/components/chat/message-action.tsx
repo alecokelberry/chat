@@ -55,7 +55,14 @@ export function MessageAction({
   )
 }
 
-export function CopyAction({ text }: { text: string }) {
+export function CopyAction({
+  text,
+  label = "Copy",
+}: {
+  /** What to copy; a function reads it at the press (a table's rows). */
+  text: string | (() => string)
+  label?: string
+}) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!copied) return
@@ -65,12 +72,14 @@ export function CopyAction({ text }: { text: string }) {
 
   return (
     <MessageAction
-      label={copied ? "Copied" : "Copy"}
+      label={copied ? "Copied" : label}
       onClick={() => {
-        navigator.clipboard.writeText(text).then(
-          () => setCopied(true),
-          () => undefined
-        )
+        navigator.clipboard
+          .writeText(typeof text === "function" ? text() : text)
+          .then(
+            () => setCopied(true),
+            () => undefined
+          )
       }}
     >
       <span className="grid *:col-start-1 *:row-start-1 *:transition-swap motion-reduce:*:transition-none">

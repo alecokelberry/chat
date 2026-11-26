@@ -61,6 +61,16 @@ $$
 
 Done.`
 
+// A message that mentions "long code" gets a block of 20 lines, so a test
+// sees it fold.
+const LONG_CODE_REPLY = `Here is a long one:
+
+\`\`\`ts
+${Array.from({ length: 20 }, (_, i) => `const line${i + 1} = ${i + 1}`).join("\n")}
+\`\`\`
+
+Done.`
+
 /** A reply in three bursts of whole words. */
 export const BURSTS = [
   "This reply arrives in bursts, ",
@@ -73,9 +83,11 @@ const wordsOf = (line: string) => line.split(/(?<=\s)/)
 
 /** The mock's reply to a message (wordsOf splits it for streaming). */
 const replyTo = (message: string, modelId: string, thinking: boolean) =>
-  message.includes("markdown")
-    ? MARKDOWN_REPLY
-    : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${REPLY}`
+  message.includes("long code")
+    ? LONG_CODE_REPLY
+    : message.includes("markdown")
+      ? MARKDOWN_REPLY
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>

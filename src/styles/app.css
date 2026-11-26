@@ -467,6 +467,67 @@
   }
 }
 
+/* A scroller fades at an edge that can still scroll, driven by its own
+   scroll position (CSS only, no script): each side's fade grows over the
+   first 24px of scrolling away from that edge. Where the browser has no
+   scroll-driven animations, or nothing scrolls, there's no fade. */
+@property --fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes fade-start {
+  to {
+    --fade-start: 1.5rem;
+  }
+}
+@keyframes fade-end {
+  from {
+    --fade-end: 1.5rem;
+  }
+}
+@utility scroll-fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black var(--fade-start),
+    black calc(100% - var(--fade-end)),
+    transparent
+  );
+  @supports (animation-timeline: scroll()) {
+    animation:
+      fade-start linear both,
+      fade-end linear both;
+    animation-timeline: scroll(self inline);
+    animation-range:
+      0 1.5rem,
+      calc(100% - 1.5rem) 100%;
+  }
+}
+@utility scroll-fade-y {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--fade-start),
+    black calc(100% - var(--fade-end)),
+    transparent
+  );
+  @supports (animation-timeline: scroll()) {
+    animation:
+      fade-start linear both,
+      fade-end linear both;
+    animation-timeline: scroll(self block);
+    animation-range:
+      0 1.5rem,
+      calc(100% - 1.5rem) 100%;
+  }
+}
+
 /* Named durations (Tailwind has no --duration-* namespace). */
 @utility duration-fast {
   transition-duration: var(--duration-fast);
