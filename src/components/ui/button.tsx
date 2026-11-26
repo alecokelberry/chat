@@ -14,6 +14,8 @@ const buttonVariants = cva(
       variant: {
         ghost:
           "text-muted-foreground hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active",
+        outline:
+          "border-border-strong bg-transparent text-foreground hover:bg-secondary-hover active:bg-secondary-active",
         // The sign-in's passkey pill: the composer's surface and hairline
         // as a 60px pill, a label at the start, and a pink 40px go circle
         // (data-slot="prompt-go") 9px in at the end. While pending it
@@ -35,6 +37,11 @@ const buttonVariants = cva(
         // The 32px circle (send, stop, jump to latest), Grok's, at every
         // width: a 40px invisible touch area around it.
         circle: "size-8 after:absolute after:-inset-1",
+        sm: "h-8 gap-1.5 px-2.5 text-sm has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2",
+        // Grok's reply actions: a 20px pill, 14px glyph, a 36px invisible
+        // touch area (40px on touch screens).
+        action:
+          "size-5 after:absolute after:-inset-2 pointer-coarse:after:-inset-2.5 [&_svg:not([class*='size-'])]:size-3.5",
         // The variant brings its own size (prompt).
         none: "",
       },

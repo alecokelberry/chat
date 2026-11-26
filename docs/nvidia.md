@@ -15,13 +15,13 @@ What the free NVIDIA API gives me and how the models Chat uses behave. Re-check 
 
 ## Errors
 
-| Status                                                            | Meaning                             | App does                                                                                |
-| ----------------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------- |
-| 429 `{"status":429,"title":"Too Many Requests"}`                  | Our rate limit                      | Back off on its own schedule: no `retry-after` or `x-ratelimit-*` headers are ever sent |
-| 503 `ResourceExhausted: Worker local total request limit reached` | Shared capacity is full             | Retry with backoff, then fall back to another model                                     |
-| 410 Gone (end-of-life date in `detail`)                           | Model retired                       | Drop it from the map                                                                    |
-| 404 "Function … Not found for account"                            | Listed but not available to our key | Don't offer it                                                                          |
-| 400 "did not match any variant of … UserMessageContent"           | PDF sent as a `file` part           | Send PDFs as text or page images; images go as `image_url` data URLs                    |
+| Status                                                            | Meaning                             | App does                                                                                                             |
+| ----------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 429 `{"status":429,"title":"Too Many Requests"}`                  | Our rate limit                      | One retry after 2 s, then an error in the chat with Retry. No `retry-after` or `x-ratelimit-*` headers are ever sent |
+| 503 `ResourceExhausted: Worker local total request limit reached` | Shared capacity is full             | One retry after 2 s, then an error in the chat with Retry. Never another model                                       |
+| 410 Gone (end-of-life date in `detail`)                           | Model retired                       | Drop it from the map                                                                                                 |
+| 404 "Function … Not found for account"                            | Listed but not available to our key | Don't offer it                                                                                                       |
+| 400 "did not match any variant of … UserMessageContent"           | PDF sent as a `file` part           | Send PDFs as text or page images; images go as `image_url` data URLs                                                 |
 
 ## Models
 

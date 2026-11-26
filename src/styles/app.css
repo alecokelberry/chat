@@ -443,6 +443,14 @@
   transition-duration: var(--duration-drawer);
 }
 
+/* An icon swap (copy to check): fades and scales, never eases its color, so
+   the hover ink lands at once. */
+@utility transition-swap {
+  transition-property: opacity, scale;
+  transition-timing-function: var(--ease-standard);
+  transition-duration: var(--duration-base);
+}
+
 /* Text fields: body size, but 16px on touch screens, so iOS never zooms in
    on focus (DESIGN.md › Phones). */
 @utility field-text {
