@@ -19,6 +19,7 @@
     "smoke": "vite build --mode test && NVIDIA_SMOKE=1 playwright test",
     "check": "oxfmt --check && oxlint && tsc --noEmit",
     "verify": "pnpm check && knip && pnpm e2e",
+    "skills:update": "npx skills update -p -y && perl -ni -e 'print unless /^disable-model-invocation: true$/' .claude/skills/implement/SKILL.md .claude/skills/to-spec/SKILL.md .claude/skills/to-tickets/SKILL.md .claude/skills/retro/SKILL.md .claude/skills/wayfinder/SKILL.md",
     "postinstall": "wrangler types --strict-vars=false && ln -sfn ../../node_modules/@ui-sdk/core/skills/ui-sdk .claude/skills/ui-sdk"
   },
   "dependencies": {
