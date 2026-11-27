@@ -68,52 +68,66 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
 }
 
 /** Keeps the cookie and the theme-color metas (src/routes/__root.tsx) on
- *  the choice: a Light or Dark choice points both tags at its color. Each is swapped for a
- *  fresh copy rather than edited: the phone drawer dims the tags it found
- *  when it opened (ui-sdk's themeColor) and puts their old colors back when
- *  it closes, which would undo a theme picked inside it. React never
- *  changes these tags after the first render, so it doesn't miss them. */
+ *  the choice: a Light or Dark choice points both tags at its color. Each
+ *  is swapped for a fresh copy rather than edited: the phone drawer dims
+ *  the tags it found when it opened (ui-sdk's themeColor) and puts their
+ *  old colors back when it closes, which would undo a theme picked inside
+ *  it. React never changes these tags after the first render, so it
+ *  doesn't miss them. The first renders can carry the server's guess
+ *  rather than the saved choice; <html>, set before the first paint, says
+ *  which is real, so a guess is never saved or acted on. */
 function StatusBarColor() {
   const { value, resolved } = usePreference(colorScheme)
+  const picked = React.useRef<string | null>(null)
   React.useEffect(() => {
+    if (value !== choiceShowing()) return
     saveTheme(value)
-    const metas = document.querySelectorAll<HTMLMetaElement>(
-      'meta[name="theme-color"]'
-    )
-    for (const meta of metas) {
-      const own = meta.media.includes("dark") ? "dark" : "light"
-      const content = THEME_COLOR[value === "system" ? own : value]
-      if (meta.content === content) continue
-      const fresh = document.createElement("meta")
-      fresh.name = "theme-color"
-      fresh.media = meta.media
-      fresh.content = content
-      meta.replaceWith(fresh)
-    }
+    pointMetasAt(value)
+    picked.current ??= value
+    if (picked.current === value) return
+    picked.current = value
+    // The Home Screen app reads the color again only on a load, so a new
+    // pick reloads (it's saved by now). A system flip under System waits
+    // for the next launch rather than drop a draft or a streaming reply.
+    if (isHomeScreenApp()) location.reload()
   }, [value])
-  // Only when the colors change: at launch the bar is already right. The
-  // first renders can carry the server's guess rather than the saved
-  // choice; <html>, set before the first paint, says which is showing.
+  // Only when the colors change: at launch the bar is already right.
   const shown = React.useRef<"light" | "dark" | null>(null)
   React.useEffect(() => {
     const showing = schemeShowing()
     shown.current ??= showing
     if (resolved !== showing || shown.current === resolved) return
     shown.current = resolved
-    // The Home Screen app reads the color again only on a load. The choice
-    // is saved by now (above, and by ui-sdk), so the load keeps it.
-    if (isHomeScreenApp()) {
-      location.reload()
-      return
-    }
+    if (isHomeScreenApp()) return
     return nudgeStatusBar()
   }, [resolved])
   return null
 }
 
+function pointMetasAt(value: "light" | "dark" | "system") {
+  const metas = document.querySelectorAll<HTMLMetaElement>(
+    'meta[name="theme-color"]'
+  )
+  for (const meta of metas) {
+    const own = meta.media.includes("dark") ? "dark" : "light"
+    const content = THEME_COLOR[value === "system" ? own : value]
+    if (meta.content === content) continue
+    const fresh = document.createElement("meta")
+    fresh.name = "theme-color"
+    fresh.media = meta.media
+    fresh.content = content
+    meta.replaceWith(fresh)
+  }
+}
+
+/** The choice <html> carries: light, dark or system. */
+function choiceShowing() {
+  return document.documentElement.dataset.colorScheme ?? "system"
+}
+
 /** The scheme <html> shows: its saved choice, or the system's. */
 function schemeShowing() {
-  const scheme = document.documentElement.dataset.colorScheme
+  const scheme = choiceShowing()
   if (scheme === "light" || scheme === "dark") return scheme
   return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }

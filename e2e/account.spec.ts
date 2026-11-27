@@ -157,6 +157,22 @@ test.describe("on a computer", () => {
     )
     const statusBar = page.locator('meta[name="theme-color"]')
     await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
+    // Once, not again and again: the reloaded page leaves it be.
+    await page.waitForTimeout(1000)
+    expect(loads).toHaveLength(1)
+
+    // Under System, the phone switching to dark doesn't reload: the next
+    // launch picks it up, and a draft or a streaming reply isn't lost.
+    await page.evaluate(() => localStorage.setItem("theme", "system"))
+    await page.reload()
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "system"
+    )
+    const settled = loads.length
+    await page.emulateMedia({ colorScheme: "dark" })
+    await page.waitForTimeout(1000)
+    expect(loads).toHaveLength(settled)
   })
 
   test("the sign-in switch flips the theme and keeps it after a reload", async ({
