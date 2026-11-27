@@ -10,7 +10,7 @@ function ThemeIcon() {
   return (
     <span
       data-slot="theme-icon"
-      className="grid *:col-start-1 *:row-start-1 *:transition-spin motion-reduce:*:transition-opacity"
+      className="grid *:col-start-1 *:row-start-1 *:transition-spin"
     >
       <SunIcon
         aria-hidden
