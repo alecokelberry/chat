@@ -116,16 +116,25 @@ test.describe("on a computer", () => {
       name: "Wrap long code blocks",
     })
     await expect(wrap).not.toBeChecked()
-    const turned = await page.evaluate(async () => {
-      const found = window.agent
-        .snapshot()
-        .find((part) => part.label === "Wrap long code blocks")
-      if (found === undefined) return "not in the snapshot"
-      const result = await window.agent.act({
-        steps: [{ ref: found.ref, action: "setChecked", args: [true] }],
-      })
-      return result.ok ? "on" : (result.error?.message ?? "refused")
-    })
+    // The agent learns of the switch a beat after it shows, as its part
+    // registers, so wait for it there as an agent would.
+    const refOf = () =>
+      page.evaluate(
+        () =>
+          window.agent
+            .snapshot()
+            .find((part) => part.label === "Wrap long code blocks")?.ref ?? ""
+      )
+    await expect.poll(refOf).not.toBe("")
+    const turned = await page.evaluate(
+      async (ref) => {
+        const result = await window.agent.act({
+          steps: [{ ref, action: "setChecked", args: [true] }],
+        })
+        return result.ok ? "on" : (result.error?.message ?? "refused")
+      },
+      await refOf()
+    )
     expect(turned).toBe("on")
     await expect(wrap).toBeChecked()
   })
