@@ -478,7 +478,7 @@
 
 /* A scroller fades at an edge that can still scroll, driven by its own
    scroll position (CSS only, no script): each side's fade grows over the
-   first 24px of scrolling away from that edge. Where the browser has no
+   first 24px (or --fade-size) of scrolling away from that edge. Where the browser has no
    scroll-driven animations, or nothing scrolls, there's no fade. */
 @property --fade-start {
   syntax: "<length>";
@@ -492,13 +492,17 @@
 }
 @keyframes fade-start {
   to {
-    --fade-start: 1.5rem;
+    --fade-start: var(--fade-size, 1.5rem);
   }
 }
 @keyframes fade-end {
   from {
-    --fade-end: 1.5rem;
+    --fade-end: var(--fade-size, 1.5rem);
   }
+}
+/* A longer fade (56px) for a list that scrolls behind a raised row. */
+@utility fade-size-long {
+  --fade-size: 3.5rem;
 }
 @utility scroll-fade-x {
   mask-image: linear-gradient(
@@ -514,8 +518,8 @@
       fade-end linear both;
     animation-timeline: scroll(self inline);
     animation-range:
-      0 1.5rem,
-      calc(100% - 1.5rem) 100%;
+      0 var(--fade-size, 1.5rem),
+      calc(100% - var(--fade-size, 1.5rem)) 100%;
   }
 }
 @utility scroll-fade-y {
@@ -532,8 +536,8 @@
       fade-end linear both;
     animation-timeline: scroll(self block);
     animation-range:
-      0 1.5rem,
-      calc(100% - 1.5rem) 100%;
+      0 var(--fade-size, 1.5rem),
+      calc(100% - var(--fade-size, 1.5rem)) 100%;
   }
 }
 
