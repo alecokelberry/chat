@@ -60,29 +60,32 @@ function NewChat() {
           }}
         />
       </div>
-      {/* Under the composer, starting where the middle row ends, so the
-          composer stays at the exact middle. Gone once there's a draft or
-          a file: the composer grows down over this space, and Grok's
-          suggestions leave then too. */}
-      {!started && (
-        <ul
-          aria-label="Starters"
-          className="mx-auto mt-3 w-full max-w-composer self-start px-2 sm:px-0"
-        >
-          {STARTERS.map(({ icon: Icon, text }) => (
-            <li key={text}>
-              <Button
-                variant="starter"
-                size="none"
-                onClick={() => composer.current?.fill(text)}
-              >
-                <Icon data-icon="inline-start" aria-hidden />
-                {text}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Under the composer, hung from the top of the bottom row, which is
+          empty: the list is out of flow, so nothing in it can change the
+          rows' sizes and move the composer off the exact middle. Gone once
+          there's a draft or a file: the composer grows down over this
+          space, and Grok's suggestions leave then too. */}
+      <div className="relative mx-auto w-full max-w-composer self-start px-2 sm:px-0">
+        {!started && (
+          <ul
+            aria-label="Starters"
+            className="absolute inset-x-2 top-3 sm:inset-x-0"
+          >
+            {STARTERS.map(({ icon: Icon, text }) => (
+              <li key={text}>
+                <Button
+                  variant="starter"
+                  size="none"
+                  onClick={() => composer.current?.fill(text)}
+                >
+                  <Icon data-icon="inline-start" aria-hidden />
+                  {text}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </main>
   )
 }
