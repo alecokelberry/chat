@@ -68,15 +68,15 @@ export const replies = (page: Page) =>
 
 /** Checks that a new chat shows, signed in as `name`: the account row at
  *  the column's bottom names them. A phone hides the column (its drawer
- *  has its own row), so this finds the row hidden too, by its text (an
- *  initial, then the name): a hidden row has no accessible name. */
+ *  has its own row), so this finds the row hidden too, by its text (one
+ *  or two initials, then the name): a hidden row has no accessible name. */
 export async function expectSignedInAs(page: Page, name: string) {
   await expect(greeting(page)).toBeVisible()
   await expect(
     page
       .getByRole("navigation", { name: "Chats", includeHidden: true })
       .getByRole("button", { includeHidden: true })
-      .filter({ hasText: new RegExp(`^\\s*\\S?\\s*${name}$`) })
+      .filter({ hasText: new RegExp(`^\\s*\\S{0,2}\\s*${name}$`) })
   ).toBeAttached()
 }
 
@@ -126,7 +126,7 @@ export async function signInAsOwner(page: Page) {
   await page.goto(`/setup#${E2E_SETUP_CODE}`)
   await hydrated(page)
   await page.getByRole("button", { name: "Add a passkey" }).click()
-  await expectSignedInAs(page, "Alec")
+  await expectSignedInAs(page, "Alec Okelberry")
   await hydrated(page)
   return authenticator
 }

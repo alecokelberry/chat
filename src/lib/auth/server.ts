@@ -1,8 +1,9 @@
 // Sign-in on the server: Better Auth on D1 with passkeys only. There are no
 // passwords and no open sign-up. A passkey is added in one of two ways:
 // signed in already, or on /setup with the SETUP_CODE (a Wrangler secret),
-// which adds it to the owner's account. Locally, with DEV_SIGN_IN
-// set, /api/auth/dev-sign-in signs a browser on this machine in as Dev.
+// which adds it to the owner's account (the oldest non-Dev one). Locally,
+// with DEV_SIGN_IN set, /api/auth/dev-sign-in signs a browser on this
+// machine in as Dev.
 // Sessions are a signed httpOnly cookie and a row in `session`.
 import { env } from "cloudflare:workers"
 import { betterAuth, type BetterAuthPlugin } from "better-auth"
@@ -21,7 +22,9 @@ import { passkey } from "@better-auth/passkey"
 const LIVE_HOST = "chat.alecokelberry.workers.dev"
 const PREVIEW_SUFFIX = "-chat.alecokelberry.workers.dev"
 
-/** Whose account a passkey added with the setup code joins. */
+/** The owner's account when there is none yet: setup makes it with these,
+ *  and the owner's real name and email are set on the live row (never
+ *  here: the repo is public). */
 const OWNER = { email: "owner@chat.test", name: "Alec" }
 /** Dev: the local test account, kept apart from the owner's. `.test` can't
  *  reach an inbox. */
@@ -163,8 +166,17 @@ function createAuth() {
               })
             }
             const adapter = ctx.context.internalAdapter
+            // The owner: the oldest account that isn't Dev's, whatever its
+            // email, so the live row can carry the real one. Live there's
+            // no Dev account (DEV_SIGN_IN is never set there).
+            const [owner] = await adapter.listUsers(
+              1,
+              0,
+              { field: "createdAt", direction: "asc" },
+              [{ field: "email", operator: "ne", value: DEV.email }]
+            )
             const user =
-              (await adapter.findUserByEmail(OWNER.email))?.user ??
+              owner ??
               (await adapter.createUser(
                 { ...OWNER, emailVerified: false },
                 { method: "passkey-setup" }
