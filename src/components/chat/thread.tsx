@@ -37,6 +37,7 @@ import { Sources } from "@/components/chat/sources"
 import { Button } from "@/components/ui/button"
 import { ReplyStep } from "@/components/ui/reply-step"
 import { imagesOf } from "@/lib/chat/attachments"
+import { documentsOf } from "@/lib/chat/documents"
 import { answeredBy, thoughtFor } from "@/lib/chat/reply-metadata"
 import {
   searchedLabel,
@@ -114,6 +115,7 @@ export function Thread({
             <Question
               text={textOf(message)}
               images={imagesOf(message)}
+              documents={documentsOf(message)}
               busy={busy}
               onEdit={(text) => onEdit(message.id, text)}
             />

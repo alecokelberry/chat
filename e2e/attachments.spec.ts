@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import type { Page } from "@playwright/test"
 
 import {
@@ -13,14 +15,17 @@ import {
   unique,
 } from "./session"
 
-// Attaching images to a question (src/components/chat/attachments.tsx) on
-// the mock model, which says how many images reached it: + opens a menu
-// whose row opens the picker, paste and a drop anywhere add files too,
-// the rules turn some away with a toast, and the question shows its
-// images, each opening full size, after a reload too.
+// Attaching files to a question (src/components/chat/attachments.tsx) on
+// the mock model, which says how many images reached it and which
+// documents it read: + opens a menu whose row opens the picker, paste and
+// a drop anywhere add files too, the rules turn some away with a toast,
+// and the question shows its images, each opening full size, and its
+// documents as chips, after a reload too.
 
 const WIDE = "e2e/fixtures/wide.png" // 2400 × 1200
 const SMALL = "e2e/fixtures/small.jpg" // 400 × 300
+const NOTES = "e2e/fixtures/notes.pdf" // one page: "Zion trip notes"
+const SCAN = "e2e/fixtures/scan.pdf" // a page with no text, like a scan
 
 const tiles = (page: Page) =>
   page.getByRole("list", { name: "Attached files" }).locator("img")
@@ -152,7 +157,9 @@ test("files the rules turn away never attach, and a toast says why", async ({
     page.getByText("huge.png: Files can be up to 10 MB")
   ).toBeVisible()
   await expect(
-    page.getByText("notes.zip: Only images can be attached")
+    page.getByText(
+      "notes.zip: Only images, PDFs and text files can be attached"
+    )
   ).toBeVisible()
   await expect(page.getByText("Can't read HEIC in this browser")).toBeVisible()
   await expect(tiles(page)).toHaveCount(3)
@@ -291,4 +298,99 @@ test("an agent can open the menu, take a file out and view an image", async ({
 
   expect(await press("View small.jpg")).toBe(true)
   await expect(page.getByRole("dialog", { name: "small.jpg" })).toBeVisible()
+})
+
+/** A fixture as a buffer, to pick it with made-up files. */
+const fixture = (path: string, mimeType: string) => ({
+  name: path.split("/").pop() ?? path,
+  mimeType,
+  buffer: readFileSync(path),
+})
+
+const chips = (page: Page) =>
+  page
+    .getByRole("list", { name: "Attached files" })
+    .locator("[data-slot=file-chip]")
+
+test("a PDF and a text file reach the model as text, and stay as chips", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await pick(page, [
+    fixture(NOTES, "application/pdf"),
+    {
+      name: "plan.md",
+      mimeType: "text/markdown",
+      buffer: Buffer.from("# Plan\n\nHike at dawn."),
+    },
+  ])
+  await expect(chips(page)).toHaveCount(2)
+  await expect(chips(page).first()).toContainText("PDF")
+  await page.getByRole("textbox", { name: "Message" }).fill(unique("Sum up"))
+  await page.keyboard.press("Enter")
+
+  await expect(replies(page)).toHaveText(
+    [/Read notes\.pdf\. Read plan\.md\. .*Done\.$/],
+    { timeout: 15_000 }
+  )
+  await page.reload()
+  await expect(chips(page)).toHaveCount(2)
+  await expect(chips(page).last()).toContainText("plan.md")
+})
+
+test("a long text file is cut, and any model reads documents", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  // Ultra can't see images, but documents are text.
+  await pickModel(page, "Ultra")
+  await pick(page, [
+    {
+      name: "log.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("x".repeat(120_000)),
+    },
+  ])
+  await expect(chips(page)).toHaveCount(1)
+  await expect(page.getByText("can't see images")).toHaveCount(0)
+  await page.getByRole("button", { name: "Send" }).click()
+  await expect(replies(page)).toHaveText(
+    [/Read log\.txt \(cut\)\. .*Done\.$/],
+    {
+      timeout: 15_000,
+    }
+  )
+})
+
+test("a PDF with no text, and a binary file, are turned away", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await pick(page, [
+    fixture(SCAN, "application/pdf"),
+    {
+      name: "data.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from([0x50, 0x00, 0x4b]),
+    },
+  ])
+  await expect(page.getByText("scan.pdf: No text found")).toBeVisible()
+  await expect(page.getByText("data.txt: Not a text file")).toBeVisible()
+  await expect(page.getByRole("list", { name: "Attached files" })).toHaveCount(
+    0
+  )
+})
+
+test("the PDF reader loads only once a PDF is picked", async ({ page }) => {
+  const scripts: string[] = []
+  page.on("request", (request) => {
+    if (request.resourceType() === "script") scripts.push(request.url())
+  })
+  await signInAsDev(page)
+  expect(scripts.filter((url) => /unpdf|pdf/i.test(url))).toEqual([])
+  await pick(page, [NOTES])
+  await expect(chips(page)).toHaveCount(1)
+  expect(
+    scripts.filter((url) => /unpdf|pdf/i.test(url)).length
+  ).toBeGreaterThan(0)
 })

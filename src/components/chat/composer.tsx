@@ -20,7 +20,6 @@
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
 import { useEffect, useRef, useState, type RefObject } from "react"
-import type { FileUIPart } from "ai"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -40,6 +39,7 @@ import {
 import { ModelPicker } from "@/components/chat/model-picker"
 import { cn } from "@/lib/utils"
 import { DEFAULT_MODEL, modelOf, type ModelKey } from "@/lib/ai/models"
+import type { AttachmentPart } from "@/lib/chat/attachments"
 
 export function Composer({
   focusOnMount = false,
@@ -53,7 +53,7 @@ export function Composer({
   busy?: boolean
   model: ModelKey
   onModelChange: (model: ModelKey) => void
-  onSend: (text: string, files: FileUIPart[]) => void
+  onSend: (text: string, files: AttachmentPart[]) => void
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
@@ -70,8 +70,7 @@ export function Composer({
   const attachments = useAttachments()
   const empty = message === "" && attachments.files.length === 0
   const chosen = modelOf(model)
-  // Every attachment is an image for now (#151 adds documents).
-  const blind = attachments.files.length > 0 && !chosen.seesImages
+  const blind = attachments.hasImages && !chosen.seesImages
   const ready = !empty && !attachments.preparing && !blind
 
   function send() {

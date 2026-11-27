@@ -29,7 +29,8 @@
 // test has a word only the reply holds (Search's message matches). A
 // chat with images gets "Saw N images." after the opening, or "Told of N
 // images." when a model that can't see got "[image: name]" instead, so a
-// test sees what reached the model.
+// test sees what reached the model, and "Read notes.txt." for each PDF or
+// text file the question carries ("(cut)" when its text was cut).
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
 //
@@ -139,13 +140,14 @@ const replyTo = (
   modelId: string,
   thinking: boolean,
   images: number,
-  told: number
+  told: number,
+  read: string
 ) =>
   message.includes("long code")
     ? LONG_CODE_REPLY
     : message.includes("markdown")
       ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${backwards(message)}${REPLY}`
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${read}${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -336,6 +338,7 @@ function askedOf(prompt: Prompt) {
     message: textOf(prompt[at]),
     images: prompt.reduce((sum, m) => sum + imagesIn(m), 0),
     told: prompt.map(textOf).join("").split("[image: ").length - 1,
+    read: readIn(textOf(prompt[at])),
     calls: { webSearch: called("webSearch"), readPage: called("readPage") },
     failed: parts.some(
       (part) =>
@@ -359,6 +362,17 @@ const imagesIn = (message: Prompt[number] | undefined) =>
         (part) => part.type === "file" && part.mediaType.startsWith("image/")
       ).length
     : 0
+
+const DOCUMENT = /Attached file "([^"]+)"( \(cut at)?/g
+
+/** The documents a question carries: "Read notes.txt (cut). " for each,
+ *  "(cut)" when its text was cut. */
+const readIn = (message: string) =>
+  [...message.matchAll(DOCUMENT)]
+    .map(
+      ([, name, cut]) => `Read ${name}${cut === undefined ? "" : " (cut)"}. `
+    )
+    .join("")
 
 /** What the reply says the chat sent it, besides words: "Saw 2 images. "
  *  for the images in it, and "Told of 1 image. " for each "[image: name]"
@@ -484,7 +498,14 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
         ? BURSTS
         : wordsOf(
             afterTools(asked) ??
-              replyTo(message, modelId, thinking, asked.images, asked.told)
+              replyTo(
+                message,
+                modelId,
+                thinking,
+                asked.images,
+                asked.told,
+                asked.read
+              )
           )
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
