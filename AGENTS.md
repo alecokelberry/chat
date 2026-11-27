@@ -23,6 +23,7 @@ The open GitHub issues are the plan, `docs/decisions.md` says why it's built thi
 4. **Learn:** `retro` after a build that went badly; `diagnosing-bugs` for a hard bug; `cloudflare:workers-profiling` when live CPU goes over 10 ms; `cloudflare:web-perf` for a slow load or a laggy phone.
 
 - Tests: while iterating, run only the affected spec (`pnpm e2e <file>`) or unit test (`pnpm test <file>`); the full suite runs once, in `pnpm verify`. Unit tests are Vitest in Node, for pure logic only, beside the module (`*.test.ts`); a rule that must hold for every input is a fast-check property (`it.prop`), with inputs spread wide enough to reach the edge (fast-check's doubles cluster near 0).
+- Flaky tests: a test that passes and fails on the same code has a cause, in the app or the test; find it and fix it there. A wait waits on what the page shows, or on `settled()` (`e2e/session.ts`) for a check that something didn't happen; lint stops `waitForTimeout`. When no cause turns up, delete the test and say why in the PR. Skipping, retrying or sleeping hides the cause, so none of them is a fix.
 - Commits: one logical change each, an imperative subject in plain English (50 characters ideally, never over 72), and a body that says why. Not Conventional Commits. `main` gets one commit per PR, made from its title and body, so those follow the same rules.
 
 ## Agent skills

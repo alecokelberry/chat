@@ -84,12 +84,16 @@ test("Stop during a search stops it", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Search stopped" })
   ).toBeVisible()
-  // The results would have come a second and a half in; nothing follows.
-  await page.waitForTimeout(2500)
-  await expect(replies(page)).toHaveCount(0)
+  // The mock's results come a second and a half after a search starts. A
+  // second search, started after Stop, finishing proves the stopped one's
+  // time has passed, with nothing to show for it.
+  await send(page, unique("Then search for the weather"))
   await expect(
-    page.getByRole("button", { name: "Search stopped" })
+    page.getByRole("button", { name: "Searched · 5 sites" })
   ).toBeVisible()
+  // One reply and one set of sources, both the second question's.
+  await expect(replies(page)).toHaveText([SEARCHED_REPLY])
+  await expect(page.getByRole("button", { name: /sources?$/ })).toHaveCount(1)
 })
 
 test("a reply searches at most three times", async ({ page }) => {
