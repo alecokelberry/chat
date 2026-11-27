@@ -4,6 +4,8 @@
 // ignoring case and the spaces around it, in the order listed here. A new
 // section or setting adds itself here.
 
+import { STYLE_NAMES } from "@/lib/ai/style"
+
 export type SectionId = "account" | "appearance" | "customize" | "usage"
 
 export type Section = {
@@ -30,10 +32,7 @@ export const SECTIONS: readonly Section[] = [
     settings: [
       "Response style",
       "Custom instructions",
-      "Concise",
-      "Formal",
-      "Tutor",
-      "Comprehensive",
+      ...Object.values(STYLE_NAMES),
     ],
   },
   {

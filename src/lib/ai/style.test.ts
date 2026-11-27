@@ -6,6 +6,7 @@ import {
   isResponseStyle,
   RESPONSE_STYLES,
   styleInstruction,
+  toCustomize,
 } from "@/lib/ai/style"
 
 test("Default adds nothing", () => {
@@ -45,7 +46,9 @@ it.prop([fc.string({ maxLength: CUSTOM_MAX * 3 })])(
   }
 )
 
-it.prop([fc.string()])("an unknown style adds nothing", (style) => {
+it.prop([fc.string()])("an unknown style is read as Default", (style) => {
   fc.pre(!isResponseStyle(style))
-  expect(styleInstruction({ style, custom: "x" })).toBe(undefined)
+  const customize = toCustomize({ style, custom: "x" })
+  expect(customize.style).toBe("default")
+  expect(styleInstruction(customize)).toBe(undefined)
 })
