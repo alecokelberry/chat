@@ -7,15 +7,15 @@ import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
 // reload (even mid-reply, and in a second tab), and Stop keeps what
-// arrived. The mock's reply ends in "Done." after under three seconds
-// (src/lib/ai/mock.ts).
+// arrived. The mock's reply ends in "Done.", at once, or a word at a time
+// for a prompt with "(paced)" (src/lib/ai/mock.ts).
 
 test("a new chat streams the reply and keeps it after a reload", async ({
   page,
 }) => {
   await signInAsDev(page)
   await expect(page).toHaveURL(/\/$/)
-  await send(page, "Hello there")
+  await send(page, "Hello there (paced)")
 
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   const thread = page.getByRole("log", { name: "Messages" })
@@ -124,7 +124,7 @@ test("Stop ends the reply and keeps what arrived", async ({ page }) => {
     })
   })
   await signInAsDev(page)
-  await send(page, "Tell me a long story")
+  await send(page, "Tell me a long story (paced)")
 
   const reply = page.getByRole("article", { name: "Reply" }).last()
   await expect(reply).toContainText("mock")
@@ -250,7 +250,7 @@ test("on a chat, an agent can find the thread's controls and stop a reply", asyn
   page,
 }) => {
   await signInAsDev(page)
-  await send(page, "Hello")
+  await send(page, "Hello (paced)")
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
   const result = await page.evaluate(async () => {
     const { agent } = window

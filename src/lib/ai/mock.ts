@@ -1,11 +1,14 @@
 // The mock model: stands in for NVIDIA when MOCK_MODEL is "1" (e2e and, if
-// you like, local dev), so tests never call NVIDIA. It waits half a second
-// before the first word, so a test sees the waiting marker, then streams a
-// fixed reply a word at a time, under three seconds in all (five with
-// thinking), ending in "Done.", so a test can watch it arrive and stop it
-// partway. The reply opens by saying which model id it stands in for and
-// whether the request turned thinking on, so a test can check what a real
-// call would have asked NVIDIA for. With thinking on, it first thinks
+// you like, local dev), so tests never call NVIDIA. It streams a fixed
+// reply a word at a time with no waits, ending in "Done.", so a test that
+// only needs a reply spends no time on one. A message that mentions
+// "(paced)" gets the same reply as a person sees one: a word every 60ms,
+// under three seconds in all (five with thinking), so a test can watch it
+// arrive and stop it partway. Every pace (PACES: "(paced)", "(slow)",
+// "burst") waits half a second before the first word, so a test sees the
+// waiting marker. The reply opens by saying which model id it stands in
+// for and whether the request turned thinking on, so a test can check what
+// a real call would have asked NVIDIA for. With thinking on, it first thinks
 // aloud (REASONING), streamed the same way, as NVIDIA streams
 // reasoning_content. A message that mentions "markdown" gets a reply with
 // a heading, a list, a table, a link, code and math instead, streamed the
@@ -97,9 +100,24 @@ export const BURSTS = [
   "the way a busy model often sends them. Done.",
 ]
 
-/** The pause before each word, in milliseconds. */
-const wordDelay = (message: string) =>
-  message.includes("burst") ? 600 : message.includes("(slow)") ? 250 : 60
+/** The paces a message can ask for, first match winning, with the pause
+ *  before each word in milliseconds. Without one, a reply has no waits. */
+const PACES: [marker: string, ms: number][] = [
+  ["burst", 600],
+  ["(slow)", 250],
+  ["(paced)", 60],
+]
+
+const paceOf = (message: string) =>
+  PACES.find(([marker]) => message.includes(marker))?.[1]
+
+/** The pause before each word: none unless the message asks for a pace. */
+const wordDelay = (message: string) => paceOf(message) ?? 0
+
+/** The wait before the first word: half a second with any pace, so a test
+ *  sees the waiting marker. */
+const firstWordDelay = (message: string) =>
+  paceOf(message) === undefined ? 0 : 500
 
 /** Each word keeps the space or newline after it. */
 const wordsOf = (line: string) => line.split(/(?<=\s)/)
@@ -460,7 +478,7 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
         stream: simulateReadableStream({
-          initialDelayInMs: 500,
+          initialDelayInMs: firstWordDelay(message),
           chunkDelayInMs: wordDelay(message),
           chunks: [
             ...(thinking

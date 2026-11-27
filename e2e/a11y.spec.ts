@@ -1,7 +1,15 @@
 import AxeBuilder from "@axe-core/playwright"
 import type { Page } from "@playwright/test"
 
-import { expect, greeting, pick, send, signInAsDev, test } from "./session"
+import {
+  expect,
+  greeting,
+  pick,
+  send,
+  settled,
+  signInAsDev,
+  test,
+} from "./session"
 
 // An accessibility scan (axe-core) of the main screens, in light and dark
 // at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
@@ -16,6 +24,8 @@ import { expect, greeting, pick, send, signInAsDev, test } from "./session"
 const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
 async function scan(page: Page) {
+  // A menu still fading in fails contrast; scan it once it's shown.
+  await settled(page)
   const { violations } = await new AxeBuilder({ page }).withTags(tags).analyze()
   const failures = violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")

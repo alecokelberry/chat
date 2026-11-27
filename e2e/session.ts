@@ -7,7 +7,7 @@ import {
   type Page,
 } from "@playwright/test"
 
-import { E2E_SETUP_CODE } from "../playwright.config"
+import { BASE_URL, E2E_SETUP_CODE } from "../playwright.config"
 
 // What every e2e test shares, so parallel work never grows its own copy:
 // `test` and `expect` (specs import them from here, not from
@@ -90,12 +90,49 @@ export async function hydrated(page: Page) {
   )
 }
 
+/** Waits until the page is still: hydrated, two frames drawn, so effects,
+ *  media query changes and new transitions have all run, and every running
+ *  animation that can end has ended (not a scroll-driven one, like the
+ *  chat list's fades, which never does). A check that something did NOT
+ *  happen (no reload, no color change) goes after this, never after a
+ *  fixed sleep: a sleep is a guess that passes on a fast machine and flakes
+ *  on a slow one. A reload that starts meanwhile ends the evaluate, so it
+ *  fails the test. */
+export async function settled(page: Page) {
+  await hydrated(page)
+  await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    await frame()
+    await frame()
+    await Promise.all(
+      document
+        .getAnimations()
+        .filter(
+          (a) =>
+            a.playState === "running" &&
+            a.timeline instanceof DocumentTimeline &&
+            a.effect?.getComputedTiming().endTime !== Infinity
+        )
+        .map((a) => a.finished.catch(() => undefined))
+    )
+  })
+}
+
+/** Signs in as this worker's own Dev (dev+N@chat.test, seeded like Dev
+ *  in e2e/seed.sql), so tests in parallel never see each other's chats,
+ *  and opens a new chat. It asks the dev sign-in endpoint directly, the
+ *  way Playwright's auth docs sign in through an API: e2e/sign-in.spec.ts
+ *  tests the button itself. */
 export async function signInAsDev(page: Page) {
-  await page.goto("/sign-in")
+  const response = await page.request.post("/api/auth/dev-sign-in", {
+    data: { as: String(test.info().parallelIndex) },
+    // Better Auth refuses a POST without its own origin.
+    headers: { origin: BASE_URL },
+  })
+  expect(response.ok(), await response.text()).toBe(true)
+  await page.goto("/")
   await hydrated(page)
-  await page.getByRole("button", { name: "Sign in as Dev" }).click()
   await expectSignedInAs(page, "Dev")
-  await hydrated(page)
 }
 
 /** Adds a virtual authenticator to the page, standing in for Touch ID. */
@@ -206,7 +243,10 @@ export const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
  *  which is what a sent message does. */
 export async function send(page: Page, text: string) {
   const message = page.getByRole("textbox", { name: "Message" })
-  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0)
+  // Exact: "Search stopped", a stopped search's step, is a button too.
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true })
+  ).toHaveCount(0)
   await message.fill(text)
   await page.keyboard.press("Enter")
   await expect(message).toHaveValue("")
