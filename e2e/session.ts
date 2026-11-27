@@ -121,6 +121,7 @@ export async function signInAsOwner(page: Page) {
   await hydrated(page)
   await page.getByRole("button", { name: "Add a passkey" }).click()
   await expectSignedInAs(page, "Alec")
+  await hydrated(page)
   return authenticator
 }
 
