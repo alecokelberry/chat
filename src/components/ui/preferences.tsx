@@ -20,6 +20,8 @@ import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
 import { Preferences, usePreference } from "@ui-sdk/react/preferences"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 
+import { StatusBarDebug } from "@/components/ui/status-bar-debug"
+
 /** The status bar's color, light and dark: the page's --background in
  *  app.css, repeated here because the server writes it into the head. */
 const THEME_COLOR = { light: "#f9f8f7", dark: "#1e1d1d" } as const
@@ -48,6 +50,7 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
   return (
     <Preferences preferences={[colorScheme]}>
       <StatusBarColor />
+      <StatusBarDebug />
       {children}
     </Preferences>
   )
