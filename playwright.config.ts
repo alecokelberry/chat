@@ -46,6 +46,7 @@ export default defineConfig({
             NVIDIA_API_KEY: "unused-by-the-mock",
             AI_GATEWAY_URL: "https://gateway.invalid",
             AI_GATEWAY_TOKEN: "unused-by-the-mock",
+            KEENABLE_API_KEY: "unused-by-the-mock",
           }),
     },
   },

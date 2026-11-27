@@ -21,8 +21,18 @@
 // test can watch the browser pace them out (src/lib/chat/smooth-text.ts).
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
+//
+// A message that mentions "search" makes it call the webSearch tool first
+// (src/lib/ai/search.ts), with the message as the query, and answer once
+// the results are in; "(search N)" asks for N searches in a row, so a test
+// sees the reply's cap stop it. Under MOCK_MODEL the tool itself answers
+// with mockSearch's canned results after a second and a half, so a test
+// sees the step run and can Stop it; a query with "(search down)" fails,
+// as Keenable does when it's down.
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
+
+import type { SearchResult } from "@/lib/ai/search"
 
 type LanguageModelV4StreamPart =
   Awaited<
@@ -154,6 +164,149 @@ function failureFor(message: string, abortSignal: AbortSignal | undefined) {
   return undefined
 }
 
+/** The reply after a search. */
+export const SEARCHED_REPLY =
+  "The mock model searched the web and read what it found. Done."
+
+/** The reply after a search that failed. */
+export const SEARCH_FAILED_REPLY =
+  "The mock model couldn't search the web just now, so this comes from what it already knows. Done."
+
+/** Five canned results, each from its own site, the last with a long
+ *  address. */
+export const SEARCH_RESULTS: SearchResult[] = [
+  {
+    title: "Example Domain",
+    url: "https://example.com/",
+    site: "example.com",
+  },
+  {
+    title: "Mock news of the day",
+    url: "https://news.example.org/today",
+    site: "news.example.org",
+  },
+  {
+    title: "Wikipedia: Mock object",
+    url: "https://en.wikipedia.org/wiki/Mock_object",
+    site: "en.wikipedia.org",
+  },
+  {
+    title: "MDN: Fetch API",
+    url: "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API",
+    site: "developer.mozilla.org",
+  },
+  {
+    title: "A page with a very long address",
+    url: "https://a-very-long-subdomain-name-for-testing.example.net/with/a/long/path?and=query",
+    site: "a-very-long-subdomain-name-for-testing.example.net",
+  },
+].map((result) => ({
+  ...result,
+  snippet: `What ${result.site} says, in a sentence or two.`,
+}))
+
+/** The mock's search: SEARCH_RESULTS after a second and a half, or a
+ *  failure for a query with "(search down)". Stop cancels it. */
+export async function mockSearch(
+  query: string,
+  abortSignal: AbortSignal | undefined
+): Promise<SearchResult[]> {
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, 1500)
+    abortSignal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer)
+        reject(abortSignal.reason)
+      },
+      { once: true }
+    )
+  })
+  if (query.includes("(search down)")) throw new Error("Keenable is down")
+  return SEARCH_RESULTS
+}
+
+type Prompt = Parameters<MockLanguageModelV4["doStream"]>[0]["prompt"]
+
+const SEARCHES = /\(search (\d+)\)/
+
+/** The last question, and the searches made for it so far: how many, and
+ *  whether one failed. */
+function askedOf(prompt: Prompt) {
+  const at = prompt.findLastIndex((m) => m.role === "user")
+  let searched = 0
+  let searchFailed = false
+  for (const step of prompt.slice(at + 1)) {
+    if (step.role !== "assistant" && step.role !== "tool") continue
+    for (const part of step.content) {
+      if (part.type === "tool-call" && part.toolName === "webSearch")
+        searched += 1
+      if (part.type === "tool-result" && part.output.type.startsWith("error"))
+        searchFailed = true
+    }
+  }
+  return { message: textOf(prompt[at]), searched, searchFailed }
+}
+
+/** A user message's words. */
+const textOf = (message: Prompt[number] | undefined) =>
+  message?.role === "user"
+    ? message.content
+        .map((part) => (part.type === "text" ? part.text : ""))
+        .join("")
+    : ""
+
+/** How many searches a message asks for: none without "search". */
+const searchesWanted = (message: string) =>
+  message.includes("search") ? Number(SEARCHES.exec(message)?.[1] ?? 1) : 0
+
+/** The next search a question asks for, as a step that only calls
+ *  webSearch, while the reply still offers the tool. */
+function nextSearch(
+  { message, searched }: ReturnType<typeof askedOf>,
+  tools: Parameters<MockLanguageModelV4["doStream"]>[0]["tools"]
+) {
+  const offered = (tools ?? []).some((t) => t.name === "webSearch")
+  if (!offered || searched >= searchesWanted(message)) return undefined
+  return { stream: searchCall(message, searched + 1) }
+}
+
+/** What the mock answers once it has searched, if it has. */
+const afterSearch = ({ searched, searchFailed }: ReturnType<typeof askedOf>) =>
+  searched === 0
+    ? undefined
+    : searchFailed
+      ? SEARCH_FAILED_REPLY
+      : SEARCHED_REPLY
+
+/** One step that only calls webSearch. */
+const searchCall = (query: string, n: number) =>
+  simulateReadableStream<LanguageModelV4StreamPart>({
+    initialDelayInMs: 300,
+    chunkDelayInMs: 0,
+    chunks: [
+      {
+        type: "tool-call",
+        toolCallId: `search-${n}`,
+        toolName: "webSearch",
+        input: JSON.stringify({ query }),
+      },
+      {
+        type: "finish",
+        finishReason: { unified: "tool-calls", raw: undefined },
+        usage: {
+          inputTokens: {
+            total: 0,
+            noCache: 0,
+            cacheRead: undefined,
+            cacheWrite: undefined,
+          },
+          outputTokens: { total: 1, text: 0, reasoning: undefined },
+        },
+      },
+    ],
+  })
+
 /** What the mock names every chat. */
 const TITLE = "Talking to the mock model"
 
@@ -174,21 +327,16 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       },
       warnings: [],
     }),
-    doStream: async ({ prompt, providerOptions, abortSignal }) => {
-      const asked = prompt.at(-1)
-      const message =
-        asked?.role === "user"
-          ? asked.content
-              .map((part) => (part.type === "text" ? part.text : ""))
-              .join("")
-          : ""
-      const failure = failureFor(message, abortSignal)
-      if (failure !== undefined) return failure
+    doStream: async ({ prompt, providerOptions, abortSignal, tools }) => {
+      const asked = askedOf(prompt)
+      const { message } = asked
+      const step = failureFor(message, abortSignal) ?? nextSearch(asked, tools)
+      if (step !== undefined) return step
       const thinking = thinks(providerOptions?.nvidia?.chat_template_kwargs)
       const bursty = message.includes("burst")
       const words = bursty
         ? BURSTS
-        : wordsOf(replyTo(message, modelId, thinking))
+        : wordsOf(afterSearch(asked) ?? replyTo(message, modelId, thinking))
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
         stream: simulateReadableStream({

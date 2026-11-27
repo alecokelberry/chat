@@ -8,7 +8,8 @@
 // loading (there's nothing yet), sends it, and clears the state so a
 // reload doesn't send it again. Each message carries its model in its
 // metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last,
-// and Retry, which regenerates the last reply in place, asks the same one.
+// and Retry, which regenerates the last reply in place, asks the same one;
+// and the browser's time zone, so the model knows what "today" is.
 // An edited question is sent in the old one's place, with the picker's
 // model: the SDK drops it and everything after it, here and in the agent,
 // and the reply is asked again.
@@ -51,6 +52,12 @@ declare module "@tanstack/react-router" {
     firstMessage?: { text: string; model: ModelKey }
   }
 }
+
+/** A question's metadata: its model and the browser's time zone. */
+const sentWith = (model: ModelKey) => ({
+  model,
+  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+})
 
 export const Route = createFileRoute("/_app/c/$id")({
   ssr: "data-only",
@@ -157,7 +164,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
     sent.current = true
     void sendMessage({
       text: firstMessage.text,
-      metadata: { model: firstMessage.model },
+      metadata: sentWith(firstMessage.model),
     })
     void navigate({ to: ".", replace: true, state: {} })
   }, [firstMessage, sendMessage, navigate])
@@ -183,7 +190,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
         onEdit={(messageId, text) => {
           if (previewing) return
           setStopped(false)
-          void sendMessage({ text, messageId, metadata: { model } })
+          void sendMessage({ text, messageId, metadata: sentWith(model) })
         }}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
@@ -196,7 +203,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           onSend={(text) => {
             if (previewing) return
             setStopped(false)
-            void sendMessage({ text, metadata: { model } })
+            void sendMessage({ text, metadata: sentWith(model) })
           }}
           onStop={() => {
             setStopped(true)

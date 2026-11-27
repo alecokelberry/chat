@@ -6,7 +6,11 @@
 // took under it once it has finished (reply-actions.tsx). A model that
 // thinks shows its reasoning above the reply in a closed step,
 // "Thinking…" until the answer's first word, then how long it thought
-// (ui/reply-step.tsx). Until a reply's first word or thought arrives, the
+// (ui/reply-step.tsx). A reply that searched the web shows a step like it,
+// "Searching the web…" while a search runs, then how many sites it found,
+// opening to each query and its results; the sites found sit under the
+// reply as links (sources.tsx). Until a reply's first word, thought or
+// search arrives, and again while it reads what a search found, the
 // waiting marker holds its place (pending-reply.tsx).
 // A failed reply ends the thread with one quiet line saying why, and Retry.
 // The markdown renderer loads in the browser only, starting as this module
@@ -16,14 +20,26 @@
 // build) and never renders a chat's messages (the route is data-only).
 import { lazy, Suspense } from "react"
 import type { ReasoningUIPart, UIMessage } from "ai"
-import { BrainIcon, CircleAlertIcon, RefreshCwIcon } from "lucide-react"
+import {
+  BrainIcon,
+  CircleAlertIcon,
+  GlobeIcon,
+  RefreshCwIcon,
+} from "lucide-react"
 
 import { PendingReply } from "@/components/chat/pending-reply"
 import { Question } from "@/components/chat/question"
 import { ReplyActions } from "@/components/chat/reply-actions"
+import { Sources } from "@/components/chat/sources"
 import { Button } from "@/components/ui/button"
 import { ReplyStep } from "@/components/ui/reply-step"
 import { answeredBy, thoughtFor } from "@/lib/chat/reply-metadata"
+import {
+  searchedLabel,
+  searchesOf,
+  sourcesOf,
+  type Search,
+} from "@/lib/chat/searches"
 import {
   MessageScroller,
   MessageScrollerItem,
@@ -44,9 +60,23 @@ const thoughtsOf = (message: UIMessage) =>
     (part): part is ReasoningUIPart => part.type === "reasoning"
   )
 
-/** A reply with no words or thoughts yet. */
+/** A reply with no words, thoughts or searches yet. */
 const isBlank = (message: UIMessage) =>
-  textOf(message) === "" && thoughtsOf(message).length === 0
+  textOf(message) === "" &&
+  thoughtsOf(message).length === 0 &&
+  searchesOf(message).length === 0
+
+/** A reply that has searched and is reading the results: no words or
+ *  thoughts yet, and no search still running. */
+const isReading = (message: UIMessage) => {
+  const searches = searchesOf(message)
+  return (
+    textOf(message) === "" &&
+    thoughtsOf(message).length === 0 &&
+    searches.length > 0 &&
+    !searches.some((search) => search.running)
+  )
+}
 
 export function Thread({
   messages,
@@ -68,7 +98,8 @@ export function Thread({
   onEdit: (id: string, text: string) => void
 }) {
   const last = messages.at(-1)
-  const waiting = busy && (last?.role !== "assistant" || isBlank(last))
+  const waiting =
+    busy && (last?.role !== "assistant" || isBlank(last) || isReading(last))
   return (
     <MessageScroller
       role="log"
@@ -125,8 +156,8 @@ export function Thread({
   )
 }
 
-/** A reply: what the model thought, its markdown, then its actions once
- *  it has finished. */
+/** A reply: what the model thought and searched, its markdown, then its
+ *  sources and actions once it has finished. */
 function ReplyMessage({
   message,
   streaming,
@@ -143,9 +174,14 @@ function ReplyMessage({
   onRetry: (() => void) | undefined
 }) {
   const text = textOf(message)
+  const searches = searchesOf(message)
   return (
     <div data-slot="message" className="group/message flex flex-col gap-2.5">
       <Thinking message={message} running={streaming && text === ""} />
+      <Searching
+        searches={searches}
+        running={streaming && searches.some((search) => search.running)}
+      />
       {text !== "" && (
         <article aria-label="Reply">
           <Suspense>
@@ -153,6 +189,7 @@ function ReplyMessage({
           </Suspense>
         </article>
       )}
+      {!streaming && <Sources sources={sourcesOf(searches)} />}
       {!streaming && (
         <ReplyActions
           text={text}
@@ -188,6 +225,44 @@ function Thinking({
       running={running}
     >
       {text}
+    </ReplyStep>
+  )
+}
+
+/** A reply's web searches, if it made any: each query and what it found. */
+function Searching({
+  searches,
+  running,
+}: {
+  searches: Search[]
+  /** A search is still waiting for its results. */
+  running: boolean
+}) {
+  if (searches.length === 0) return null
+  return (
+    <ReplyStep
+      icon={<GlobeIcon />}
+      label={searchedLabel(searches, running)}
+      running={running}
+    >
+      <ul className="flex flex-col gap-3 whitespace-normal">
+        {searches.map((search, i) => (
+          <li key={i} className="flex flex-col gap-1">
+            <span className="text-foreground">{search.query}</span>
+            {search.error !== undefined ? (
+              <span>{search.error}</span>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {search.results.map((result) => (
+                  <li key={result.url} className="min-w-0 truncate">
+                    {result.title} · {result.site}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
     </ReplyStep>
   )
 }

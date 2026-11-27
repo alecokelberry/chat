@@ -15,6 +15,7 @@ MOCK_MODEL=1
 NVIDIA_API_KEY=<from build.nvidia.com, or anything with MOCK_MODEL=1>
 AI_GATEWAY_URL=https://gateway.ai.cloudflare.com/v1/<account id>/chat/custom-nvidia/v1
 AI_GATEWAY_TOKEN=<the gateway's token, or anything with MOCK_MODEL=1>
+KEENABLE_API_KEY=<from keenable.ai (keen_…), or anything with MOCK_MODEL=1>
 ```
 
 `DEV_SIGN_IN=1` shows "Sign in as Dev" on `/sign-in`, on localhost only. `MOCK_MODEL=1` answers with the mock model instead of NVIDIA; leave it out to talk to Super through the AI Gateway.
@@ -27,7 +28,7 @@ AI_GATEWAY_TOKEN=<the gateway's token, or anything with MOCK_MODEL=1>
 
 Every push to `main` deploys through Cloudflare Workers Builds, which runs `pnpm run deploy`: it builds, applies new migrations to the live database and deploys to chat.alecokelberry.workers.dev. Run it by hand only if Workers Builds is down.
 
-The Worker needs five secrets, live and for Previews, and a deploy fails while one is missing: `BETTER_AUTH_SECRET`, `SETUP_CODE`, `NVIDIA_API_KEY`, `AI_GATEWAY_URL` (the AI Gateway "chat"'s NVIDIA route, as in `.dev.vars` above) and `AI_GATEWAY_TOKEN` (made on the gateway's Settings page, with Run permission).
+The Worker needs six secrets, live and for Previews, and a deploy fails while one is missing: `BETTER_AUTH_SECRET`, `SETUP_CODE`, `NVIDIA_API_KEY`, `AI_GATEWAY_URL` (the AI Gateway "chat"'s NVIDIA route, as in `.dev.vars` above), `AI_GATEWAY_TOKEN` (made on the gateway's Settings page, with Run permission) and `KEENABLE_API_KEY` (web search: keenable.ai's free plan, 100,000 searches a month, no card).
 
 Every push to another branch builds a Preview with `pnpm run deploy:preview`, and Workers Builds comments its address on the PR: `<branch>-chat.alecokelberry.workers.dev`. Previews share the `chat-preview` database, which gets the branch's migrations, and their own secrets, never the live ones. Each side has its own passkey, so your phone offers one at a time: live's belongs to `chat.alecokelberry.workers.dev`, and one passkey belonging to `alecokelberry.workers.dev` signs in on every Preview. Add each once (the setup code below, with `pnpm wrangler preview base-config secret put SETUP_CODE` and a Preview's address for a Preview). If the phone offers a passkey the server doesn't know, picking it deletes it from the phone.
 

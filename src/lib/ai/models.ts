@@ -4,7 +4,8 @@
 // default with thinking off; Ultra is the one that thinks hard. Shared by
 // the server (src/lib/ai) and the composer's picker, so it imports nothing.
 // A message records the model it was sent with in its metadata, which is
-// how a chat remembers its last one.
+// how a chat remembers its last one, and the browser's time zone, which
+// the model is told (src/lib/ai/index.ts).
 
 export const MODELS = [
   {
@@ -54,6 +55,26 @@ function modelOf(metadata: unknown): Model {
       ? metadata.model
       : undefined
   return MODELS.find((model) => model.key === key) ?? DEFAULT
+}
+
+/** The time zone the last question was sent from, if it names a real
+ *  one (the browser's, unchecked until here), else UTC. */
+export function lastTimeZone(
+  messages: readonly { role: string; metadata?: unknown }[]
+): string {
+  const metadata = messages.findLast((m) => m.role === "user")?.metadata
+  const zone =
+    typeof metadata === "object" && metadata !== null && "timeZone" in metadata
+      ? metadata.timeZone
+      : undefined
+  if (typeof zone !== "string" || zone.length > 64) return "UTC"
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+    }).resolvedOptions().timeZone
+  } catch {
+    return "UTC"
+  }
 }
 
 /** The model a chat goes on with: the one its last message was sent with. */
