@@ -16,8 +16,8 @@ import {
 // at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
 // model picker, the chat list's drawer (at 390), a row's menu, the
 // account menu open, attachments (tiles, a question's images and the
-// viewer), and Search open with a query (its preview beside, at
-// 1440) and a result's menu. It fails on serious or
+// viewer), Search open with a query (its preview beside, at 1440) and a
+// result's menu, and Settings open at Account. It fails on serious or
 // critical WCAG 2.2 AA problems, and says which rule and which elements.
 // A new screen joins the list in `screens` when it lands (DESIGN.md ›
 // Access).
@@ -140,6 +140,24 @@ for (const colorScheme of ["light", "dark"] as const) {
         await row.locator("button").click()
         // Settled, not mid-fade, so contrast is measured at full ink.
         await expect(page.getByRole("menu")).toHaveCSS("opacity", "1")
+        await scan(page)
+      })
+
+      test("Settings", async ({ page }) => {
+        await signInAsDev(page)
+        if (name === "390")
+          await page.getByRole("button", { name: "Open sidebar" }).click()
+        await page
+          .getByRole("button", { name: "Settings", exact: true })
+          .click()
+        const settings = page.getByRole("dialog", { name: "Settings" })
+        await expect(settings).toBeVisible()
+        await scan(page)
+        if (name === "390")
+          await settings.getByRole("tab", { name: "Account" }).click()
+        await expect(
+          settings.getByRole("button", { name: "Sign Out" })
+        ).toBeVisible()
         await scan(page)
       })
     })
