@@ -10,7 +10,7 @@
 // last line. A tap doesn't change it (the caret shows where you are): only
 // keyboard focus rings it (the keyboard variant, focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ModelPicker } from "@/components/chat/model-picker"
 import type { ModelKey } from "@/lib/ai/models"
+import { takeReloadDraft } from "@/lib/reload-for-status-bar"
 
 export function Composer({
   busy = false,
@@ -37,6 +38,13 @@ export function Composer({
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
+  // A draft kept across the status bar's reload comes back after
+  // hydration, so the server's empty composer still matches.
+  useEffect(() => {
+    const draft = takeReloadDraft()
+    // oxlint-disable-next-line react-hooks-js/set-state-in-effect -- sessionStorage is read only in the browser, after hydration
+    if (draft !== "") setText(draft)
+  }, [])
   const message = text.trim()
 
   function send() {
@@ -47,6 +55,7 @@ export function Composer({
 
   return (
     <form
+      data-busy={busy || undefined}
       className="flex items-end gap-1 rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
       onSubmit={(event) => {
         event.preventDefault()

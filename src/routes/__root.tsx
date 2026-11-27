@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/preferences"
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
+import { RELOAD_TRANSITION_SCRIPT } from "@/lib/reload-for-status-bar"
 import { savedTheme } from "@/lib/theme"
 
 import appCss from "@/styles/app.css?url"
@@ -78,6 +79,7 @@ function RootDocument({ children }: { children: ReactNode }) {
           content={color("dark")}
         />
         <ScriptOnce>{THEME_COLOR_SCRIPT}</ScriptOnce>
+        <ScriptOnce>{RELOAD_TRANSITION_SCRIPT}</ScriptOnce>
       </head>
       <body>
         <AppPreferences>{children}</AppPreferences>

@@ -329,6 +329,70 @@ test.describe("on a phone", () => {
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
   })
 
+  test("in the Home Screen app, Theme in the drawer reloads once it closes", async ({
+    page,
+  }) => {
+    // The reload that recolors the bar waits until nothing is open over
+    // the page, and keeps the draft.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "standalone", { value: true })
+      addEventListener("pagereveal", (event) => {
+        Object.assign(window, { crossfaded: event.viewTransition !== null })
+      })
+    })
+    await signInAsDev(page)
+    // An ordinary page load doesn't crossfade.
+    expect(
+      await page.evaluate(() => "crossfaded" in window && window.crossfaded)
+    ).toBe(false)
+    await page.getByRole("textbox", { name: "Message" }).fill("half a thought")
+    const loads: string[] = []
+    page.on("load", () => loads.push(page.url()))
+    const url = page.url()
+
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await drawer.getByRole("button", { name: "Dev", exact: true }).tap()
+    const theme = menu(page).getByRole("menuitem", { name: "Theme" })
+    await expect
+      .poll(() =>
+        menu(page).evaluate((el) =>
+          el.style.getPropertyValue("--drawer-progress")
+        )
+      )
+      .toBe("1")
+    const box = await theme.boundingBox()
+    if (box === null) throw new Error("Theme has no box")
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    await page.waitForTimeout(1000)
+    expect(loads).toHaveLength(0)
+
+    await page.keyboard.press("Escape")
+    await expect(menu(page)).toBeHidden()
+    await page.waitForTimeout(600)
+    expect(loads).toHaveLength(0)
+    await page.keyboard.press("Escape")
+    await expect.poll(() => loads.length).toBe(1)
+    expect(page.url()).toBe(url)
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
+      "half a thought"
+    )
+    // It crossfades from the old page instead of flashing.
+    expect(
+      await page.evaluate(() => "crossfaded" in window && window.crossfaded)
+    ).toBe(true)
+    await page.waitForTimeout(1000)
+    expect(loads).toHaveLength(1)
+  })
+
   // A temporary readout for the status bar bug (status-bar-debug.tsx).
   test("the status bar readout shows from the address or three taps", async ({
     page,
