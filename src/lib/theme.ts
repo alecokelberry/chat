@@ -9,6 +9,10 @@ import { getRequestHeader } from "@tanstack/react-start/server"
 
 type Theme = "light" | "dark" | "system"
 
+/** The status bar's color, light and dark: the page's --background in
+ *  app.css, repeated here because the server writes it into the head. */
+export const THEME_COLOR = { light: "#f9f8f7", dark: "#1e1d1d" } as const
+
 const COOKIE = "theme"
 const SAVED = new RegExp(`(?:^|;\\s*)${COOKIE}=(light|dark)(?:;|$)`)
 

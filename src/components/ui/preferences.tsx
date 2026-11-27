@@ -25,11 +25,7 @@ import { useShortcut } from "@ui-sdk/react/shortcuts"
 
 import { StatusBarDebug } from "@/components/ui/status-bar-debug"
 import { reloadForStatusBar } from "@/lib/reload-for-status-bar"
-import { saveTheme, themeCookie } from "@/lib/theme"
-
-/** The status bar's color, light and dark: the page's --background in
- *  app.css, repeated here because the server writes it into the head. */
-const THEME_COLOR = { light: "#f9f8f7", dark: "#1e1d1d" } as const
+import { saveTheme, THEME_COLOR, themeCookie } from "@/lib/theme"
 
 /** Where createLocalStorage keeps the choice: "system", "light" or "dark". */
 const STORAGE_KEY = "theme"
@@ -212,7 +208,6 @@ function useThemeShortcut() {
 
 export {
   AppPreferences,
-  THEME_COLOR,
   THEME_COLOR_SCRIPT,
   useIsDark,
   useThemeShortcut,
