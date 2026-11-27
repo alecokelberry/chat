@@ -109,6 +109,30 @@ test.describe("on a computer", () => {
     await expect(html).toHaveAttribute("data-code-wrap", "wrap")
   })
 
+  // ui-sdk's agent test: an agent finds the switch by its name and can
+  // turn it on.
+  test("an agent can turn on Wrap long code blocks", async ({ page }) => {
+    await signInAsDev(page)
+    await sidebar(page).getByRole("button", { name: "Settings" }).click()
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    const wrap = settings(page).getByRole("switch", {
+      name: "Wrap long code blocks",
+    })
+    await expect(wrap).not.toBeChecked()
+    const turned = await page.evaluate(async () => {
+      const found = window.agent
+        .snapshot()
+        .find((part) => part.label === "Wrap long code blocks")
+      if (found === undefined) return "not in the snapshot"
+      const result = await window.agent.act({
+        steps: [{ ref: found.ref, action: "setChecked", args: [true] }],
+      })
+      return result.ok ? "on" : (result.error?.message ?? "refused")
+    })
+    expect(turned).toBe("on")
+    await expect(wrap).toBeChecked()
+  })
+
   test("the rail has no gear", async ({ page }) => {
     await signInAsDev(page)
     await sidebar(page).getByRole("button", { name: "Sidebar" }).click()
