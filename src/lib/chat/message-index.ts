@@ -6,8 +6,9 @@
 // reply, finished, stopped or failed (src/lib/chat/agent.ts): that turn's
 // question and reply, and it drops whatever the chat no longer holds, so
 // an edited question's old text and the replies an edit or Retry replaced
-// stop matching. A chat whose words were never all indexed (one from
-// before the index, or the tour, put back whole) is indexed whole instead:
+// stop matching. A question's attachments count by their file names. A
+// chat whose words were never all indexed (one from before the index, or
+// the tour, put back whole) is indexed whole instead:
 // on its next reply, or sooner, when Search opens and asks the agents of a
 // few such chats to (indexOlderChats, src/lib/chat/list.ts). Rows belong to their chat's row in the chat list, so
 // deleting a chat (or its user) deletes its text too.
@@ -22,6 +23,7 @@ import {
 } from "drizzle-orm/sqlite-core"
 import type { UIMessage } from "ai"
 
+import { isDocument } from "@/lib/chat/documents"
 import { MATCH_END, MATCH_START } from "@/lib/chat/match-marks"
 import { chat, type ChatOwner } from "@/lib/chat/store"
 
@@ -53,11 +55,21 @@ export const messageText = sqliteTable(
  *  matches on its first 100,000 characters. */
 const TEXT_MAX = 100_000
 
-/** A message's words: its text parts (a question, a reply's answer), not
- *  its thinking or tool calls. */
-function wordsOf(message: UIMessage) {
+/** A part's words: a text part's text, and an attachment's file name
+ *  (src/lib/chat/attachments.ts), but not a document's text, which a
+ *  search would match on every word of a long file. */
+function partWords(part: UIMessage["parts"][number]) {
+  if (part.type === "text") return part.text
+  if (part.type === "file") return part.filename ?? ""
+  return isDocument(part) ? part.data.name : ""
+}
+
+/** A message's words: its text parts (a question, a reply's answer) and
+ *  its attachments' names, not its thinking or tool calls. */
+export function wordsOf(message: UIMessage) {
   return message.parts
-    .map((part) => (part.type === "text" ? part.text : ""))
+    .map(partWords)
+    .filter((words) => words !== "")
     .join("\n")
     .replaceAll(MATCH_START, "")
     .replaceAll(MATCH_END, "")

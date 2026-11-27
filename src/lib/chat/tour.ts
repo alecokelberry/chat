@@ -152,6 +152,30 @@ On the Workers Free plan, which Chat runs on:
 - **10 ms of CPU** per request. Time spent waiting on a model doesn't count.
 - A Worker of up to **3 MB**, compressed.`
 
+/** A text file attached to a question (src/lib/chat/documents.ts). */
+const PACKING_LIST = {
+  type: "data-document" as const,
+  data: {
+    name: "zion-packing-list.md",
+    mediaType: "text/plain",
+    text: `# Zion, three days
+
+- Water: 3 litres a day each
+- Headlamp, spare batteries
+- Permit for Angels Landing (printed)
+- Layers: it's 2 °C at dawn and 18 °C by noon
+- Trail snacks, sunscreen, a map that works offline`,
+    cut: false,
+  },
+}
+
+const PACKED = `You can attach files with the **+** in the composer, paste them, or drop them anywhere on the page: up to 4 a question, photos, PDFs and text files. Photos go to models that can see them (Super, Nano Omni); a PDF's or text file's words go to every model. Tap a photo above a question to see it full size.
+
+Your list covers the essentials. Two things I'd add:
+
+- **Microspikes** if you go before April: the upper trail can be icy.
+- **A second water bottle** for the Narrows, where you'll want both hands free.`
+
 const HOW_TO = `Every message has its actions:
 
 - **Your questions**: *Edit* rewrites one and asks again from there (everything after it is replaced), and *Copy* copies it. Try Edit on any question above.
@@ -194,10 +218,19 @@ export const TOUR_MESSAGES: UIMessage[] = [
     started: WRITTEN + 180_000,
     ms: 7_600,
   }),
-  asked("9", "How do I edit, retry or delete things?", "super"),
-  replied("10", [text(HOW_TO)], {
+  {
+    ...asked("9", "Anything missing from my packing list?", "super"),
+    parts: [PACKING_LIST, text("Anything missing from my packing list?")],
+  },
+  replied("10", [text(PACKED)], {
     model: "super",
     started: WRITTEN + 240_000,
+    ms: 5_200,
+  }),
+  asked("11", "How do I edit, retry or delete things?", "super"),
+  replied("12", [text(HOW_TO)], {
+    model: "super",
+    started: WRITTEN + 300_000,
     ms: 4_300,
   }),
 ]

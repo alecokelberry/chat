@@ -14,9 +14,9 @@ import {
 
 // The feature tour (src/lib/chat/tour.ts): Feature tour in the account menu
 // adds the pinned demo chat and opens it, rendered like any chat (thinking,
-// web search, a folded code block, a table, math). Pressing it again
-// refreshes the same chat, dropping what was asked since, and never adds a
-// second. It deletes like any chat. Search's next open indexes its words.
+// web search, a folded code block, a table, math, an attached text file).
+// Pressing it again refreshes the same chat, dropping what was asked since,
+// and never adds a second. It deletes like any chat. Search's next open indexes its words.
 
 const PATH = `/c/${TOUR_ID}`
 const QUESTIONS = TOUR_MESSAGES.filter((m) => m.role === "user").length
@@ -45,6 +45,11 @@ test("Feature tour adds one pinned demo chat, refreshes it, and deletes", async 
   const thread = page.getByRole("log", { name: "Messages" })
   await expect(
     thread.getByRole("button", { name: "Thought for 6s" })
+  ).toBeVisible()
+  await expect(
+    thread
+      .getByRole("list", { name: "Attached files" })
+      .getByText("zion-packing-list.md")
   ).toBeVisible()
   await expect(
     thread.getByRole("button", { name: "Searched · 2 sites" })

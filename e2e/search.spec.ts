@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test"
 
 import {
   expect,
+  pick,
   questions,
   replies,
   send,
@@ -175,6 +176,31 @@ test("a word from a question or a reply finds its chat, with the line", async ({
   await messages(page).getByRole("option").click()
   await expect(page).toHaveURL(new RegExp(`${path}$`))
   await expect(dialog(page)).toHaveCount(0)
+})
+
+test("an attachment's file name finds its chat, but not its text", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const [named, inside] = [madeUpWord(), madeUpWord()]
+  await pick(page, [
+    {
+      name: `${named}-notes.txt`,
+      mimeType: "text/plain",
+      buffer: Buffer.from(`Only the file holds ${inside}.`),
+    },
+  ])
+  await expect(
+    page
+      .getByRole("list", { name: "Attached files" })
+      .getByText("Text", { exact: true })
+  ).toBeVisible()
+  await chatSaying(page, "Sum this up")
+
+  await findWords(page, named)
+  await expect(messages(page).getByRole("option")).toHaveCount(1)
+  await field(page).fill(inside)
+  await expect(dialog(page)).toContainText("No chats match")
 })
 
 test("one letter searches titles only, and a title match comes first", async ({
