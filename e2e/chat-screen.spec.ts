@@ -43,6 +43,15 @@ const ringOf = (page: Page) =>
 test.describe("on a phone", () => {
   test.use(phone)
 
+  test("the greeting stays put while the composer grows", async ({ page }) => {
+    await signInAsDev(page)
+    const before = (await page.getByRole("heading").boundingBox())?.y
+    await page
+      .getByRole("textbox", { name: "Message" })
+      .fill("one\ntwo\nthree\nfour")
+    expect((await page.getByRole("heading").boundingBox())?.y).toBe(before)
+  })
+
   test("the new chat sits like the archive's, and a tap doesn't ring the composer", async ({
     page,
   }) => {

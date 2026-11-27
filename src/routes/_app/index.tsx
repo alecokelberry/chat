@@ -19,9 +19,10 @@ function NewChat() {
   const [model, setModel] = useState(DEFAULT_MODEL)
   return (
     // The greeting and the composer 28px under it, centered as one block
-    // (my-auto: auto margins center it, and drop to 0 so the page scrolls
-    // from the top when they don't fit). It re-centers as the composer
-    // grows. 24px in on a phone.
+    // sized for a one-line composer (h-14.5, its 58px): auto margins center
+    // it, and the composer grows downward out of its slot, so the greeting
+    // stays put while you type; the page scrolls if they stop fitting.
+    // 24px in on a phone.
     <main
       id="main"
       tabIndex={-1}
@@ -31,7 +32,7 @@ function NewChat() {
         <h1 className="px-4 pb-7 text-center text-3xl font-medium">
           What can I help with?
         </h1>
-        <div className="mx-auto w-full max-w-composer px-2 sm:px-0">
+        <div className="mx-auto h-14.5 w-full max-w-composer px-2 sm:px-0">
           <Composer
             model={model}
             onModelChange={setModel}
