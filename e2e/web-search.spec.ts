@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto"
-
 import {
   SEARCH_FAILED_REPLY,
   SEARCH_RESULTS,
@@ -8,16 +6,13 @@ import {
 import { lastTimeZone } from "@/lib/ai/models"
 import { searchedLabel, searchesOf, sourcesOf } from "@/lib/chat/searches"
 
-import { expect, replies, send, signInAsDev, test } from "./session"
+import { expect, replies, send, signInAsDev, test, unique } from "./session"
 
 // Web search in a reply (src/lib/ai/search.ts, thread.tsx, sources.tsx), on
 // the mock model: a message that says "search" makes it search first, with
 // canned results after a second and a half; "(search N)" asks for N
 // searches, and "(search down)" makes the search fail (src/lib/ai/mock.ts).
 // Nothing here reaches Keenable.
-
-/** A message nobody has sent before. */
-const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
 
 test("a question that says search shows the step, then its sources, kept on reload", async ({
   page,
@@ -100,6 +95,20 @@ test("a reply searches at most three times", async ({ page }) => {
 })
 
 // A saved reply is data: its parts are whatever was stored.
+test("a reply searches at most three times, even all at once", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, unique("Please search for the news (search 5) (at once)"))
+  await expect(replies(page)).toContainText("Done.")
+  await page.getByRole("button", { name: "Searched · 5 sites" }).click()
+  const thread = page.getByRole("log", { name: "Messages" })
+  await expect(thread.getByText("Example Domain · example.com")).toHaveCount(3)
+  await expect(
+    thread.getByText(/^That's the 3 searches this reply can make/)
+  ).toHaveCount(2)
+})
+
 const reply = (parts: unknown[]) => ({ parts })
 
 test("a saved search keeps only web links, and counts each site once", () => {
@@ -127,6 +136,16 @@ test("a saved search keeps only web links, and counts each site once", () => {
   ])
   expect(searchedLabel(searches, false)).toBe("Searched · 2 sites")
   expect(searchedLabel(searches.slice(0, 1), true)).toBe("Searching the web…")
+  const empty = searchesOf(
+    reply([
+      {
+        type: "tool-webSearch",
+        state: "output-available",
+        output: { results: [] },
+      },
+    ])
+  )
+  expect(searchedLabel(empty, false)).toBe("Searched · nothing found")
 })
 
 test("the model is told the question's time zone only if it's real", () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { test as base, expect, type Locator, type Page } from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
@@ -167,6 +168,10 @@ export async function pickModel(page: Page, name: string) {
   await page.getByRole("option", { name }).click()
   await expect(picker).toContainText(name)
 }
+
+/** A message nobody has sent before, so the mock's counts for it start
+ *  fresh on a rerun. */
+export const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
 
 /** Sends a message the way a person does: once the last reply is over. The
  *  composer ignores Enter while a reply streams (Send is Stop then), and a

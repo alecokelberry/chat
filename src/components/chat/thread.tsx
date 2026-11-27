@@ -60,23 +60,21 @@ const thoughtsOf = (message: UIMessage) =>
     (part): part is ReasoningUIPart => part.type === "reasoning"
   )
 
-/** A reply with no words, thoughts or searches yet. */
-const isBlank = (message: UIMessage) =>
-  textOf(message) === "" &&
-  thoughtsOf(message).length === 0 &&
-  searchesOf(message).length === 0
+/** A reply with no words or thoughts yet. */
+const isWordless = (message: UIMessage) =>
+  textOf(message) === "" && thoughtsOf(message).length === 0
 
-/** A reply that has searched and is reading the results: no words or
- *  thoughts yet, and no search still running. */
-const isReading = (message: UIMessage) => {
+/** What the waiting marker stands in for: a reply with nothing yet, or
+ *  one that has searched and is reading the results. */
+function isWaiting(message: UIMessage) {
+  if (!isWordless(message)) return false
   const searches = searchesOf(message)
-  return (
-    textOf(message) === "" &&
-    thoughtsOf(message).length === 0 &&
-    searches.length > 0 &&
-    !searches.some((search) => search.running)
-  )
+  return !searches.some((search) => search.running)
 }
+
+/** A reply with nothing to show yet. */
+const isBlank = (message: UIMessage) =>
+  isWordless(message) && searchesOf(message).length === 0
 
 export function Thread({
   messages,
@@ -98,8 +96,7 @@ export function Thread({
   onEdit: (id: string, text: string) => void
 }) {
   const last = messages.at(-1)
-  const waiting =
-    busy && (last?.role !== "assistant" || isBlank(last) || isReading(last))
+  const waiting = busy && (last?.role !== "assistant" || isWaiting(last))
   return (
     <MessageScroller
       role="log"

@@ -26,7 +26,7 @@ const RESULTS = 5
 const SNIPPET_CHARS = 600
 const TIMEOUT_MS = 10_000
 
-export type SearchResult = {
+type SearchResult = {
   title: string
   url: string
   /** The address's host, without "www.". */
@@ -104,41 +104,51 @@ class KeenableError extends Error {
   }
 }
 
-/** A search that failed, as the model and the chat read it. */
-export class SearchFailedError extends Error {
-  constructor(cause: unknown) {
-    super(
-      cause instanceof KeenableError && cause.status === 402
-        ? "This month's free web searches are used up."
-        : "The web search failed, so nothing was found."
-    )
-  }
-}
+/** Why a search found nothing, as the model and the chat read it. */
+export class SearchError extends Error {}
 
-export const webSearch = tool({
-  description:
-    "Search the web. Use it when the question needs current or changing facts (news, prices, releases, schedules, scores, anything after your training) or when asked to search or look something up. Returns the top results with a snippet each.",
-  inputSchema: z.object({
-    query: z
-      .string()
-      .min(1)
-      .max(400)
-      .describe("What to search for, in plain words, as a person would"),
-  }),
-  execute: async ({ query }, { abortSignal }) => {
-    try {
-      const results =
-        env.MOCK_MODEL === "1"
-          ? await mockSearch(query, abortSignal)
-          : await keenable(query, abortSignal)
-      return { results }
-    } catch (error) {
-      if (abortSignal?.aborted === true) throw error
-      console.error(
-        "Search failed:",
-        error instanceof Error ? error.message : String(error)
-      )
-      throw new SearchFailedError(error)
-    }
-  },
-})
+/** The reason a failed search gives. */
+const failure = (cause: unknown) =>
+  new SearchError(
+    cause instanceof KeenableError && cause.status === 402
+      ? "This month's free web searches are used up."
+      : "The web search failed, so nothing was found."
+  )
+
+/** The webSearch tool for one reply: past SEARCH_LIMIT calls, even ones
+ *  made at once in a single step, it refuses without asking Keenable. */
+export const webSearch = () => {
+  let left = SEARCH_LIMIT
+  return tool({
+    description:
+      "Search the web. Use it when the question needs current or changing facts (news, prices, releases, schedules, scores, anything after your training) or when asked to search or look something up. Returns the top results with a snippet each.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .min(1)
+        .max(400)
+        .describe("What to search for, in plain words, as a person would"),
+    }),
+    execute: async ({ query }, { abortSignal }) => {
+      if (left <= 0)
+        throw new SearchError(
+          `That's the ${SEARCH_LIMIT} searches this reply can make. Answer from what you have.`
+        )
+      left -= 1
+      try {
+        const results =
+          env.MOCK_MODEL === "1"
+            ? await mockSearch(query, abortSignal)
+            : await keenable(query, abortSignal)
+        return { results }
+      } catch (error) {
+        if (abortSignal?.aborted === true) throw error
+        console.error(
+          "Search failed:",
+          error instanceof Error ? error.message : String(error)
+        )
+        throw failure(error)
+      }
+    },
+  })
+}
