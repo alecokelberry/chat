@@ -657,9 +657,7 @@ test("an agent can't delete a chat", async ({ page }) => {
   await expect(toasts(page)).toHaveCount(0)
 })
 
-// ui-sdk's agent test: each row's menu is a named control an agent can
-// open, and its actions are named.
-// Grok's: an open menu marks its … alone; the row keeps its own fill.
+// An open menu marks its … alone; the row keeps its own fill.
 test("a row's open menu shades its …, not the row", async ({ page }) => {
   await signInAsDev(page)
   const row = sidebar(page)
@@ -674,6 +672,8 @@ test("a row's open menu shades its …, not the row", async ({ page }) => {
   await expect(opener).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
 })
 
+// ui-sdk's agent test: each row's menu is a named control an agent can
+// open, and its actions are named.
 test("an agent can open a row's menu", async ({ page }) => {
   await signInAsDev(page)
   await showAllChats(page)

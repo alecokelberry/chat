@@ -369,11 +369,12 @@ function SidebarItem({ className, ...props }: React.ComponentProps<"li">) {
 
 /** A chat row's 24px …, its menu's trigger, 6px from its end, with a
  *  rounded square behind it (the row's wash, stacked on the row's own)
- *  while it's hovered or its menu is open, Grok's: the open menu marks
- *  its … alone, not the whole row, on a computer and in the phone's sheet
- *  alike; a 40px invisible touch area on touch screens. The trigger is the button
- *  itself, not a Button inside it, so an agent sees one control per row's
- *  menu, not two. */
+ *  while it's hovered or its menu is open. An open menu marks its …
+ *  alone, never the whole row, on a computer and in the phone's sheet
+ *  alike, so a selected row keeps its own fill and the … shows one step
+ *  darker on it. A 40px invisible touch area on touch screens. The
+ *  trigger is the button itself, not a Button inside it, so an agent sees
+ *  one control per row's menu, not two. */
 function SidebarRowAction({
   className,
   ...props
