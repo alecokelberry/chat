@@ -43,6 +43,11 @@ import { EllipsisIcon } from "lucide-react"
 import { AccountMenu, type Account } from "@/components/chat/account-menu"
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
 import { useChatList, type ChatRef } from "@/components/chat/chat-list"
+import {
+  createSearchController,
+  SearchButton,
+  SearchDialog,
+} from "@/components/chat/search"
 import { BrandMark } from "@/components/ui/brand-mark"
 import { Menu } from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
@@ -128,6 +133,7 @@ export function ChatSidebar({
   const [open, setOpen] = useState(false)
   const [opened, setOpened] = useState(false)
   const close = useCallback(() => setOpen(false), [])
+  const [search] = useState(createSearchController)
   // Replays a press from before hydration through the button itself.
   const trigger = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -156,7 +162,9 @@ export function ChatSidebar({
           collapsed={collapsed}
           shortcut={phone === false}
           onToggle={toggle}
-        />
+        >
+          <SearchButton controller={search} />
+        </SidebarToggle>
         <div className="relative z-10 px-2.5">
           <NewChatLink />
         </div>
@@ -188,15 +196,23 @@ export function ChatSidebar({
           <header className="box-content flex h-header shrink-0 items-center px-3 pt-safe md:hidden">
             <ScriptOnce>{EARLY_TAP}</ScriptOnce>
             <SidebarDrawerTrigger id={TRIGGER_ID} ref={trigger} />
+            <div className="ms-1 flex">
+              <SearchButton controller={search} tooltip={false} />
+            </div>
           </header>
           {phone === true && (
             <SidebarDrawerContent title="Chats">
               {/* Three taps on the mark show the status bar readout. */}
               <div
                 data-debug-taps
-                className="flex h-sidebar-header shrink-0 items-center px-3"
+                className="flex h-sidebar-header shrink-0 items-center justify-between px-3"
               >
                 <BrandMark className="size-icon" />
+                <SearchButton
+                  controller={search}
+                  tooltip={false}
+                  onClick={close}
+                />
               </div>
               <SidebarHeader className="relative z-10">
                 <NewChatLink onClick={close} tooltip={false} />
@@ -214,6 +230,7 @@ export function ChatSidebar({
         </SidebarDrawer>
         {children}
       </div>
+      <SearchDialog controller={search} />
     </div>
   )
 }

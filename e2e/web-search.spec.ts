@@ -52,7 +52,10 @@ test("a simple question doesn't search", async ({ page }) => {
   await signInAsDev(page)
   await send(page, "Hello")
   await expect(replies(page)).toContainText("Done.")
-  await expect(page.getByRole("button", { name: /^Search/ })).toHaveCount(0)
+  // No "Searching…" or "Searched · …" step (Search, the icon, is another).
+  await expect(
+    page.getByRole("button", { name: /^Search(ing|ed)/ })
+  ).toHaveCount(0)
   await expect(page.getByRole("button", { name: /sources?$/ })).toHaveCount(0)
 })
 
