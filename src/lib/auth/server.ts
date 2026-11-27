@@ -1,8 +1,9 @@
 // Sign-in on the server: Better Auth on D1 with passkeys only. There are no
 // passwords and no open sign-up. A passkey is added in one of two ways:
 // signed in already, or on /setup with the SETUP_CODE (a Wrangler secret),
-// which adds it to the owner's account. Locally, with DEV_SIGN_IN
-// set, /api/auth/dev-sign-in signs a browser on this machine in as Dev.
+// which adds it to the owner's account (the oldest non-Dev one). Locally,
+// with DEV_SIGN_IN set, /api/auth/dev-sign-in signs a browser on this
+// machine in as Dev.
 // Sessions are a signed httpOnly cookie and a row in `session`.
 import { env } from "cloudflare:workers"
 import { betterAuth, type BetterAuthPlugin } from "better-auth"
@@ -21,11 +22,33 @@ import { passkey } from "@better-auth/passkey"
 const LIVE_HOST = "chat.alecokelberry.workers.dev"
 const PREVIEW_SUFFIX = "-chat.alecokelberry.workers.dev"
 
-/** Whose account a passkey added with the setup code joins. */
+/** The owner's account when there is none yet: setup makes it with these,
+ *  and the owner's real name and email are set on the live row (never
+ *  here: the repo is public). */
 const OWNER = { email: "owner@chat.test", name: "Alec" }
 /** Dev: the local test account, kept apart from the owner's. `.test` can't
  *  reach an inbox. */
 const DEV = { email: "dev@chat.test", name: "Dev" }
+
+/** Dev's accounts: dev@chat.test, and any dev+N@chat.test. */
+const isDev = (email: string) => /^dev(\+\d+)?@chat\.test$/.test(email)
+
+/** The owner: the oldest account that isn't a Dev one, whatever its email,
+ *  so the live row can carry the real one. Live there are no Dev accounts
+ *  (DEV_SIGN_IN is never set), so it's the first account made. */
+async function findOwner(adapter: {
+  listUsers: (
+    limit: number,
+    offset: number,
+    sortBy: { field: string; direction: "asc" | "desc" }
+  ) => Promise<{ id: string; name: string; email: string }[]>
+}) {
+  const users = await adapter.listUsers(100, 0, {
+    field: "createdAt",
+    direction: "asc",
+  })
+  return users.find((user) => !isDev(user.email)) ?? null
+}
 
 /** Whether Dev can sign in from this address: only with DEV_SIGN_IN set
  *  (.dev.vars and e2e, never live) and only on localhost. */
@@ -164,7 +187,7 @@ function createAuth() {
             }
             const adapter = ctx.context.internalAdapter
             const user =
-              (await adapter.findUserByEmail(OWNER.email))?.user ??
+              (await findOwner(adapter)) ??
               (await adapter.createUser(
                 { ...OWNER, emailVerified: false },
                 { method: "passkey-setup" }

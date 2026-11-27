@@ -2,11 +2,12 @@
 -- local D1 before the test server starts (playwright.config.ts): writing
 -- them while it runs locks the database under the other tests. The
 -- accounts are made here so the rows have owners; Dev's sign-in and the
--- owner's /setup find them by email. The 1,000 chats are the owner's, so
+-- owner's /setup find them (Dev by email, the owner as the oldest other
+-- account, whatever its email, as live). The 1,000 chats are the owner's, so
 -- the tests that chat as Dev don't render them on every page.
 insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values
   ('e2e-dev', 'Dev', 'dev@chat.test', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
-  ('e2e-owner', 'Alec', 'owner@chat.test', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+  ('e2e-owner', 'Alec Okelberry', 'owner@example.com', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
 
 insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt") values
   ('e2e-dev', '00000000-0000-4000-8000-000000000000', 'Seeded for an agent', 1795000000000, 1795000000000);

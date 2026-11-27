@@ -76,7 +76,7 @@ export async function expectSignedInAs(page: Page, name: string) {
     page
       .getByRole("navigation", { name: "Chats", includeHidden: true })
       .getByRole("button", { includeHidden: true })
-      .filter({ hasText: new RegExp(`^\\s*\\S?\\s*${name}$`) })
+      .filter({ hasText: new RegExp(`^\\s*\\S{0,2}\\s*${name}$`) })
   ).toBeAttached()
 }
 
@@ -126,7 +126,7 @@ export async function signInAsOwner(page: Page) {
   await page.goto(`/setup#${E2E_SETUP_CODE}`)
   await hydrated(page)
   await page.getByRole("button", { name: "Add a passkey" }).click()
-  await expectSignedInAs(page, "Alec")
+  await expectSignedInAs(page, "Alec Okelberry")
   await hydrated(page)
   return authenticator
 }
