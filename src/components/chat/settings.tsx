@@ -8,12 +8,15 @@
 // (src/lib/settings/sections.ts), and the first of them shows; with none,
 // it says so. Each section's page is its own component below: Account
 // (who's signed in, Sign Out), Appearance (the theme, code wrapping) and
-// Customize (the response style, src/lib/ai/style.ts). The look is
-// src/components/ui/settings.tsx. It loads on its own, after first load,
-// through the dialog in src/components/chat/settings-dialog.tsx.
+// Customize (the response style, src/lib/ai/style.ts) and Usage (each
+// model's share of the tokens used, all time: src/lib/chat/usage.ts). The
+// look is src/components/ui/settings.tsx and src/components/ui/usage.tsx.
+// It loads on its own, after first load, through the dialog in
+// src/components/chat/settings-dialog.tsx.
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import {
+  ChartNoAxesColumnIcon,
   CircleUserRoundIcon,
   ContrastIcon,
   SlidersHorizontalIcon,
@@ -46,6 +49,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  SHARE_INSIDE_MIN,
+  UsageBar,
+  UsageLegend,
+  UsageLegendItem,
+  UsageSummary,
+  UsageTotal,
+} from "@/components/ui/usage"
 import { toast } from "@/components/ui/toast"
 import {
   CUSTOM_MAX,
@@ -56,17 +67,20 @@ import {
 } from "@/lib/ai/style"
 import { authClient } from "@/lib/auth/client"
 import { useSignOut } from "@/lib/auth/use-sign-out"
+import { getUsage } from "@/lib/chat/list"
 import { initialsOf } from "@/lib/settings/initials"
 import {
   findSections,
   isSectionId,
   type SectionId,
 } from "@/lib/settings/sections"
+import type { UsageSplit } from "@/lib/settings/usage-split"
 
 const ICONS: Record<SectionId, React.ReactNode> = {
   account: <CircleUserRoundIcon aria-hidden />,
   appearance: <ContrastIcon aria-hidden />,
   customize: <SlidersHorizontalIcon aria-hidden />,
+  usage: <ChartNoAxesColumnIcon aria-hidden />,
 }
 
 /** What a section's page may need. */
@@ -77,6 +91,7 @@ const PAGES: Record<SectionId, (props: PageProps) => React.ReactNode> = {
   account: ({ account }) => <AccountPage account={account} />,
   appearance: () => <AppearancePage />,
   customize: ({ customize }) => <CustomizePage saved={customize} />,
+  usage: () => <UsagePage />,
 }
 
 /** The nav and the page. It mounts each time Settings opens, so the
@@ -298,6 +313,93 @@ function CustomizePage({ saved }: { saved: Customize }) {
             }}
           />
         </SettingsField>
+      )}
+    </SettingsCard>
+  )
+}
+
+/** Whole numbers in the reader's own style: 12,345. */
+const whole = (value: number) => value.toLocaleString()
+
+/** A big number, short: 12,345 below ten thousand, then 48.2K, 1.3M. */
+const short = (value: number) =>
+  value < 10_000
+    ? whole(value)
+    : value.toLocaleString(undefined, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      })
+
+/** A share: 12%, or under 1% for one that rounds to none. */
+const percent = (value: number) => (value === 0 ? "under 1%" : `${value}%`)
+
+const plural = (value: number, one: string, many: string) =>
+  `${whole(value)} ${value === 1 ? one : many}`
+
+/** Each model's share of the tokens used, all time, read as the page
+ *  opens: the total, the bar, and a legend row per model used. */
+function UsagePage() {
+  // undefined while it loads, null if it couldn't.
+  const [usage, setUsage] = useState<UsageSplit | null | undefined>()
+  useEffect(() => {
+    let current = true
+    getUsage().then(
+      (split) => {
+        if (current) setUsage(split)
+      },
+      () => {
+        if (current) setUsage(null)
+      }
+    )
+    return () => {
+      current = false
+    }
+  }, [])
+
+  const parts = usage?.parts ?? []
+  const named = parts.map((part) => `${part.name} ${part.percent}%`).join(", ")
+  return (
+    <SettingsCard label="All time" aria-busy={usage === undefined}>
+      <UsageSummary>
+        <UsageTotal
+          value={usage ? short(usage.tokens) : "–"}
+          unit="tokens"
+          detail={
+            usage === null
+              ? "Couldn't load your usage"
+              : usage === undefined
+                ? "Loading…"
+                : usage.replies === 0
+                  ? "Your models' share shows here after your first reply"
+                  : `${plural(usage.replies, "reply", "replies")} across your chats`
+          }
+        />
+        <UsageBar
+          parts={parts.map((part) => ({ ...part, amount: part.tokens }))}
+          aria-label={
+            parts.length === 0
+              ? "No tokens used yet"
+              : `Tokens by model: ${named}`
+          }
+        />
+      </UsageSummary>
+      {parts.length > 0 && (
+        <UsageLegend aria-label="Tokens by model">
+          {parts.map((part) => (
+            <UsageLegendItem
+              key={part.key}
+              series={part.slot}
+              name={part.name}
+              share={
+                part.percent < SHARE_INSIDE_MIN
+                  ? percent(part.percent)
+                  : undefined
+              }
+              detail={plural(part.replies, "reply", "replies")}
+              value={plural(part.tokens, "token", "tokens")}
+            />
+          ))}
+        </UsageLegend>
       )}
     </SettingsCard>
   )

@@ -17,7 +17,7 @@ import {
 // model picker, the chat list's drawer (at 390), a row's menu, the
 // account menu open, attachments (tiles, a question's images and the
 // viewer), Search open with a query (its preview beside, at 1440) and a
-// result's menu, and Settings open at Account. It fails on serious or
+// result's menu, and Settings open at Account and Usage. It fails on serious or
 // critical WCAG 2.2 AA problems, and says which rule and which elements.
 // A new screen joins the list in `screens` when it lands (DESIGN.md ›
 // Access).
@@ -158,6 +158,17 @@ for (const colorScheme of ["light", "dark"] as const) {
         await expect(
           settings.getByRole("button", { name: "Sign Out" })
         ).toBeVisible()
+        await scan(page)
+        // Usage's bar and legend, once loaded.
+        if (name === "390")
+          await settings
+            .getByRole("button", { name: "Back to settings" })
+            .click()
+        await settings.getByRole("tab", { name: "Usage" }).click()
+        await expect(
+          settings.locator('[data-slot="usage-bar"]:visible')
+        ).toBeVisible()
+        await expect(settings.locator('[aria-busy="false"]')).toBeVisible()
         await scan(page)
       })
     })

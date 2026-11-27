@@ -45,6 +45,7 @@ import type { UIMessage } from "ai"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
+import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
@@ -145,7 +146,19 @@ export class ChatAgent extends AIChatAgent<Env> {
     const result = await streamReply(
       this.messages,
       options?.abortSignal,
-      customize
+      customize,
+      (tokens) => {
+        // Best effort: a reply that isn't counted still answered.
+        this.ctx.waitUntil(
+          recordUsage(this.env.DB, {
+            userId: this.owner.userId,
+            model,
+            ...tokens,
+          }).catch((error: unknown) => {
+            console.error("Couldn't count the reply's usage", error)
+          })
+        )
+      }
     )
     let thinking: number | undefined
     return result.toUIMessageStreamResponse({

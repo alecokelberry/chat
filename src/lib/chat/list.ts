@@ -10,7 +10,8 @@
 // (src/lib/chat/tour.ts) through addTour. Search finds chats by their
 // messages' words through findInMessages (src/lib/chat/message-index.ts),
 // and as it opens, indexOlderChats has a few chats whose words the index
-// doesn't hold yet index themselves.
+// doesn't hold yet index themselves. Settings › Usage reads the user's
+// all-time tokens per model through getUsage (src/lib/chat/usage.ts).
 import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -29,6 +30,8 @@ import {
   type ChatOwner,
 } from "@/lib/chat/store"
 import { TOUR_ID, TOUR_MESSAGES, TOUR_TITLE } from "@/lib/chat/tour"
+import { usageByModel } from "@/lib/chat/usage"
+import { splitUsage } from "@/lib/settings/usage-split"
 
 /** The signed-in user's id, or null. */
 async function userId(): Promise<string | null> {
@@ -41,6 +44,11 @@ async function userId(): Promise<string | null> {
 export const getChats = createServerFn({ method: "GET" }).handler(async () => {
   const user = await userId()
   return user === null ? [] : listChats(env.DB, user)
+})
+
+export const getUsage = createServerFn({ method: "GET" }).handler(async () => {
+  const user = await userId()
+  return splitUsage(user === null ? [] : await usageByModel(env.DB, user))
 })
 
 /** The longest title a rename keeps. */
