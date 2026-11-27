@@ -18,13 +18,18 @@ test("⌘J starts a new chat from a saved chat", async ({ page }) => {
   await expect(greeting(page)).toBeVisible()
 })
 
-test("New Chat's tooltip names ⌘J", async ({ page }) => {
+// Grok's tooltip: the label, then each key in its own keycap, ⌘ on a Mac
+// and Ctrl elsewhere; screen readers hear aria-keyshortcuts instead.
+test("New Chat's tooltip shows ⌘J as keycaps", async ({ page }) => {
   await signInAsDev(page)
-  await page
+  const newChat = page
     .getByRole("link", { name: "New Chat", exact: true })
     .first()
-    .hover()
-  await expect(page.getByRole("tooltip")).toContainText(/⌘J|Ctrl\+J/)
+  await newChat.hover()
+  const tip = page.getByRole("tooltip")
+  await expect(tip).toContainText("New Chat")
+  await expect(tip.locator("kbd")).toHaveText([/^(⌘|Ctrl)$/, "J"])
+  await expect(newChat).toHaveAttribute("aria-keyshortcuts", /\+J$/)
 })
 
 for (const path of ["/nope", "/c/not-a-chat"]) {

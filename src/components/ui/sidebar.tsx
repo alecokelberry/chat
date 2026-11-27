@@ -109,7 +109,7 @@ function SidebarToggle({
         </TooltipTrigger>
         <TooltipContent side="right">
           {collapsed ? "Expand" : "Collapse"}
-          <TooltipShortcut className="text-muted-foreground" />
+          <TooltipShortcut />
         </TooltipContent>
       </Tooltip>
       <div className="ms-1 flex group-data-collapsed/sidebar:hidden">
@@ -167,7 +167,7 @@ function SidebarSearchTrigger({
       </TooltipTrigger>
       <TooltipContent side={tooltipSide}>
         Search
-        <TooltipShortcut className="text-muted-foreground" />
+        <TooltipShortcut />
       </TooltipContent>
     </Tooltip>
   )
