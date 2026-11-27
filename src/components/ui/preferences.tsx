@@ -21,6 +21,8 @@
 // THEME_COLOR_SCRIPT sets it before the first paint for a choice saved
 // before the cookie was.
 import * as React from "react"
+
+import { CHAT_SORTS, type ChatSort } from "@/lib/chat/groups"
 /* oxlint-disable no-restricted-imports -- preferences and storage have no entry of their own */
 import {
   createColorScheme,
@@ -279,6 +281,8 @@ function useThemeShortcut() {
   })
 }
 
+// ui-sdk requires an attribute on every preference; these two are never
+// passed to <Preferences>, so nothing puts them on the page.
 const chatsOpen = createPreference({
   values: ["open", "closed"],
   defaultValue: "open",
@@ -287,7 +291,7 @@ const chatsOpen = createPreference({
 })
 
 const chatSort = createPreference({
-  values: ["updatedAt", "createdAt"],
+  values: CHAT_SORTS,
   defaultValue: "updatedAt",
   attribute: "data-chat-sort",
   storage: createLocalStorage("chat-sort"),
@@ -302,7 +306,7 @@ function useChatsSection() {
     open,
     setOpen: (next: boolean) => chatsOpen.set(next ? "open" : "closed"),
     sort,
-    setSort: (next: "updatedAt" | "createdAt") => chatSort.set(next),
+    setSort: (next: ChatSort) => chatSort.set(next),
   }
 }
 
