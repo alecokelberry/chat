@@ -470,7 +470,7 @@
     width: --spacing(9);
     height: --spacing(1.25);
     margin: 0 auto --spacing(2.5);
-    border-radius: 9999px;
+    @apply rounded-full;
     background: color-mix(
       in oklab,
       var(--color-muted-foreground) 40%,
@@ -848,7 +848,7 @@
     width: 0.5em;
     height: 0.5em;
     margin-inline-start: 0.3em;
-    border-radius: 9999px;
+    @apply rounded-full;
     background-color: var(--foreground);
     vertical-align: 0.05em;
     animation: caret-breathe 1s var(--ease-standard) infinite;

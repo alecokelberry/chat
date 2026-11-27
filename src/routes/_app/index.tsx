@@ -1,9 +1,8 @@
-// New chat: a greeting and the composer, centered together in the space under the
-// header, beside the
-// sidebar (src/routes/_app/route.tsx, which also checks the session). The
-// first send makes the chat: a fresh id, then /c/<id> with the message and
-// its model in history state, which that page sends once it's connected
-// (src/routes/_app/c.$id.tsx).
+// New chat: a greeting and the composer, centered together in the space
+// under the header, beside the sidebar (src/routes/_app/route.tsx, which
+// also checks the session). The first send makes the chat: a fresh id, then
+// /c/<id> with the message and its model in history state, which that page
+// sends once it's connected (src/routes/_app/c.$id.tsx).
 import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
