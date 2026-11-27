@@ -1,5 +1,8 @@
-// Saved choices: ui-sdk's Preferences, kept in this browser's localStorage
-// and put on <html> as data attributes: the color scheme
+// Saved choices: ui-sdk's Preferences, kept in this browser's localStorage.
+// The sidebar's Chats section keeps two (useChatsSection): whether it's
+// open, and whether it sorts by last activity or by date created; the list
+// renders only in the browser, so they're read there, never on the server.
+// The rest are put on <html> as data attributes: the color scheme
 // (data-color-scheme: system, light or dark), which app.css's dark variant
 // follows and the account menu's Theme flips, and whether replies' code
 // wraps (data-code-wrap: scroll or wrap), from Settings. <AppPreferences>
@@ -276,8 +279,36 @@ function useThemeShortcut() {
   })
 }
 
+const chatsOpen = createPreference({
+  values: ["open", "closed"],
+  defaultValue: "open",
+  attribute: "data-chats",
+  storage: createLocalStorage("chats-open"),
+})
+
+const chatSort = createPreference({
+  values: ["updatedAt", "createdAt"],
+  defaultValue: "updatedAt",
+  attribute: "data-chat-sort",
+  storage: createLocalStorage("chat-sort"),
+})
+
+/** The sidebar's Chats section, as this browser last left it: open or
+ *  folded, and sorted by last activity or by date created. */
+function useChatsSection() {
+  const open = usePreference(chatsOpen).value === "open"
+  const sort = usePreference(chatSort).value
+  return {
+    open,
+    setOpen: (next: boolean) => chatsOpen.set(next ? "open" : "closed"),
+    sort,
+    setSort: (next: "updatedAt" | "createdAt") => chatSort.set(next),
+  }
+}
+
 export {
   AppPreferences,
+  useChatsSection,
   THEME_COLOR_SCRIPT,
   useCodeWrap,
   useIsDark,
