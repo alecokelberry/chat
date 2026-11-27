@@ -5,12 +5,15 @@
 // sits at the top of <body>; on the server it renders an inline script
 // that sets the attributes before the first paint, so CSS that selects
 // them is right from the start, with nothing to flash.
-// The status bar follows the choice too: an inline script in the head
-// (THEME_COLOR_SCRIPT) points the theme-color tags at the saved choice
-// before the first paint, and StatusBarColor keeps them in step after.
-// iOS 26 reads the bar's color when the app launches and again only when
-// a layer appears over the page, not when the page's colors change, so a
-// change also briefly shows an empty, invisible layer (nudgeStatusBar).
+// The status bar follows the choice too. iOS 26 ignores theme-color and
+// colors the bar from the fixed or sticky element at the top edge (here,
+// the shell's solid background), or the page's when there's none. It looks
+// again only when such an element comes or goes, and keeps the color it has
+// while a full-screen layer or the drawer covers the edge, so a theme change
+// briefly shows a strip it does take its color from (nudgeStatusBar).
+// theme-color, which other browsers read, follows too: an inline script in
+// the head (THEME_COLOR_SCRIPT) points the tags at the saved choice before
+// the first paint, and StatusBarColor keeps them in step after.
 import * as React from "react"
 // oxlint-disable-next-line no-restricted-imports -- preferences and storage have no entry of their own
 import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
@@ -73,38 +76,45 @@ function StatusBarColor() {
       meta.replaceWith(fresh)
     }
   }, [value])
-  // On load too, which costs nothing and settles the launch color.
-  React.useEffect(() => nudgeStatusBar(), [resolved])
+  // Only when the colors change: at launch the shell's are already right.
+  const shown = React.useRef(resolved)
+  React.useEffect(() => {
+    if (shown.current === resolved) return
+    shown.current = resolved
+    return nudgeStatusBar()
+  }, [resolved])
   return null
 }
 
-/** How long the nudge's layer stays: long enough for iOS to notice it. */
-const NUDGE_MS = 150
+/** How long the strip stays: a few frames, so iOS samples it at least
+ *  once. */
+const NUDGE_MS = 100
 
-/** Makes iOS read the status bar's color again, once the new colors are
- *  painted: a full-screen manual popover, so in the top layer like a menu
- *  sheet, but empty, clear and letting every tap through, shown for 150 ms.
- *  A manual popover leaves open menus and focus alone. Returns its
- *  cleanup. */
+/** Makes iOS 26 color the status bar again, from the new background.
+ *  WebKit (LocalFrameView::fixedContainerEdges) samples the top edge only
+ *  when a fixed or sticky element is added or removed. It takes a fresh
+ *  color only from a full-width bar taller than 10px and at least 10%
+ *  opaque; a full-screen layer, a dimming backdrop or a side drawer keeps
+ *  the color the edge had. So this shows such a bar, in the page's
+ *  background at 12% over the top 16px, for 100 ms: a manual popover, in
+ *  the top layer above an open drawer or menu, that lets every tap
+ *  through and leaves focus alone. After it goes, the shell (or the drawer
+ *  over it) keeps the color it gave. Returns its cleanup. */
 function nudgeStatusBar() {
   // A browser without popovers has no top layer to show it in.
   if (!("showPopover" in HTMLElement.prototype)) return
-  const layer = document.createElement("div")
-  layer.popover = "manual"
-  layer.ariaHidden = "true"
-  layer.dataset.slot = "status-bar-nudge"
-  layer.style.cssText =
-    "position:fixed;inset:0;width:auto;height:auto;margin:0;padding:0;border:0;background:transparent;pointer-events:none"
-  let timer = 0
-  const frame = requestAnimationFrame(() => {
-    document.body.appendChild(layer)
-    layer.showPopover()
-    timer = window.setTimeout(() => layer.remove(), NUDGE_MS)
-  })
+  const strip = document.createElement("div")
+  strip.popover = "manual"
+  strip.ariaHidden = "true"
+  strip.dataset.slot = "status-bar-nudge"
+  strip.style.cssText =
+    "position:fixed;inset:0 0 auto 0;width:auto;height:16px;margin:0;padding:0;border:0;background:var(--background);opacity:0.12;pointer-events:none"
+  document.body.appendChild(strip)
+  strip.showPopover()
+  const timer = window.setTimeout(() => strip.remove(), NUDGE_MS)
   return () => {
-    cancelAnimationFrame(frame)
     clearTimeout(timer)
-    layer.remove()
+    strip.remove()
   }
 }
 
