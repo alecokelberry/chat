@@ -7,6 +7,7 @@ import {
   recordStartTimes,
   send,
   settled,
+  showAllChats,
   signInAsDev,
   signInAsOwner,
   tapInSheet,
@@ -95,6 +96,7 @@ test.describe("in Auckland", () => {
     const now = Date.UTC(2026, 2, 9, 21, 0)
     await page.clock.setFixedTime(now)
     await signInAsDev(page)
+    await showAllChats(page)
     const group = (name: string) =>
       sidebar(page).getByRole("region", { name, exact: true })
     await expect(group("Today")).toContainText("Seeded just after midnight")
@@ -106,6 +108,7 @@ test.describe("in Auckland", () => {
     const headings = await sidebar(page).getByRole("heading").allInnerTexts()
     expect(headings).toEqual([
       "Pinned",
+      "Chats",
       "Today",
       "Yesterday",
       "Previous 7 days",
@@ -125,6 +128,94 @@ test("a pinned chat sits under Pinned, at the top", async ({ page }) => {
   await expect(
     sidebar(page).getByRole("link", { name: "Seeded pinned" })
   ).toHaveCount(1)
+})
+
+// The Chats header (Grok's): its chevron folds the chats below Pinned,
+// remembered in this browser; its … sorts them by last activity or date
+// created, Pinned staying on top; its + starts a new chat; and a long list
+// ends in Show more. The worst-case list (src/lib/dev/worst-case.ts) has
+// 1,000 chats, started in the opposite order to their last activity.
+const chatsHeader = (page: Page) =>
+  sidebar(page).getByRole("button", { name: "Chats", exact: true })
+
+test("the Chats header folds the list, and it stays folded after a reload", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await showAllChats(page)
+  const older = sidebar(page).getByRole("region", { name: "Older" })
+  await expect(older).toBeVisible()
+  await expect(chatsHeader(page)).toHaveAttribute("aria-expanded", "true")
+  await chatsHeader(page).click()
+  await expect(older).toBeHidden()
+  await expect(chatsHeader(page)).toHaveAttribute("aria-expanded", "false")
+  // Pinned stays out of the fold.
+  await expect(
+    sidebar(page).getByRole("link", { name: "Seeded pinned" })
+  ).toBeVisible()
+  await page.reload()
+  await expect(chatsHeader(page)).toHaveAttribute("aria-expanded", "false")
+  await expect(older).toBeHidden()
+  // And from the keyboard.
+  await chatsHeader(page).focus()
+  await page.keyboard.press("Enter")
+  await showAllChats(page)
+  await expect(older).toBeVisible()
+})
+
+test("the Chats … sorts by date created, keeping Pinned on top", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await page.goto("/?data=worst")
+  const firstUnpinned = sidebar(page)
+    .getByRole("region", { name: "Chats" })
+    .getByRole("listitem")
+    .first()
+    .getByRole("link")
+  await expect(firstUnpinned).not.toHaveText("Worst-case chat 1000")
+  await sidebar(page).getByRole("button", { name: "Chats options" }).click()
+  const sort = page.getByRole("menu")
+  await expect(
+    sort.getByRole("menuitemradio", { name: "Last activity" })
+  ).toBeChecked()
+  await sort.getByRole("menuitemradio", { name: "Date created" }).click()
+  await expect(firstUnpinned).toHaveText("Worst-case chat 1000")
+  await expect(sidebar(page).getByRole("heading").first()).toHaveText("Pinned")
+  await expect(
+    sidebar(page).getByRole("region", { name: "Pinned" }).getByRole("listitem")
+  ).toHaveCount(3)
+  // Remembered in this browser.
+  await page.reload()
+  await expect(firstUnpinned).toHaveText("Worst-case chat 1000")
+})
+
+test("a long list ends in Show more, which shows the rest", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await page.goto("/?data=worst")
+  const chats = sidebar(page).getByRole("region", { name: "Chats" })
+  await expect(chats.getByRole("listitem")).toHaveCount(30)
+  await chats.getByRole("button", { name: "Show more" }).click()
+  await expect(chats.getByRole("listitem")).toHaveCount(997)
+  await expect(chats.getByRole("button", { name: "Show more" })).toHaveCount(0)
+})
+
+test("the Chats + starts a new chat, with ⌘J in its tooltip", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await sidebar(page).getByRole("link", { name: "Seeded pinned" }).click()
+  await expect(page).toHaveURL(/\/c\//)
+  const plus = sidebar(page)
+    .getByRole("region", { name: "Chats" })
+    .getByRole("link", { name: "Start a chat" })
+  await plus.hover()
+  await expect(page.getByRole("tooltip")).toContainText("New Chat")
+  await plus.click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(greeting(page)).toBeVisible()
 })
 
 // The row menu (src/components/chat/chat-actions.tsx): each test starts
@@ -545,6 +636,7 @@ test("a delete that fails brings the chat back and says so", async ({
 // agent's press is refused and the chat stays.
 test("an agent can't delete a chat", async ({ page }) => {
   await signInAsDev(page)
+  await showAllChats(page)
   const row = sidebar(page).getByRole("link", { name: "Seeded for an agent" })
   await expect(row).toBeVisible()
   const result = await page.evaluate(async () => {
@@ -569,6 +661,7 @@ test("an agent can't delete a chat", async ({ page }) => {
 // open, and its actions are named.
 test("an agent can open a row's menu", async ({ page }) => {
   await signInAsDev(page)
+  await showAllChats(page)
   await expect(
     sidebar(page).getByRole("link", { name: "Seeded for an agent" })
   ).toBeVisible()
@@ -591,6 +684,7 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await signInAsOwner(page)
   const rows = sidebar(page).getByRole("listitem")
+  await sidebar(page).getByRole("button", { name: "Show more" }).click()
   await expect(rows.filter({ hasText: "Seeded chat 996" })).toHaveCount(1)
   expect(await rows.count()).toBeGreaterThanOrEqual(1000)
 
@@ -641,6 +735,7 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
 // 100 controls, and other tests' chats can fill those.
 test("an agent can open a chat from the list", async ({ page }) => {
   await signInAsDev(page)
+  await showAllChats(page)
   await expect(
     sidebar(page).getByRole("link", { name: "Seeded for an agent" })
   ).toBeVisible()
@@ -770,6 +865,7 @@ test.describe("on a phone", () => {
     await expect(
       drawer.getByRole("link", { name: "X", exact: true })
     ).toBeVisible()
+    await drawer.getByRole("button", { name: "Show more" }).click()
     await expect(
       drawer.getByRole("link", { name: "Seeded chat 996" })
     ).toHaveCount(1)

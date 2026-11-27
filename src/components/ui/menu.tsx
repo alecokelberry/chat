@@ -4,7 +4,8 @@
 // drops, that fades and zooms in from its trigger (popup-motion), 6px
 // away. Rows are 32px with 12px corners and 16px icons in the row's ink,
 // 6px from its text (Grok's); a pending row dims, and a destructive one
-// (Delete) is red on a red tint. On a phone it's a
+// (Delete) is red on a red tint. A radio row (MenuRadioItem, like the Chats
+// header's sort) shows Grok's check at its end while it's chosen. On a phone it's a
 // sheet from the bottom instead (presentation "auto", DESIGN.md ›
 // Phones), with 48px rows and padding clear of the home indicator, on the
 // screen's bottom edge, its fill carried on below it for a drag up past
@@ -12,12 +13,16 @@
 // a popover it's `fixed` from the first frame, since popups render in
 // place and Safari painted one inside its trigger's row for a few frames.
 import type * as React from "react"
+import { CheckIcon } from "lucide-react"
 import {
   Menu as MenuPrimitive,
   MenuContent as MenuContentPrimitive,
   MenuGroup,
   MenuGroupLabel as MenuGroupLabelPrimitive,
   MenuItem as MenuItemPrimitive,
+  MenuItemIndicator,
+  MenuRadioGroup,
+  MenuRadioItem as MenuRadioItemPrimitive,
   MenuSeparator as MenuSeparatorPrimitive,
   MenuTrigger,
 } from "@ui-sdk/react/menu"
@@ -49,18 +54,35 @@ function MenuContent({
   )
 }
 
+const itemClass =
+  "relative flex min-h-8 items-center gap-1.5 rounded-item px-2 py-0.75 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-destructive:active:bg-destructive-foreground/14 data-destructive:active:text-destructive-foreground data-disabled:opacity-50 data-pending:opacity-50 highlighted:bg-accent highlighted:text-accent-foreground data-destructive:highlighted:bg-destructive-foreground/14 data-destructive:highlighted:text-destructive-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-current data-destructive:[&_svg]:text-destructive-foreground"
+
 function MenuItem({
   className,
   ...props
 }: React.ComponentProps<typeof MenuItemPrimitive>) {
+  return <MenuItemPrimitive className={cn(itemClass, className)} {...props} />
+}
+
+/** A choice in a MenuRadioGroup: its label, and a check at its end while
+ *  it's the group's value. */
+function MenuRadioItem({
+  className,
+  children,
+  ...props
+}: Omit<React.ComponentProps<typeof MenuRadioItemPrimitive>, "children"> & {
+  children: React.ReactNode
+}) {
   return (
-    <MenuItemPrimitive
-      className={cn(
-        "relative flex min-h-8 items-center gap-1.5 rounded-item px-2 py-0.75 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-destructive:active:bg-destructive-foreground/14 data-destructive:active:text-destructive-foreground data-disabled:opacity-50 data-pending:opacity-50 highlighted:bg-accent highlighted:text-accent-foreground data-destructive:highlighted:bg-destructive-foreground/14 data-destructive:highlighted:text-destructive-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-current data-destructive:[&_svg]:text-destructive-foreground",
-        className
-      )}
+    <MenuRadioItemPrimitive
+      className={cn(itemClass, "pe-8", className)}
       {...props}
-    />
+    >
+      {children}
+      <MenuItemIndicator className="absolute end-2 flex items-center in-data-[presentation=sheet]:end-3">
+        <CheckIcon aria-hidden />
+      </MenuItemIndicator>
+    </MenuRadioItemPrimitive>
   )
 }
 
@@ -99,6 +121,8 @@ export {
   MenuGroup,
   MenuGroupLabel,
   MenuItem,
+  MenuRadioGroup,
+  MenuRadioItem,
   MenuSeparator,
   MenuTrigger,
 }
