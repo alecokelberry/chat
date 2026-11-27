@@ -19,6 +19,9 @@
 // that mentions "burst" gets
 // BURSTS, three big chunks 600ms apart, as NVIDIA often sends them, so a
 // test can watch the browser pace them out (src/lib/chat/smooth-text.ts).
+// One that mentions "(slow)" gets the same reply at a word every 250ms,
+// about ten seconds in all, for a test that must still catch it mid-reply
+// after a reload or a second tab opens, even on a slow runner.
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
 //
@@ -89,6 +92,10 @@ export const BURSTS = [
   "a dozen words at a time with a pause between each, ",
   "the way a busy model often sends them. Done.",
 ]
+
+/** The pause before each word, in milliseconds. */
+const wordDelay = (message: string) =>
+  message.includes("burst") ? 600 : message.includes("(slow)") ? 250 : 60
 
 /** Each word keeps the space or newline after it. */
 const wordsOf = (line: string) => line.split(/(?<=\s)/)
@@ -419,7 +426,7 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       return {
         stream: simulateReadableStream({
           initialDelayInMs: 500,
-          chunkDelayInMs: bursty ? 600 : 60,
+          chunkDelayInMs: wordDelay(message),
           chunks: [
             ...(thinking
               ? [
