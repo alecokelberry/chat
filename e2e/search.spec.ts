@@ -279,6 +279,22 @@ test("a result's … renames its chat in the field's place, and deletes it", asy
   await expect(page).not.toHaveURL(new RegExp(`${path}$`))
 })
 
+test("a result's Open in new tab leaves Search open", async ({ page }) => {
+  await signInAsDev(page)
+  await page.keyboard.press("ControlOrMeta+k")
+  await field(page).fill("seeded kept")
+  const row = dialog(page).locator('[data-slot="command-row"]')
+  await row.hover()
+  await row.locator("button").click()
+  const [tab] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.getByRole("menuitem", { name: "Open in new tab" }).click(),
+  ])
+  await expect(tab).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
+  await expect(dialog(page)).toBeVisible()
+  await expect(page).not.toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
+})
+
 test.describe("on a touch phone", () => {
   test.use({
     viewport: { width: 390, height: 844 },
