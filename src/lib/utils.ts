@@ -12,8 +12,6 @@ export const cn = createCn({
         "sidebar-header",
         "header",
         "header-content",
-        "new-chat-top",
-        "new-chat-top-phone",
       ],
       radius: ["item", "overlay", "composer"],
       container: ["content", "composer", "signin"],
