@@ -486,6 +486,14 @@
   }
 }
 
+/* Three rows that put the middle one at the exact middle of the area: the
+   outer rows are equal, each at least the notch's or home indicator's room. */
+@utility grid-rows-centered {
+  grid-template-rows:
+    minmax(max(--spacing(4), env(safe-area-inset-top)), 1fr) auto
+    minmax(max(--spacing(4), env(safe-area-inset-bottom)), 1fr);
+}
+
 /* A phone sheet's bottom padding: 12px, or the home indicator's height on
    a phone that has one. */
 @utility safe-area-bottom {
