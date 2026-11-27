@@ -7,16 +7,25 @@
 // head also makes it installable: public/manifest.webmanifest names the app
 // and its icons, iOS reads the apple-touch-icon, and theme-color paints the
 // status bar in the page's background, light or dark, following the
-// theme the account menu picks.
+// theme the account menu picks (from the first paint: THEME_COLOR_SCRIPT).
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "@/components/ui/dev-agent"
 
 import type { ReactNode } from "react"
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import {
+  HeadContent,
+  ScriptOnce,
+  Scripts,
+  createRootRoute,
+} from "@tanstack/react-router"
 
 import { FocusModality } from "@/components/ui/focus-modality"
-import { AppPreferences, THEME_COLOR } from "@/components/ui/preferences"
+import {
+  AppPreferences,
+  THEME_COLOR,
+  THEME_COLOR_SCRIPT,
+} from "@/components/ui/preferences"
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
 
@@ -59,6 +68,7 @@ function RootDocument({ children }: { children: ReactNode }) {
           media="(prefers-color-scheme: dark)"
           content={THEME_COLOR.dark}
         />
+        <ScriptOnce>{THEME_COLOR_SCRIPT}</ScriptOnce>
       </head>
       <body>
         <AppPreferences>{children}</AppPreferences>

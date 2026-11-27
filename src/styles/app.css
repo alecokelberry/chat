@@ -435,6 +435,15 @@
   contain-intrinsic-size: auto 10rem;
 }
 
+/* A phone sheet's fill carried 6rem past its bottom edge, behind it, so
+   the sheet always reaches the screen's bottom: an iPhone home-screen app
+   on iOS 26 can report a viewport that ends above the home indicator, and
+   ui-sdk then lifts the sheet off the edge as if for a keyboard. Off the
+   screen, where nothing lifts it. */
+@utility sheet-bleed {
+  box-shadow: 0 6rem 0 var(--color-popover);
+}
+
 /* A phone sheet's bottom padding: 12px, or the home indicator's height on
    a phone that has one. */
 @utility safe-area-bottom {

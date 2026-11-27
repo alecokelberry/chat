@@ -11,13 +11,41 @@ import {
 // The account row and its menu (src/components/chat/account-menu.tsx) and
 // the theme it switches (src/components/ui/preferences.tsx): the name and
 // email, Theme flipping light and dark with the status bar following and
-// no flash on a reload, Sign out landing on /sign-in, and on a phone a
-// sheet that opens at once.
+// no flash on a reload (the status bar's color included), Sign out landing
+// on /sign-in, and on a phone a sheet that opens at once and reaches the
+// screen's bottom.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
 const accountRow = (page: Page) =>
   sidebar(page).getByRole("button", { name: "Dev", exact: true })
 const menu = (page: Page) => page.getByRole("menu")
+
+declare global {
+  interface Window {
+    nudges?: { open: boolean; taps: string }[]
+  }
+}
+
+/** Notes each status bar nudge as it's added: whether it's in the top
+ *  layer, and whether it lets taps through. */
+async function recordNudges(page: Page) {
+  await page.addInitScript(() => {
+    window.nudges = []
+    new MutationObserver((records) => {
+      for (const record of records)
+        for (const node of record.addedNodes) {
+          if (!(node instanceof HTMLElement)) continue
+          if (node.dataset.slot !== "status-bar-nudge") continue
+          requestAnimationFrame(() =>
+            window.nudges?.push({
+              open: node.matches(":popover-open"),
+              taps: getComputedStyle(node).pointerEvents,
+            })
+          )
+        }
+    }).observe(document, { childList: true, subtree: true })
+  })
+}
 
 test.describe("on a computer", () => {
   test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "light" })
@@ -70,6 +98,28 @@ test.describe("on a computer", () => {
     await accountRow(page).click()
     await menu(page).getByRole("menuitem", { name: "Theme" }).click()
     await expect(html).toHaveAttribute("data-color-scheme", "light")
+  })
+
+  test("a saved theme colors the status bar before the app's scripts run", async ({
+    page,
+  }) => {
+    // The phone is light; Dark is picked with the sign-in switch, so it's
+    // saved the way ui-sdk saves it. After a reload with the app's own
+    // scripts emptied, only the head's inline script can set the color.
+    await page.goto("/sign-in")
+    await page.getByRole("button", { name: "Dark theme" }).click()
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    await page.route("**/*.js", (route) =>
+      route.fulfill({ contentType: "text/javascript", body: "" })
+    )
+    await page.reload()
+    const statusBar = page.locator('meta[name="theme-color"]')
+    await expect(statusBar).toHaveCount(2)
+    await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
+    await expect(statusBar.last()).toHaveAttribute("content", "#1e1d1d")
   })
 
   test("the sign-in switch flips the theme and keeps it after a reload", async ({
@@ -164,6 +214,7 @@ test.describe("on a phone", () => {
     page,
   }) => {
     await recordStartTimes(page)
+    await recordNudges(page)
     await signInAsDev(page)
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     const drawer = page.getByRole("dialog", { name: "Chats" })
@@ -194,5 +245,19 @@ test.describe("on a phone", () => {
     )
     await expect(theme).toHaveAttribute("data-highlighted")
     await expect(theme).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+
+    // iOS repaints the status bar only when a layer appears, so the change
+    // briefly shows an empty one in the top layer, then takes it away,
+    // leaving the menu and the drawer open.
+    await expect
+      .poll(() => page.evaluate(() => window.nudges))
+      .toContainEqual({ open: true, taps: "none" })
+    await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
+    await expect(menu(page)).toBeVisible()
+    await expect(drawer).toBeVisible()
+
+    // The sheet's fill carries on past its bottom edge, so it reaches the
+    // screen's bottom even when iOS reports a viewport that ends short.
+    await expect(menu(page)).toHaveCSS("box-shadow", /0px 96px 0px 0px$/)
   })
 })

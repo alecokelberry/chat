@@ -58,12 +58,14 @@ test.describe("on a phone", () => {
 
 test("keyboard focus rings the composer", async ({ page }) => {
   await signInAsDev(page)
-  // Tab past the sidebar's New Chat and chat rows to the composer.
+  // Tab past the sidebar's New Chat and chat rows to the composer, one
+  // press per try with no wait between: toPass's default back-off waits a
+  // second per press once it's warmed up, which ran past the test's 30 s.
   const field = page.getByRole("textbox", { name: "Message" })
   await expect(async () => {
     await page.keyboard.press("Tab")
     await expect(field).toBeFocused({ timeout: 100 })
-  }).toPass()
+  }).toPass({ intervals: [0] })
   expect(await ringOf(page)).not.toBe("none")
 })
 
