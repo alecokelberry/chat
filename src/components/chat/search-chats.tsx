@@ -84,7 +84,9 @@ import { Kbd, KbdKeys } from "@/components/ui/kbd"
 import { Menu } from "@/components/ui/menu"
 import { NEW_CHAT_SHORTCUT } from "@/components/ui/sidebar"
 import { findInMessages, indexOlderChats, QUERY_MAX } from "@/lib/chat/list"
+import { sortChats } from "@/lib/chat/groups"
 import { marksOf } from "@/lib/chat/match-marks"
+import { nextSection } from "@/lib/chat/next-section"
 import { relativeTime } from "@/lib/chat/relative-time"
 import type { ChatSummary } from "@/lib/chat/store"
 import { usePhone } from "@/lib/phone"
@@ -344,10 +346,8 @@ function SearchChats({
       {
         type: "group",
         label: "Chats",
-        items: chats
-          .toSorted((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, RECENT)
-          .map(toItem),
+        // Pins first, as in the sidebar, then the most recently active.
+        items: sortChats(chats, "updatedAt").slice(0, RECENT).map(toItem),
       },
     ],
     [chats]
@@ -398,17 +398,10 @@ function SearchChats({
       ),
     [words]
   )
-  /** Tab: the next section's first row (Shift+Tab, the one before),
-   *  wrapping around. */
-  const nextSection = (step: 1 | -1) => {
-    const filled = sections.current.filter((section) => section.length > 0)
-    if (filled.length === 0) return
-    const value = command.getValue()
-    const at = filled.findIndex(
-      (section) => value !== null && section.includes(value)
-    )
-    const next = filled.at((at + step) % filled.length)
-    if (next?.[0] !== undefined) command.setValue(next[0])
+  /** Tab: the next section's first row (Shift+Tab, the one before). */
+  const toSection = (step: 1 | -1) => {
+    const next = nextSection(sections.current, command.getValue(), step)
+    if (next !== undefined) command.setValue(next)
   }
   return (
     <Command
@@ -468,7 +461,7 @@ function SearchChats({
           }
           if (event.key === "Tab" && !event.altKey && !event.metaKey) {
             event.preventDefault()
-            nextSection(event.shiftKey ? -1 : 1)
+            toSection(event.shiftKey ? -1 : 1)
           }
         }}
       />
