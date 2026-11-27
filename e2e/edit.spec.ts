@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs"
+
 import type { Page } from "@playwright/test"
 
 import {
   expect,
+  pick,
   pickModel,
   questions,
   replies,
@@ -14,7 +17,8 @@ import {
 // model: Edit turns the bubble into a field, and sending it replaces the
 // question and everything after it, then the reply streams again on the
 // model the picker shows. Escape and Cancel change nothing, and Edit waits
-// while a reply streams.
+// while a reply streams. A question's attachments come along: ✕ takes
+// one out, Add files adds more, and Cancel puts them back.
 
 const field = (page: Page) =>
   page.getByRole("textbox", { name: "Edit question" })
@@ -179,4 +183,130 @@ test("an agent can edit a question, and sending it needs a person", async ({
   expect(result.saved).toBe(false)
   await expect(field(page)).toHaveValue("From an agent")
   await expect(questions(page)).toHaveText(["Hello"])
+})
+
+const NOTES = {
+  name: "notes.pdf",
+  mimeType: "application/pdf",
+  buffer: readFileSync("e2e/fixtures/notes.pdf"),
+}
+const SMALL = {
+  name: "small.jpg",
+  mimeType: "image/jpeg",
+  buffer: readFileSync("e2e/fixtures/small.jpg"),
+}
+
+/** The edited question's tiles. */
+const editTiles = (page: Page) =>
+  page.getByRole("list", { name: "Attached files" }).getByRole("listitem")
+
+/** A question with an image and a PDF, answered. */
+async function withAttachments(page: Page) {
+  await signInAsDev(page)
+  await pick(page, [SMALL, NOTES])
+  await expect(
+    page.getByRole("list", { name: "Attached files" }).locator("img")
+  ).toHaveCount(1)
+  await expect(
+    page
+      .getByRole("list", { name: "Attached files" })
+      .getByText("PDF", { exact: true })
+  ).toBeVisible()
+  await send(page, "What are these?")
+  await expect(replies(page)).toHaveText(
+    [/Saw 1 image\. Read notes\.pdf\. .*Done\.$/],
+    { timeout: 15_000 }
+  )
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+}
+
+test("editing only the words keeps the attachments, and Retry resends them", async ({
+  page,
+}) => {
+  await withAttachments(page)
+  await edit(page, 0)
+  await expect(editTiles(page)).toHaveCount(2)
+  await field(page).fill("And now?")
+  await page.keyboard.press("Enter")
+
+  await expect(questions(page)).toHaveText(["And now?"])
+  await expect(replies(page)).toHaveText(
+    [/Saw 1 image\. Read notes\.pdf\. .*Done\.$/],
+    { timeout: 15_000 }
+  )
+  await expect(
+    page.getByRole("button", { name: "View small.jpg" })
+  ).toBeVisible()
+
+  await page.getByRole("button", { name: "Retry" }).click()
+  await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
+  await expect(replies(page)).toHaveText(
+    [/Saw 1 image\. Read notes\.pdf\. .*Done\.$/],
+    { timeout: 15_000 }
+  )
+})
+
+test("an edit can take an attachment out and add one", async ({ page }) => {
+  await withAttachments(page)
+  await edit(page, 0)
+  await page.getByRole("button", { name: "Remove small.jpg" }).click()
+  await expect(editTiles(page)).toHaveCount(1)
+  const chooser = page.waitForEvent("filechooser")
+  await page.getByRole("button", { name: "Add files" }).click()
+  await (
+    await chooser
+  ).setFiles({
+    name: "plan.md",
+    mimeType: "text/markdown",
+    buffer: Buffer.from("Hike at dawn."),
+  })
+  await expect(editTiles(page)).toHaveCount(2)
+  await page.getByRole("button", { name: "Save" }).click()
+
+  await expect(replies(page)).toHaveText(
+    [/^(?!.*Saw).*Read notes\.pdf\. Read plan\.md\. .*Done\.$/],
+    { timeout: 15_000 }
+  )
+  await expect(page.getByRole("button", { name: /^View / })).toHaveCount(0)
+  await page.reload()
+  await expect(
+    page.getByRole("list", { name: "Attached files" }).getByText("plan.md")
+  ).toBeVisible()
+})
+
+test("Escape and Cancel put the attachments back", async ({ page }) => {
+  await withAttachments(page)
+  await edit(page, 0)
+  await page.getByRole("button", { name: "Remove notes.pdf" }).click()
+  await expect(editTiles(page)).toHaveCount(1)
+  await page.keyboard.press("Escape")
+  await expect(
+    page.getByRole("button", { name: "View small.jpg" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("list", { name: "Attached files" }).getByText("notes.pdf")
+  ).toBeVisible()
+
+  await edit(page, 0)
+  await expect(editTiles(page)).toHaveCount(2)
+  await page.getByRole("button", { name: "Remove small.jpg" }).click()
+  await page.getByRole("button", { name: "Cancel" }).click()
+  await expect(
+    page.getByRole("button", { name: "View small.jpg" })
+  ).toBeVisible()
+  await expect(replies(page)).toHaveCount(1)
+})
+
+test("an edit with an image waits while the model can't see it", async ({
+  page,
+}) => {
+  await withAttachments(page)
+  await pickModel(page, "Ultra")
+  await edit(page, 0)
+  await expect(
+    page.getByRole("status").filter({ hasText: "Ultra can't see images" })
+  ).toHaveCount(1)
+  await expect(page.getByRole("button", { name: "Save" })).toBeDisabled()
+  await page.getByRole("button", { name: "Remove small.jpg" }).click()
+  await expect(page.getByRole("button", { name: "Save" })).toBeEnabled()
 })

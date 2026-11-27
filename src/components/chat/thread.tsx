@@ -49,6 +49,8 @@ import {
   MessageScroller,
   MessageScrollerItem,
 } from "@/components/ui/message-scroller"
+import type { ModelKey } from "@/lib/ai/models"
+import type { AttachmentPart } from "@/lib/chat/attachments"
 
 const Reply = import.meta.env.SSR ? () => null : loadReply()
 
@@ -87,6 +89,8 @@ export function Thread({
   stopped,
   error,
   onRetry,
+  model,
+  onModelChange,
   onEdit,
 }: {
   messages: UIMessage[]
@@ -97,8 +101,12 @@ export function Thread({
   error: string | undefined
   /** Asks again for the last reply, replacing it. */
   onRetry: () => void
-  /** Replaces a question, and everything after it, with new words. */
-  onEdit: (id: string, text: string) => void
+  /** The model an edit asks, for its can't-see check. */
+  model: ModelKey
+  onModelChange: (model: ModelKey) => void
+  /** Replaces a question, and everything after it, with new words and
+   *  attachments. */
+  onEdit: (id: string, text: string, attachments: AttachmentPart[]) => void
 }) {
   const last = messages.at(-1)
   const waiting = busy && (last?.role !== "assistant" || isWaiting(last))
@@ -117,7 +125,11 @@ export function Thread({
               images={imagesOf(message)}
               documents={documentsOf(message)}
               busy={busy}
-              onEdit={(text) => onEdit(message.id, text)}
+              model={model}
+              onModelChange={onModelChange}
+              onEdit={(text, attachments) =>
+                onEdit(message.id, text, attachments)
+              }
             />
           </MessageScrollerItem>
         ) : isBlank(message) ? null : (

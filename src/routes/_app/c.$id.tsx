@@ -50,11 +50,7 @@ import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { toast } from "@/components/ui/toast"
-import {
-  attachmentsOf,
-  questionParts,
-  takeHandedOffFiles,
-} from "@/lib/chat/attachments"
+import { questionParts, takeHandedOffFiles } from "@/lib/chat/attachments"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 import { pageTitle } from "@/lib/utils"
@@ -221,13 +217,13 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           setStopped(false)
           void regenerate()
         }}
-        onEdit={(messageId, text) => {
+        model={model}
+        onModelChange={setModel}
+        onEdit={(messageId, text, attachments) => {
           if (previewing) return
           setStopped(false)
-          // It keeps its attachments (#152 lets an edit change them).
-          const edited = messages.find((message) => message.id === messageId)
           void sendMessage({
-            parts: questionParts(text, edited ? attachmentsOf(edited) : []),
+            parts: questionParts(text, attachments),
             messageId,
             metadata: sentWith(model),
           })
