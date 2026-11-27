@@ -1,6 +1,6 @@
-// Settings: one window for the account's settings, opened by the gear at
-// the end of the sidebar's account row and by the account menu's Settings,
-// both through one controller whose payload names the section to open at.
+// Settings: one window for the account's settings, opened by the account
+// menu's Settings through a controller whose payload names the section to
+// open at.
 // A dialog with the nav on the left on a computer (ui-sdk Tabs, vertical),
 // a sheet on a touch phone, where the sections come first and a tap
 // slides to one, with Back at its top. The search box at the top of the
@@ -8,8 +8,9 @@
 // (src/lib/settings/sections.ts), and the first of them shows; with none,
 // it says so. Each section's page is its own component below: Account
 // (who's signed in, Sign Out) and Appearance (the theme, code wrapping). The look is
-// src/components/ui/settings.tsx.
-import { useState } from "react"
+// src/components/ui/settings.tsx. It loads on its own, after first load,
+// through the dialog in src/components/chat/settings-dialog.tsx.
+import { useEffect, useRef, useState } from "react"
 import { CircleUserRoundIcon, ContrastIcon } from "lucide-react"
 
 import type { Account } from "@/components/chat/account-menu"
@@ -18,12 +19,7 @@ import { Button } from "@/components/ui/button"
 import { useCodeWrap } from "@/components/ui/preferences"
 import { Switch } from "@/components/ui/switch"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  createDialogController,
-} from "@/components/ui/dialog"
+import { DialogTitle } from "@/components/ui/dialog"
 import {
   SettingsCard,
   SettingsField,
@@ -44,13 +40,6 @@ import {
   type SectionId,
 } from "@/lib/settings/sections"
 
-/** What opens Settings, at the section its payload names: one per
- *  signed-in shell. */
-export const createSettingsController = () =>
-  createDialogController<SectionId>()
-
-export type SettingsController = ReturnType<typeof createSettingsController>
-
 const ICONS: Record<SectionId, React.ReactNode> = {
   account: <CircleUserRoundIcon aria-hidden />,
   appearance: <ContrastIcon aria-hidden />,
@@ -62,31 +51,22 @@ const PAGES: Record<SectionId, (account: Account) => React.ReactNode> = {
   appearance: () => <AppearancePage />,
 }
 
-export function SettingsDialog({
-  controller,
-  account,
-}: {
-  controller: SettingsController
-  account: Account
-}) {
-  return (
-    <Dialog controller={controller}>
-      <DialogContent wide>
-        {(state) => (
-          <Settings
-            account={account}
-            first={isSectionId(state.payload) ? state.payload : "account"}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 /** The nav and the page. It mounts each time Settings opens, so the
  *  search starts empty and the page is the one asked for. */
-function Settings({ account, first }: { account: Account; first: SectionId }) {
+export function Settings({
+  account,
+  first,
+}: {
+  account: Account
+  first: SectionId
+}) {
   const [query, setQuery] = useState("")
+  // With a mouse, typing searches at once. The dialog may have opened
+  // before this loaded, when its own first focus found nothing to land on.
+  const search = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (matchMedia("(pointer: fine)").matches) search.current?.focus()
+  }, [])
   const [chosen, setChosen] = useState<SectionId>(first)
   // On a phone: whether a section's page shows instead of the nav.
   const [page, setPage] = useState(false)
@@ -106,6 +86,7 @@ function Settings({ account, first }: { account: Account; first: SectionId }) {
       >
         <SettingsNav>
           <SettingsSearch
+            ref={search}
             aria-label="Search settings"
             placeholder="Search"
             value={query}
