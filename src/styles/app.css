@@ -259,7 +259,8 @@
   /* New Chat. One shape in both themes (same offset and blur); only the
      strength differs, because a shadow darkens a light page far more than
      a dark one. Dark adds a 1px top highlight, the usual way to keep a
-     raised edge readable on a dark surface. */
+     raised edge readable on a dark surface. Stronger than Grok's (3% and
+     20%) on purpose: docs/decisions.md. */
   --raised-row-shadow: 0 12px 32px 0 rgb(43 28 0 / 0.08);
   --dialog-shadow: /* Grok's */
     0 12px 40px 0 rgb(10 9 8 / 0.18), 0 2px 8px 0 rgb(10 9 8 / 0.08);
