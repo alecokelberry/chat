@@ -110,7 +110,7 @@ function SidebarToggle({
         </TooltipContent>
       </Tooltip>
       {/* The app's mark, at the column's end; the rail has no room. */}
-      <BrandMark className="ms-auto me-1 size-5 group-data-collapsed/sidebar:hidden" />
+      <BrandMark className="ms-auto me-1 size-icon group-data-collapsed/sidebar:hidden" />
     </div>
   )
 }
@@ -123,7 +123,8 @@ function SidebarDrawer(
   return <Drawer side="start" {...props} />
 }
 
-/** The phone header's button that opens the drawer: Grok's panel glyph. */
+/** The phone header's button that opens the drawer: Grok's panel glyph,
+ *  in the same rounded square as the computer's sidebar button. */
 function SidebarDrawerTrigger(
   props: React.ComponentProps<typeof DrawerTrigger>
 ) {
@@ -131,7 +132,7 @@ function SidebarDrawerTrigger(
     <DrawerTrigger
       data-slot="sidebar-trigger"
       aria-label="Open sidebar"
-      className={buttonVariants({ size: "circle" })}
+      className={cn(buttonVariants({ size: "circle" }), "rounded-lg")}
       {...props}
     >
       <PanelLeftIcon className="size-icon" />
@@ -259,7 +260,7 @@ function SidebarRowEdit({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-row-edit"
       className={cn(
-        "flex h-10 w-full items-center gap-2 rounded-xl bg-sidebar-accent ps-3 pe-2 text-sidebar-accent-foreground",
+        "flex h-10 w-full items-center gap-2 rounded-item bg-sidebar-accent ps-3 pe-2 text-sidebar-accent-foreground",
         className
       )}
       {...props}
@@ -268,7 +269,7 @@ function SidebarRowEdit({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const sidebarRowVariants = cva(
-  "flex h-10 w-full press items-center rounded-xl py-1.5 text-base font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden focus-visible:ring-2",
+  "flex h-10 w-full press items-center rounded-item py-1.5 text-base font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden focus-visible:ring-2",
   {
     variants: {
       variant: {
@@ -277,13 +278,13 @@ const sidebarRowVariants = cva(
         // 20px pink plus; hover deepens the fill.
         // In the rail, only its plus on the sidebar's plane, in a 36px square.
         raised:
-          "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row ring-1 ring-border-strong group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none group-data-collapsed/sidebar:ring-0 hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-5 [&>svg]:shrink-0",
+          "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row ring-1 ring-border-strong group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none group-data-collapsed/sidebar:ring-0 hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-icon [&>svg]:shrink-0",
         // The account, Grok's: a 26px avatar and the name, medium in full
         // ink, 8px in, in a muted row; hover and open fill the row at once
-        // and the avatar dims to 75%. In the rail, the avatar alone in a
+        // with the chat rows' wash, and the avatar dims to 75%. In the rail, the avatar alone in a
         // 36px circle.
         account:
-          "gap-2 rounded-item px-2 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active active:text-foreground aria-expanded:bg-secondary-hover aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
+          "gap-2 rounded-item px-2 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-sidebar-accent hover:text-foreground active:bg-sidebar-accent active:text-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
         // A chat: its title only, 12px in and 8px at the end (36px while
         // its … shows), fading out at the end instead of an ellipsis. The
         // open chat (the link's aria-current) keeps the hover's wash and

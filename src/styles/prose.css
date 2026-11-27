@@ -21,6 +21,12 @@
     --typeset-rule-color: var(--border-strong);
     --typeset-code-bg: var(--accent);
   }
+  /* typeset's in-between 500 becomes the scale's medium (DESIGN.md › Type:
+     425, 525, and 650 for bold). */
+  .typeset-docs
+    :where(h5, h6, a, sup a, summary, kbd, dt, thead th, tbody th, tfoot th) {
+    font-weight: var(--font-weight-medium);
+  }
 
   /* Streamdown wraps the reply in one div; its first block sits flush at
      the top like typeset's own first child. */
@@ -31,6 +37,9 @@
   /* Rhythm: h2 20/26 with 36px above (not at the top) and h3 16.5/21 with
      32px above, both 8px over what they head; lists 20px in, items 4px +
      4px, and 8px between back-to-back lists; inline code at 90%. */
+  .typeset-docs h1 {
+    line-height: calc(36 / 28);
+  }
   .typeset-docs h2 {
     line-height: calc(26 / 20);
   }

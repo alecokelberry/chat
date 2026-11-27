@@ -38,14 +38,14 @@ export default {
     // (duration-fast, ease-standard, …), never Tailwind's numbers or stock
     // curves.
     "motion-tokens": selectorRule(
-      ":matches(Literal[value=/(^|[\\s:])(duration-(?!(fast|base|menu|pane|spin|sidebar|drawer)(?![\\w-]))|ease-(?!(standard|decelerate|accelerate|spring|out-quint|drawer)(?![\\w-])))/], TemplateElement[value.raw=/(^|[\\s:])(duration-(?!(fast|base|menu|pane|spin|sidebar|drawer)(?![\\w-]))|ease-(?!(standard|decelerate|accelerate|spring|out-quint|drawer)(?![\\w-])))/])",
-      "Off the motion tokens. Durations: duration-fast, base, menu, pane, spin, sidebar, drawer; curves: ease-standard, decelerate, accelerate, spring, out-quint, drawer (DESIGN.md › Motion)."
+      ":matches(Literal[value=/(^|[\\s:])(duration-(?!(fast|base|menu|pane|spin|sidebar)(?![\\w-]))|ease-(?!(standard|decelerate|spring|out-quint)(?![\\w-])))/], TemplateElement[value.raw=/(^|[\\s:])(duration-(?!(fast|base|menu|pane|spin|sidebar)(?![\\w-]))|ease-(?!(standard|decelerate|spring|out-quint)(?![\\w-])))/])",
+      "Off the motion tokens. Durations: duration-fast, base, menu, pane, spin, sidebar; curves: ease-standard, decelerate, spring, out-quint (DESIGN.md › Motion)."
     ),
     // DESIGN.md › Type: a size carries its line height and tracking; app
     // code doesn't adjust them. One exception: tracking-tight on big figures (text-2xl, 3xl).
     "no-leading-tracking": selectorRule(
-      "JSXAttribute[name.name='className'] :matches(Literal[value=/(^|[\\s:])(leading-|tracking-(?!tight(\\s|$)))/], TemplateElement[value.raw=/(^|[\\s:])(leading-|tracking-(?!tight(\\s|$)))/])",
-      "The size class sets line height and tracking; drop leading-*/tracking-* (tracking-tight on a big figure is fine) or pick another size (DESIGN.md › Type)."
+      "JSXAttribute[name.name='className'] :matches(Literal[value=/(^|[\\s:])(leading-|text-(xs|sm|base|2xl|3xl)\\/|tracking-(?!tight(\\s|$)))/], TemplateElement[value.raw=/(^|[\\s:])(leading-|text-(xs|sm|base|2xl|3xl)\\/|tracking-(?!tight(\\s|$)))/])",
+      "The size class sets line height and tracking; drop leading-*, text-size/leading and tracking-* (tracking-tight on a big figure is fine) or pick another size (DESIGN.md › Type)."
     ),
   },
 }
