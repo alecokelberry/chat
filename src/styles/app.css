@@ -304,6 +304,12 @@
 }
 
 @layer base {
+  /* A theme change snaps (preferences.tsx). */
+  [data-theme-changing] *,
+  [data-theme-changing] *::before,
+  [data-theme-changing] *::after {
+    transition: none !important;
+  }
   * {
     @apply border-border outline-ring;
     scrollbar-width: thin;
@@ -622,6 +628,9 @@
   transition-property: opacity, scale, rotate;
   transition-timing-function: var(--ease-standard);
   transition-duration: var(--duration-spin);
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: opacity;
+  }
 }
 
 /* An icon swap (copy to check): fades and scales, never eases its color, so
@@ -630,6 +639,9 @@
   transition-property: opacity, scale;
   transition-timing-function: var(--ease-standard);
   transition-duration: var(--duration-base);
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: opacity;
+  }
 }
 
 /* No iOS link preview or callout on a long press: for controls that are
@@ -712,8 +724,8 @@
   transition:
     translate var(--duration-toast) var(--ease-out-quint),
     scale var(--duration-toast) var(--ease-out-quint),
-    opacity var(--duration-toast),
-    height var(--duration-fast);
+    opacity var(--duration-toast) var(--ease-out-quint),
+    height var(--duration-fast) var(--ease-standard);
   user-select: none;
   &:not([data-front], [data-expanded]) {
     height: var(--toast-front-height);

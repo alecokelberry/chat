@@ -41,7 +41,7 @@ export function Table({
       <div data-slot="table-scroll" className="scroll-fade-x">
         <table ref={table} data-streamdown="table" {...props} />
       </div>
-      <div className="absolute end-2 top-2 rounded-full bg-popover opacity-0 shadow-tooltip transition-opacity duration-base group-hover/table:opacity-100 focus-within:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100">
+      <div className="absolute end-2 top-2 rounded-full bg-popover opacity-0 shadow-tooltip transition-opacity duration-fast ease-standard group-hover/table:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
         <MessageToolbar aria-label="Table actions">
           <CopyAction text={() => tableDataToTSV(data())} label="Copy table" />
           <MessageAction label="Save as CSV" onClick={save}>

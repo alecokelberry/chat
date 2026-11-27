@@ -57,7 +57,22 @@ const THEME_COLOR_SCRIPT = `(() => {
 const colorScheme = createColorScheme({
   storage: createLocalStorage(STORAGE_KEY),
   global: true,
+  onValueChange: snapColors,
+  onSystemValueChange: snapColors,
 })
+
+/** A theme change snaps every color at once (DESIGN.md › Motion: a
+ *  keyboard action never animates). Without this, controls with a color
+ *  transition (press, hovers) would ease from the old theme's ink for a
+ *  frame or more. ui-sdk calls this before it changes the attribute; the
+ *  hold lifts after two frames, once the new colors have painted. */
+function snapColors() {
+  const root = document.documentElement
+  root.dataset.themeChanging = ""
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => delete root.dataset.themeChanging)
+  )
+}
 
 function AppPreferences({ children }: { children: React.ReactNode }) {
   return (

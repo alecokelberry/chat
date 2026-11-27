@@ -60,7 +60,7 @@ function MessageScroller({
             variant: "float",
             size: "circle",
             className:
-              "pointer-events-none opacity-0 transition duration-menu ease-decelerate data-visible:pointer-events-auto data-visible:opacity-100 motion-safe:translate-y-full motion-safe:scale-95 motion-safe:data-visible:translate-y-0 motion-safe:data-visible:scale-100",
+              "pointer-events-none opacity-0 transition-[opacity,translate,scale] duration-menu ease-decelerate data-visible:pointer-events-auto data-visible:opacity-100 motion-safe:translate-y-full motion-safe:scale-95 motion-safe:data-visible:translate-y-0 motion-safe:data-visible:scale-100",
           })}
         >
           <ChevronDownIcon />
