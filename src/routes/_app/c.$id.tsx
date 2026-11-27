@@ -19,8 +19,10 @@
 // fades out under it, on a computer, and in the header row beside the
 // sidebar button on a phone. At the header's end, the chat's … holds the
 // same actions as its sidebar row (chat-actions.tsx); Rename there edits
-// the title in the pill.
-import { memo, Suspense, useEffect, useRef, useState } from "react"
+// the title in the pill. In dev, ?data= shows made-up messages instead
+// (src/lib/dev/worst-case.ts) and Send, Retry and Edit do nothing, so a
+// preview never writes to a chat.
+import { memo, Suspense, useEffect, useMemo, useRef, useState } from "react"
 import {
   createFileRoute,
   useLocation,
@@ -42,6 +44,7 @@ import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
+import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
@@ -116,6 +119,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
   const router = useRouter()
+  const { data } = Route.useSearch()
   const agent = useAgent({
     agent: "ChatAgent",
     basePath: `api/chats/${id}`,
@@ -159,21 +163,25 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   }, [firstMessage, sendMessage, navigate])
 
   // isStreaming also covers a reply another tab started.
+  const previewing = previewEnabled && data !== undefined
+  const shown = useMemo(() => previewMessages(messages, data), [messages, data])
   const busy = status === "submitted" || status === "streaming" || isStreaming
   return (
     <>
       <Thread
-        messages={messages}
+        messages={shown}
         busy={busy}
         stopped={stopped}
         error={
           status === "error" ? (error?.message ?? "Request failed.") : undefined
         }
         onRetry={() => {
+          if (previewing) return
           setStopped(false)
           void regenerate()
         }}
         onEdit={(messageId, text) => {
+          if (previewing) return
           setStopped(false)
           void sendMessage({ text, messageId, metadata: { model } })
         }}
@@ -186,6 +194,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           model={model}
           onModelChange={setModel}
           onSend={(text) => {
+            if (previewing) return
             setStopped(false)
             void sendMessage({ text, metadata: { model } })
           }}

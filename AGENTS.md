@@ -10,7 +10,7 @@ The open GitHub issues are the plan, `docs/decisions.md` says why it's built thi
 - **Env** comes per request: `import { env } from "cloudflare:workers"` (fine at startup too), never `process.env` at module scope.
 - **Secrets** live only in Wrangler secrets, GitHub Actions secrets and a local `.dev.vars`. Never print, log or commit them: the repo is public.
 - **AI** goes only through `src/lib/ai`. Tests use the mock model, never NVIDIA; a few real-NVIDIA smoke tests run before a deploy.
-- **UI** is built on ui-sdk (follow the `ui-sdk` skill) and follows `DESIGN.md`. Check it at 1440 and 390, light and dark.
+- **UI** is built on ui-sdk (follow the `ui-sdk` skill) and follows `DESIGN.md`. Check it at 1440 and 390, light and dark. Check list and thread changes against `?data=worst` at 390 (dev only; `src/lib/dev/worst-case.ts`).
 - **Docs first:** read the version-matched docs before writing against a fast-moving package (`node_modules/@ui-sdk/react/docs/llms.txt`, `node_modules/@tanstack/*/skills`, `node_modules/agents/docs`, `node_modules/ai/docs`).
 - A new part gets a comment at its top saying what it is and how it works.
 

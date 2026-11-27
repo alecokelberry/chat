@@ -43,6 +43,10 @@ export const test = base.extend<{
 
 export { expect }
 
+/** The chat list's sidebar. */
+export const sidebar = (page: Page) =>
+  page.getByRole("navigation", { name: "Chats" })
+
 /** A new chat's heading. */
 export const greeting = (page: Page) =>
   page.getByRole("heading", { name: "What can I help with?" })
