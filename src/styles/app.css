@@ -571,10 +571,6 @@
 @utility duration-sidebar {
   transition-duration: var(--duration-sidebar);
 }
-@utility duration-drawer {
-  transition-duration: var(--duration-drawer);
-}
-
 /* The computer's sidebar collapsing to its rail and back (DESIGN.md ›
    Motion): its width moves the chat beside it. */
 @utility transition-sidebar {
