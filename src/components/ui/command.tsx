@@ -10,9 +10,25 @@
 // view (CommandWindow, ui-sdk's virtualized Command): ui-sdk still ranks
 // and arrows through every item, mounted or not, and useCommandWindow
 // scrolls the highlighted one into view.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+//
+// Results a server found (Search's message matches) join the same list:
+// fuzzyThen ranks the rest by Command's fuzzy filter and keeps those after
+// every match, in the server's order; useAsyncOptions loads them as typing
+// pauses; a two-line row (CommandItemLines) shows each with its matching
+// line, and CommandStatus says, quietly, when they failed to load. Since
+// the filter is then a function, CommandMatchText marks a label's matched
+// letters itself, as CommandItemText does for the built-in filters.
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import type * as React from "react"
 import { SearchIcon } from "lucide-react"
+import { useAsyncOptions } from "@ui-sdk/react/async-options"
 import {
   Command,
   CommandEmpty as CommandEmptyPrimitive,
@@ -22,9 +38,17 @@ import {
   CommandItem as CommandItemPrimitive,
   CommandItemText as CommandItemTextPrimitive,
   CommandList as CommandListPrimitive,
+  CommandStatus as CommandStatusPrimitive,
   type CommandData,
   type CommandDataItem,
+  type MatchSegment,
+  type SearchFilter,
 } from "@ui-sdk/react/command"
+import {
+  fuzzyScore,
+  matchRanges,
+  matchSegments,
+} from "@ui-sdk/react/text-match"
 
 import { cn } from "@/lib/utils"
 
@@ -99,11 +123,24 @@ function CommandItem({
   return (
     <CommandItemPrimitive
       className={cn(
-        "flex h-10 shrink-0 items-center rounded-item px-3 text-base text-ink-secondary outline-hidden select-none highlighted:bg-accent highlighted:text-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate",
+        "flex h-10 shrink-0 items-center rounded-item px-3 text-base text-ink-secondary outline-hidden select-none has-data-[slot=command-item-lines]:h-auto highlighted:bg-accent highlighted:text-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate",
         className
       )}
       {...props}
     />
+  )
+}
+
+/** Text in pieces, the matched ones in medium full ink. */
+function Segments({ segments }: { segments: readonly MatchSegment[] }) {
+  return segments.map((segment, index) =>
+    segment.match ? (
+      <strong key={index} className="font-medium text-foreground">
+        {segment.text}
+      </strong>
+    ) : (
+      segment.text
+    )
   )
 }
 
@@ -112,20 +149,62 @@ function CommandItem({
 function CommandItemText() {
   return (
     <CommandItemTextPrimitive dir="auto">
-      {(text) =>
-        text.segments.map((segment, index) =>
-          segment.match ? (
-            <strong key={index} className="font-medium text-foreground">
-              {segment.text}
-            </strong>
-          ) : (
-            segment.text
-          )
-        )
-      }
+      {(text) => <Segments segments={text.segments} />}
     </CommandItemTextPrimitive>
   )
 }
+
+/** `text` with the letters `query` matches marked, the way the fuzzy
+ *  filter matches them: CommandItemText's look, under fuzzyThen. */
+function CommandMatchText({ text, query }: { text: string; query: string }) {
+  const segments = useMemo(
+    () => matchSegments(text, matchRanges(text, query, "fuzzy")),
+    [text, query]
+  )
+  return (
+    <span dir="auto">
+      <Segments segments={segments} />
+    </span>
+  )
+}
+
+/** A two-line row's content: `label`, and under it `line` in pieces, in
+ *  smaller muted ink with its matches in full ink. */
+function CommandItemLines({
+  label,
+  line,
+}: {
+  label: string
+  line: readonly MatchSegment[]
+}) {
+  return (
+    <span data-slot="command-item-lines" className="flex flex-col py-2">
+      <span dir="auto" className="truncate">
+        {label}
+      </span>
+      <span dir="auto" className="truncate text-sm text-muted-foreground">
+        <Segments segments={line} />
+      </span>
+    </span>
+  )
+}
+
+/** Command's fuzzy filter by label, except for the items in `kept`,
+ *  results a server already matched: those stay whatever was typed,
+ *  after every fuzzy match, in `kept`'s order. */
+function fuzzyThen(kept: readonly string[]): SearchFilter<string> {
+  const at = new Map(kept.map((value, index) => [value, index]))
+  return (item, query) => {
+    const index = at.get(item.value)
+    return index === undefined
+      ? fuzzyScore(item.label, query)
+      : KEPT * (1 - index / (kept.length + 1))
+  }
+}
+
+/** A kept item's score: above zero, so it shows, and below any fuzzy
+ *  match's, so it comes after them. */
+const KEPT = 1e-6
 
 declare module "react" {
   interface CSSProperties {
@@ -164,6 +243,11 @@ function useCommandWindow() {
   const reveal = useCallback((index: number) => {
     const element = list.current
     if (element === null || index < 0) return
+    // A mounted row (in view, or past the window, like a server's
+    // results) scrolls itself in; one the window hasn't rendered is
+    // placed by its index.
+    const row = element.querySelector(`[aria-posinset="${index + 1}"]`)
+    if (row !== null) return row.scrollIntoView({ block: "nearest" })
     const top = index * ROW
     const bottom = top + ROW + 2 * PAD
     if (top < element.scrollTop) element.scrollTop = top
@@ -213,6 +297,23 @@ function CommandWindow<T extends { value: string }>({
   )
 }
 
+/** A quiet line under the list, from `children` (the list's state), or
+ *  nothing. */
+function CommandStatus({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandStatusPrimitive>) {
+  return (
+    <CommandStatusPrimitive
+      className={cn(
+        "shrink-0 px-4 py-2 text-sm text-muted-foreground empty:hidden",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 function CommandEmpty({
   className,
   ...props
@@ -236,9 +337,16 @@ export {
   CommandInput,
   CommandItem,
   CommandItemText,
+  CommandItemLines,
   CommandList,
+  CommandMatchText,
+  CommandStatus,
   CommandWindow,
+  fuzzyScore,
+  fuzzyThen,
+  useAsyncOptions,
   useCommandWindow,
   type CommandData,
   type CommandDataItem,
+  type MatchSegment,
 }

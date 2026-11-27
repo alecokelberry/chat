@@ -15,6 +15,20 @@
       "when": 1795714154475,
       "tag": "20261126172914_pinned",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795793999019,
+      "tag": "20261127153959_message_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795793999580,
+      "tag": "20261127154000_message_fts",
+      "breakpoints": true
     }
   ]
 }

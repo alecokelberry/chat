@@ -590,6 +590,14 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
     .fill("seeded chat 995")
   await expect(search.getByRole("option").first()).toHaveText("Seeded chat 995")
   expect(await search.getByRole("option").count()).toBeLessThan(60)
+
+  // Dev's words (e2e/seed.sql) are never the owner's to find.
+  const searched = page.waitForResponse((response) =>
+    decodeURIComponent(response.url()).includes("zanzibarite")
+  )
+  await page.getByRole("combobox", { name: "Search chats" }).fill("zanzibarite")
+  expect((await searched).ok()).toBe(true)
+  await expect(search).toContainText("No chats match “zanzibarite”")
 })
 
 // ui-sdk's agent test: rows are controls an agent can find and press. A

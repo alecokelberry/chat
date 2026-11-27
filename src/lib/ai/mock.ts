@@ -21,7 +21,9 @@
 // test can watch the browser pace them out (src/lib/chat/smooth-text.ts).
 // One that mentions "(slow)" gets the same reply at a word every 250ms,
 // about ten seconds in all, for a test that must still catch it mid-reply
-// after a reload or a second tab opens, even on a slow runner.
+// after a reload or a second tab opens, even on a slow runner. One with
+// "(backwards <word>)" gets that word spelt backwards in its reply, so a
+// test has a word only the reply holds (Search's message matches).
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
 //
@@ -100,13 +102,23 @@ const wordDelay = (message: string) =>
 /** Each word keeps the space or newline after it. */
 const wordsOf = (line: string) => line.split(/(?<=\s)/)
 
+const BACKWARDS = /\(backwards ([a-z]+)\)/
+
+/** "(backwards <word>)"'s word spelt backwards, as a sentence. */
+function backwards(message: string) {
+  const word = BACKWARDS.exec(message)?.[1]
+  return word === undefined
+    ? ""
+    : `Backwards: ${word.split("").reverse().join("")}. `
+}
+
 /** The mock's reply to a message (wordsOf splits it for streaming). */
 const replyTo = (message: string, modelId: string, thinking: boolean) =>
   message.includes("long code")
     ? LONG_CODE_REPLY
     : message.includes("markdown")
       ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${REPLY}`
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>

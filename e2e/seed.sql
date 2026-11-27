@@ -19,6 +19,11 @@ insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt", "pinned")
 insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt") values
   ('e2e-dev', '00000000-0000-4000-8000-000000000006', 'Seeded kept title', 1795000000000, 1795000000000);
 
+-- Its words, in Search's index (src/lib/chat/message-index.ts): only Dev
+-- finds them (e2e/search.spec.ts), never the owner (e2e/sidebar.spec.ts).
+insert into "message_text" ("userId", "chatId", "messageId", "text") values
+  ('e2e-dev', '00000000-0000-4000-8000-000000000006', 'seeded-question', 'Where do zanzibarite crystals grow?');
+
 -- Around midnight in Auckland on Mar 10, 2026 (UTC+13), which is still
 -- Mar 9 in UTC until 11:00 there.
 insert into "chat" ("userId", "id", "title", "createdAt", "updatedAt") values

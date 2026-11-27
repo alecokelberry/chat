@@ -1,0 +1,146 @@
+// The words of every chat's messages, for Search (src/components/chat/
+// search-chats.tsx): a D1 table of each message's text, and over it an
+// FTS5 full-text index that SQLite keeps in step through triggers
+// (migrations/…_message_fts.sql), so the tokenising and the ranking run in
+// D1, never in the Worker's 10 ms. A chat's agent writes it after every
+// reply, finished, stopped or failed (src/lib/chat/agent.ts): that turn's
+// question and reply, and it drops whatever the chat no longer holds, so
+// an edited question's old text and the replies an edit or Retry replaced
+// stop matching. Rows belong to their chat's row in the chat list, so
+// deleting a chat (or its user) deletes its text too.
+import { sql } from "drizzle-orm"
+import { drizzle } from "drizzle-orm/d1"
+import {
+  foreignKey,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core"
+import type { UIMessage } from "ai"
+
+import { MATCH_END, MATCH_START } from "@/lib/chat/match-marks"
+import { chat, type ChatOwner } from "@/lib/chat/store"
+
+/** One message's text. `seq` is the index's row id: an integer key of its
+ *  own, since FTS5 points at rows by an integer that must never change. */
+export const messageText = sqliteTable(
+  "message_text",
+  {
+    seq: integer().primaryKey(),
+    userId: text().notNull(),
+    chatId: text().notNull(),
+    messageId: text().notNull(),
+    text: text().notNull(),
+  },
+  (table) => [
+    uniqueIndex("message_text_message_idx").on(
+      table.userId,
+      table.chatId,
+      table.messageId
+    ),
+    foreignKey({
+      columns: [table.userId, table.chatId],
+      foreignColumns: [chat.userId, chat.id],
+    }).onDelete("cascade"),
+  ]
+)
+
+/** The most text a message keeps in the index: a very long reply still
+ *  matches on its first 100,000 characters. */
+const TEXT_MAX = 100_000
+
+/** A message's words: its text parts (a question, a reply's answer), not
+ *  its thinking or tool calls. */
+function wordsOf(message: UIMessage) {
+  return message.parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("\n")
+    .replaceAll(MATCH_START, "")
+    .replaceAll(MATCH_END, "")
+    .slice(0, TEXT_MAX)
+    .trim()
+}
+
+const db = (d1: D1Database) => drizzle(d1)
+
+/** Brings the chat's text in the index up to `messages`, the whole chat:
+ *  drops what it no longer holds, then writes `changed` (the turn's
+ *  question and reply, or every message). Two statements whatever the
+ *  chat's length, the message list sent as JSON. If the chat's row is gone
+ *  (deleted mid-reply), the write fails and nothing changes. */
+export async function indexMessages(
+  d1: D1Database,
+  { userId, id }: ChatOwner,
+  messages: readonly UIMessage[],
+  changed: readonly UIMessage[] = messages
+) {
+  const ids = JSON.stringify(messages.map((message) => message.id))
+  const rows = JSON.stringify(
+    changed
+      .map((message) => ({ id: message.id, text: wordsOf(message) }))
+      .filter((row) => row.text !== "")
+  )
+  // Raw D1 statements: Drizzle's builder can't say "not in json_each",
+  // nor an upsert from a SELECT. One batch, so both or neither apply.
+  await d1.batch([
+    d1
+      .prepare(
+        `delete from message_text where userId = ?1 and chatId = ?2
+        and messageId not in (select value from json_each(?3))`
+      )
+      .bind(userId, id, ids),
+    // An unchanged message is left alone, so its index entry isn't
+    // rewritten. `where true` tells SQLite the upsert's ON CONFLICT isn't
+    // the SELECT's.
+    d1
+      .prepare(
+        `insert into message_text (userId, chatId, messageId, text)
+        select ?1, ?2, value ->> 'id', value ->> 'text'
+        from json_each(?3) where true
+        on conflict (userId, chatId, messageId) do update
+        set text = excluded.text where text is not excluded.text`
+      )
+      .bind(userId, id, rows),
+  ])
+}
+
+/** The FTS5 query for what was typed: its words, each quoted, so nothing
+ *  typed is read as FTS5's syntax, the last one a prefix, since it may be
+ *  half typed. Null below two letters. */
+export function matchQuery(typed: string): string | null {
+  const words = typed.match(/[\p{L}\p{N}]+/gu) ?? []
+  if (words.join("").length < 2) return null
+  return words
+    .map((word, index) => `"${word}"${index === words.length - 1 ? "*" : ""}`)
+    .join(" ")
+}
+
+/** A chat whose messages hold the words: its best matching line, the
+ *  words between MATCH_START and MATCH_END. */
+export type MessageMatch = { id: string; snippet: string }
+
+/** The most chats a search returns. */
+const MATCHES_MAX = 20
+
+/** The user's chats whose messages hold every word typed, best match
+ *  first, one per chat. */
+export async function searchMessages(
+  d1: D1Database,
+  userId: string,
+  typed: string
+): Promise<MessageMatch[]> {
+  const query = matchQuery(typed)
+  if (query === null) return []
+  // Several messages of one chat can match: take the best few hundred,
+  // then the first of each chat.
+  const rows = await db(d1).all<MessageMatch>(sql`
+    select message_text.chatId as id,
+      snippet(message_fts, 0, ${MATCH_START}, ${MATCH_END}, '…', 12) as snippet
+    from message_fts join message_text on message_text.seq = message_fts.rowid
+    where message_fts match ${query} and message_text.userId = ${userId}
+    order by message_fts.rank limit 200`)
+  const best = new Map<string, MessageMatch>()
+  for (const row of rows) if (!best.has(row.id)) best.set(row.id, row)
+  return [...best.values()].slice(0, MATCHES_MAX)
+}
