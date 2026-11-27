@@ -8,8 +8,9 @@
 // "Thinking…" until the answer's first word, then how long it thought
 // (ui/reply-step.tsx). A reply that searched the web shows a step like it,
 // "Searching the web…" while a search runs, then how many sites it found,
-// opening to each query and its results; the sites found sit under the
-// reply as links (sources.tsx). Until a reply's first word, thought or
+// opening to each query and its results, and "Reading the page…" for a
+// page the model reads (each read listed with the page it found); the
+// sites found sit under the reply as links (sources.tsx). Until a reply's first word, thought or
 // search arrives, and again while it reads what a search found, the
 // waiting marker holds its place (pending-reply.tsx).
 // A failed reply ends the thread with one quiet line saying why, and Retry.
@@ -226,7 +227,8 @@ function Thinking({
   )
 }
 
-/** A reply's web searches, if it made any: each query and what it found. */
+/** A reply's web searches and page reads, if it made any: each query or
+ *  address, and what it found. */
 function Searching({
   searches,
   running,
@@ -245,7 +247,9 @@ function Searching({
       <ul className="flex flex-col gap-3 whitespace-normal">
         {searches.map((search, i) => (
           <li key={i} className="flex flex-col gap-1">
-            <span className="text-foreground">{search.query}</span>
+            <span className="wrap-anywhere text-foreground">
+              {search.kind === "read" ? `Read ${search.query}` : search.query}
+            </span>
             {search.error !== undefined ? (
               <span>{search.error}</span>
             ) : (

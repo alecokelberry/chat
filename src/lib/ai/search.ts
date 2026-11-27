@@ -10,14 +10,18 @@
 // throws a short reason the model reads as the tool's error, so it says it
 // couldn't search and answers anyway; the step shows the same reason.
 // Keenable's 402 means the month's free searches are used up, and the
-// reason says so. Keenable's own status goes to the log, never the key. Stop cancels a search in flight
-// (the reply's abort signal). With MOCK_MODEL "1" the mock's canned
-// results answer instead (src/lib/ai/mock.ts), so tests never go out.
+// reason says so. Keenable's own status goes to the log, never the key.
+// Stop cancels a search in flight (the reply's abort signal). The tool is
+// built for each reply and counts its calls: past SEARCH_LIMIT, even calls
+// made at once in one step, it tells the model no without asking Keenable.
+// With MOCK_MODEL "1" the mock's canned results answer instead
+// (src/lib/ai/mock.ts), so tests never go out.
 import { env } from "cloudflare:workers"
 import { tool } from "ai"
 import { z } from "zod"
 
 import { mockSearch } from "@/lib/ai/mock"
+import { siteOf } from "@/lib/ai/web-address"
 
 /** At most this many searches in one reply. */
 export const SEARCH_LIMIT = 3
@@ -43,18 +47,6 @@ const KeenableResults = z.object({
     })
   ),
 })
-
-/** A result's site, or null for an address that isn't http(s): a link
- *  the page shows must never run script. */
-function siteOf(url: string): string | null {
-  try {
-    const { protocol, hostname } = new URL(url)
-    if (protocol !== "https:" && protocol !== "http:") return null
-    return hostname.replace(/^www\./, "")
-  } catch {
-    return null
-  }
-}
 
 /** Keenable's results, trimmed to what the model and the page need. */
 function toResults(
@@ -98,13 +90,16 @@ async function keenable(query: string, abortSignal: AbortSignal | undefined) {
   return toResults(KeenableResults.parse(await response.json()).results)
 }
 
-class KeenableError extends Error {
+/** Keenable's answer when it isn't a 2xx (402: the month's free
+ *  allowance is used up). */
+export class KeenableError extends Error {
   constructor(readonly status: number) {
     super(`Keenable answered ${status}`)
   }
 }
 
-/** Why a search found nothing, as the model and the chat read it. */
+/** Why a search or a read found nothing, as the model and the chat read
+ *  it. */
 export class SearchError extends Error {}
 
 /** The webSearch tool for one reply: past SEARCH_LIMIT calls, even ones
