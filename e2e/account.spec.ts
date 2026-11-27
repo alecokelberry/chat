@@ -384,13 +384,11 @@ test.describe("on a phone", () => {
     // A real reload, the kind iOS recolors the bar on, with no crossfade:
     // a view transition's full-screen layer makes iOS keep the old color.
     expect(
-      await page.evaluate(
-        () =>
-          (
-            performance.getEntriesByType(
-              "navigation"
-            )[0] as PerformanceNavigationTiming
-          ).type
+      await page.evaluate(() =>
+        performance
+          .getEntriesByType("navigation")
+          .map((entry) => ("type" in entry ? entry.type : ""))
+          .join()
       )
     ).toBe("reload")
     expect(
