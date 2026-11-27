@@ -173,7 +173,7 @@ test("Retry replaces the last reply in place", async ({ page }) => {
   // The last word arrives a moment before the reply ends; until it ends,
   // Enter doesn't send.
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
-  await send(page, "Second question")
+  await send(page, "Second question (paced)")
   await expect(replies).toHaveText([/Done\.$/, /Done\.$/])
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 

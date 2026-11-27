@@ -54,8 +54,9 @@ async function sameCode(a: string, b: string): Promise<boolean> {
   return x === y
 }
 
-/** Signs a browser on this machine in as Dev. Only registered when
- *  DEV_SIGN_IN is "1", and answers only where devSignInAllowed. */
+/** Signs a browser on this machine in as Dev, or with `as` as one of its
+ *  numbered twins (devAccount). Only registered when DEV_SIGN_IN is "1",
+ *  and answers only where devSignInAllowed. */
 const devSignIn = {
   id: "dev-sign-in",
   endpoints: {

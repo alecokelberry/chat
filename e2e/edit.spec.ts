@@ -51,17 +51,17 @@ test("an edited question replaces it and everything after, after a reload too", 
 
   await edit(page, 0)
   await expect(field(page)).toHaveValue("First question")
-  await field(page).fill("Edited question")
+  await field(page).fill("Edited question (paced)")
   await page.keyboard.press("Enter")
 
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
-  await expect(questions(page)).toHaveText(["Edited question"])
+  await expect(questions(page)).toHaveText(["Edited question (paced)"])
   await expect(replies(page)).toHaveText([/nano-omni.*Done\.$/])
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 
   // Gone from the chat, not only from the screen.
   await page.reload()
-  await expect(questions(page)).toHaveText(["Edited question"])
+  await expect(questions(page)).toHaveText(["Edited question (paced)"])
   await expect(replies(page)).toHaveText([/nano-omni.*Done\.$/])
 })
 
@@ -103,7 +103,7 @@ test("Escape, Cancel and an unchanged question leave the chat as it was", async 
 
 test("Edit waits while a reply streams", async ({ page }) => {
   await signInAsDev(page)
-  await send(page, "Hello")
+  await send(page, "Hello (paced)")
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
   await expect(
     page.getByRole("button", { name: "Edit message" })

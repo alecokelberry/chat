@@ -18,7 +18,7 @@ test("a chat shows its title once it has one, after a reload too", async ({
   page,
 }) => {
   await signInAsDev(page)
-  await send(page, "Title me")
+  await send(page, "Title me (paced)")
   const title = page.getByRole("heading", { level: 1 })
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
   // Lightning names the chat only once the reply is done.

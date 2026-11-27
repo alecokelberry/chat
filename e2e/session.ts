@@ -90,6 +90,34 @@ export async function hydrated(page: Page) {
   )
 }
 
+/** Waits until the page is still: hydrated, two frames drawn, so effects,
+ *  media query changes and new transitions have all run, and every running
+ *  animation that can end has ended (not a scroll-driven one, like the
+ *  chat list's fades, which never does). A check that something did NOT
+ *  happen (no reload, no color change) goes after this, never after a
+ *  fixed sleep: a sleep is a guess that passes on a fast machine and flakes
+ *  on a slow one. A reload that starts meanwhile ends the evaluate, so it
+ *  fails the test. */
+export async function settled(page: Page) {
+  await hydrated(page)
+  await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    await frame()
+    await frame()
+    await Promise.all(
+      document
+        .getAnimations()
+        .filter(
+          (a) =>
+            a.playState === "running" &&
+            a.timeline instanceof DocumentTimeline &&
+            a.effect?.getComputedTiming().endTime !== Infinity
+        )
+        .map((a) => a.finished.catch(() => undefined))
+    )
+  })
+}
+
 /** Signs in as this worker's own Dev (dev+N@chat.test, seeded like Dev
  *  in e2e/seed.sql), so tests in parallel never see each other's chats,
  *  and opens a new chat. It asks the dev sign-in endpoint directly, the
