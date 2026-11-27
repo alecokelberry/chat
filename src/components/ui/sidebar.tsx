@@ -326,7 +326,9 @@ function SidebarSection({
             />
           </CollapsibleTrigger>
         </h2>
-        <div className="ms-auto flex items-center gap-0.5 pe-1.5">
+        {/* 16px apart on touch screens, so the 40px touch areas meet
+            without overlapping. */}
+        <div className="ms-auto flex items-center gap-0.5 pe-1.5 pointer-coarse:gap-4">
           {actions}
         </div>
       </div>
@@ -428,9 +430,9 @@ const sidebarRowVariants = cva(
         // open chat (the link's aria-current) keeps the hover's wash and
         // full ink; a row whose menu is open keeps its … showing, and the
         // …'s own square marks it.
+        chat: "ps-3 pe-2 group-focus-within/item:pe-9 group-hover/item:pe-9 group-has-data-open/item:pe-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground pointer-coarse:pe-9 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
         // Show more: a chat row's place and inset, in muted ink.
         more: "ps-3 pe-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent",
-        chat: "ps-3 pe-2 group-focus-within/item:pe-9 group-hover/item:pe-9 group-has-data-open/item:pe-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground pointer-coarse:pe-9 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
       },
     },
     defaultVariants: { variant: "chat" },

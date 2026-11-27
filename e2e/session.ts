@@ -56,9 +56,13 @@ export const sidebar = (page: Page) =>
 
 /** Shows every chat in the sidebar: past the first 30, the rest wait
  *  behind Show more, and a worker's own Dev gathers more than that as its
- *  tests send messages. Call it once the page has hydrated: the list comes
- *  from the server, so whether the button shows is settled by then. */
+ *  tests send messages. The list renders in the browser, after hydration,
+ *  so it first waits for a row that's always there (Dev's pinned chat,
+ *  e2e/seed.sql): by then Show more is there too, if it will be. */
 export async function showAllChats(page: Page) {
+  await expect(
+    sidebar(page).getByRole("link", { name: "Seeded pinned" })
+  ).toBeVisible()
   const more = sidebar(page).getByRole("button", { name: "Show more" })
   if ((await more.count()) > 0) await more.click()
   await expect(more).toHaveCount(0)
