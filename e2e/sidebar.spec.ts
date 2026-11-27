@@ -404,10 +404,12 @@ async function deleteForGood(page: Page, path: string) {
   await expect(rowFor(page, path)).toHaveCount(0)
 }
 
-/** What the chat's agent holds, as the browser loads it. */
+/** What the chat's agent holds, as the browser loads it: how many messages,
+ *  or -1 while the agent is being wiped (it answers 500 until it is gone). */
 const savedMessages = (page: Page, id: string) =>
   page.evaluate(async (id) => {
     const response = await fetch(`/api/chats/${id}/get-messages`)
+    if (!response.ok) return -1
     const messages: unknown[] = await response.json()
     return messages.length
   }, id)
@@ -436,27 +438,32 @@ test("Delete hides the open chat at once, and Undo puts it back", async ({
   await deleteForGood(page, path)
 })
 
-test("once the toast closes, a deleted chat and its messages are gone", async ({
-  page,
-}) => {
-  await startChat(page, "Delete me for good")
-  const path = new URL(page.url()).pathname
-  const id = path.split("/").at(-1) ?? ""
-  expect(await savedMessages(page, id)).toBe(2)
+// The poll can catch the agent mid-wipe, when it answers 500.
+test.describe("a chat wiped for good", () => {
+  test.use({ allowedProblems: [/status of 500/] })
 
-  // From the header's … this time.
-  await page.getByRole("button", { name: "Chat actions" }).click()
-  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
-  await expect(rowFor(page, path)).toHaveCount(0)
-  await expect(toasts(page)).toContainText("Chat deleted")
-  // As if it timed out, without the wait.
-  await page.evaluate(() => window.toast.dismiss())
-  await expect(toasts(page)).toHaveCount(0)
+  test("once the toast closes, a deleted chat and its messages are gone", async ({
+    page,
+  }) => {
+    await startChat(page, "Delete me for good")
+    const path = new URL(page.url()).pathname
+    const id = path.split("/").at(-1) ?? ""
+    expect(await savedMessages(page, id)).toBe(2)
 
-  await expect.poll(() => savedMessages(page, id)).toBe(0)
-  await page.reload()
-  await expect(greeting(page)).toBeVisible()
-  await expect(rowFor(page, path)).toHaveCount(0)
+    // From the header's … this time.
+    await page.getByRole("button", { name: "Chat actions" }).click()
+    await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+    await expect(rowFor(page, path)).toHaveCount(0)
+    await expect(toasts(page)).toContainText("Chat deleted")
+    // As if it timed out, without the wait.
+    await page.evaluate(() => window.toast.dismiss())
+    await expect(toasts(page)).toHaveCount(0)
+
+    await expect.poll(() => savedMessages(page, id)).toBe(0)
+    await page.reload()
+    await expect(greeting(page)).toBeVisible()
+    await expect(rowFor(page, path)).toHaveCount(0)
+  })
 })
 
 // The delete is checked against the signed-in user: here the request names
