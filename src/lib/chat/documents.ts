@@ -23,15 +23,28 @@ export type DocumentPart = { type: "data-document"; data: DocumentData }
 export const isDocument = (
   part: UIMessage["parts"][number]
 ): part is DocumentPart =>
-  part.type === "data-document" &&
-  typeof part.data === "object" &&
-  part.data !== null &&
-  "text" in part.data &&
-  typeof part.data.text === "string"
+  part.type === "data-document" && isDocumentData(part.data)
+
+/** Whether a part's data has a document's shape: a part comes from the
+ *  browser, and a missing name would break its chip and its prompt. By
+ *  hand, since zod would add 20 KB to the page. */
+const isDocumentData = (data: unknown): data is DocumentData =>
+  typeof data === "object" &&
+  data !== null &&
+  "name" in data &&
+  typeof data.name === "string" &&
+  "mediaType" in data &&
+  typeof data.mediaType === "string" &&
+  "text" in data &&
+  typeof data.text === "string" &&
+  "cut" in data &&
+  typeof data.cut === "boolean"
 
 /** A document as the text the model reads. */
 export function documentPrompt({ name, text, cut }: DocumentData) {
-  const note = cut ? " (cut at 100,000 characters)" : ""
+  const note = cut
+    ? ` (cut at ${TEXT_LIMIT.toLocaleString("en-US")} characters)`
+    : ""
   return `Attached file "${name}"${note}:\n\n${text.slice(0, TEXT_LIMIT)}`
 }
 

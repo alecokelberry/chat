@@ -1,6 +1,6 @@
 // The composer's attachments (src/lib/chat/attachments.ts has the rules),
-// and a question's images and documents in the thread. The + at the composer's start
-// opens a menu (a sheet on a phone) whose one row, "Add photos & files",
+// and a question's images and documents in the thread. The + at the
+// composer's start opens a menu (a sheet on a phone) whose one row, "Add photos & files",
 // opens the system picker; on an iPhone that offers the photo library,
 // the camera and Files. Pasting into the message or dropping anywhere on
 // the page (an overlay says "Drop to attach") adds files too. Each file

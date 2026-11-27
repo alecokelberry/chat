@@ -139,15 +139,13 @@ const replyTo = (
   message: string,
   modelId: string,
   thinking: boolean,
-  images: number,
-  told: number,
-  read: string
+  { images, told, readNote }: Pick<Asked, "images" | "told" | "readNote">
 ) =>
   message.includes("long code")
     ? LONG_CODE_REPLY
     : message.includes("markdown")
       ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${read}${backwards(message)}${REPLY}`
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${readNote}${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -335,10 +333,10 @@ function askedOf(prompt: Prompt) {
     parts.filter((part) => part.type === "tool-call" && part.toolName === name)
       .length
   return {
-    message: textOf(prompt[at]),
+    message: wordsIn(prompt[at]),
     images: prompt.reduce((sum, m) => sum + imagesIn(m), 0),
     told: prompt.map(textOf).join("").split("[image: ").length - 1,
-    read: readIn(textOf(prompt[at])),
+    readNote: readIn(textOf(prompt[at])),
     calls: { webSearch: called("webSearch"), readPage: called("readPage") },
     failed: parts.some(
       (part) =>
@@ -347,7 +345,22 @@ function askedOf(prompt: Prompt) {
   }
 }
 
-/** A user message's words. */
+type Asked = ReturnType<typeof askedOf>
+
+/** A user message's words, without its documents' text, so a file that
+ *  says "markdown" doesn't pick the mock's reply. */
+const wordsIn = (message: Prompt[number] | undefined) =>
+  message?.role === "user"
+    ? message.content
+        .map((part) =>
+          part.type === "text" && !part.text.startsWith('Attached file "')
+            ? part.text
+            : ""
+        )
+        .join("")
+    : ""
+
+/** A user message's text, documents too. */
 const textOf = (message: Prompt[number] | undefined) =>
   message?.role === "user"
     ? message.content
@@ -497,15 +510,7 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       const words = bursty
         ? BURSTS
         : wordsOf(
-            afterTools(asked) ??
-              replyTo(
-                message,
-                modelId,
-                thinking,
-                asked.images,
-                asked.told,
-                asked.read
-              )
+            afterTools(asked) ?? replyTo(message, modelId, thinking, asked)
           )
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {

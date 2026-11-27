@@ -15,11 +15,7 @@
 // for a model, and createImageBitmap turns a photo upright.
 import type { FileUIPart, UIMessage } from "ai"
 
-import {
-  documentsOf,
-  TEXT_LIMIT,
-  type DocumentPart,
-} from "@/lib/chat/documents"
+import { isDocument, TEXT_LIMIT, type DocumentPart } from "@/lib/chat/documents"
 
 export const MAX_FILES = 4
 export const MAX_FILE_BYTES = 10_000_000
@@ -181,10 +177,7 @@ export const questionParts = (
 /** A message's attachments: its images, then its documents. */
 export const attachmentsOf = (message: UIMessage): AttachmentPart[] => [
   ...imagesOf(message),
-  ...documentsOf(message).map((data) => ({
-    type: "data-document" as const,
-    data,
-  })),
+  ...message.parts.filter(isDocument),
 ]
 
 /** A message's images, in the order they were attached. */
@@ -192,8 +185,9 @@ export const imagesOf = (message: UIMessage): FileUIPart[] =>
   message.parts.filter(isImagePart)
 
 // A new chat's first question leaves the new-chat page with its
-// attachments here, for the chat's page to send (src/routes/_app/c.$id.tsx): history
-// state, which carries its words, has size limits a few photos can pass.
+// attachments here, for the chat's page to send
+// (src/routes/_app/c.$id.tsx): history state, which carries its words, has
+// size limits a few photos can pass.
 const handedOff = new Map<string, AttachmentPart[]>()
 
 /** Keeps a new chat's first attachments for its page. */
