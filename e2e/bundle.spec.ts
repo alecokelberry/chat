@@ -94,3 +94,27 @@ test("a new chat and a saved chat stay within their first-load budgets", async (
     budgets["a saved chat"] * KB
   )
 })
+
+test("the chat screen's code loads while a new chat sits idle", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await signInAsDev(page)
+  // A cold cache, so the chunk can only come from the idle preload.
+  const context = await browser.newContext({
+    storageState: await page.context().storageState(),
+    viewport,
+    baseURL,
+  })
+  try {
+    const fresh = await context.newPage()
+    const chatScreen = fresh.waitForRequest((request) =>
+      /\/c\._id-[\w-]+\.js$/.test(request.url())
+    )
+    await fresh.goto("/")
+    await chatScreen
+  } finally {
+    await context.close()
+  }
+})
