@@ -288,6 +288,26 @@ test.describe("on a computer", () => {
     ).toBeVisible()
   })
 
+  test("Usage's bar and legend dots keep an edge in forced colors", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await send(page, unique("Give me a bar"))
+    await expect(replies(page).last()).toContainText("Done.")
+    await page.emulateMedia({ forcedColors: "active" })
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Usage" }).click()
+    const usage = settings(page).getByRole("tabpanel", { name: "Usage" })
+    // Forced colors strips every fill, so a block with no border is gone.
+    const block = usage.locator('[data-slot="usage-bar"] [data-part]').first()
+    await expect(block).toBeVisible()
+    await expect(block).not.toHaveCSS("border-top-width", "0px")
+    const dot = usage
+      .locator('[data-slot="usage-legend-item"] > span[aria-hidden]')
+      .first()
+    await expect(dot).not.toHaveCSS("border-top-width", "0px")
+  })
+
   /** Opens Settings at Customize and returns its two controls. */
   async function openCustomize(page: Page) {
     await openSettings(page)

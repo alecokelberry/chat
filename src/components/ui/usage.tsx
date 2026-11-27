@@ -7,8 +7,9 @@
 // share printed inside at the start when the block is wide enough, in the
 // near-black that reads on every fill. A narrower block prints nothing;
 // its legend row carries the share beside its name instead, so no number
-// is shown twice and none is lost. Colors are the chart tokens in
-// src/styles/app.css, by the part's fixed slot, never by its rank. The
+// is shown twice and none is lost. Forced colors (Windows High Contrast)
+// strips every fill, so each block and dot also gets a border. Colors are the chart
+// tokens in src/styles/app.css, by the part's fixed slot, never by its rank. The
 // bar is one image to screen readers, named with every part; the legend
 // repeats it as text. No hover layer: every number is already in the
 // legend right under the bar, and a phone has no hover.
@@ -108,7 +109,7 @@ function UsageBar({
             key={part.key}
             data-part={part.key}
             className={cn(
-              "flex min-w-1 grow-(--share) basis-0 items-center rounded-sm ps-2 text-xs font-medium text-chart-ink tabular-nums",
+              "flex min-w-1 grow-(--share) basis-0 items-center rounded-sm ps-2 text-xs font-medium text-chart-ink tabular-nums forced-colors:border",
               fillOf(part.slot)
             )}
             style={{ "--share": part.amount }}
@@ -163,7 +164,10 @@ function UsageLegendItem({
     >
       <span
         aria-hidden
-        className={cn("size-2.5 shrink-0 rounded-full", fillOf(series))}
+        className={cn(
+          "size-2.5 shrink-0 rounded-full forced-colors:border",
+          fillOf(series)
+        )}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-base text-foreground">
