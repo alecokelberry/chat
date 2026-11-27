@@ -335,40 +335,42 @@ test.describe("on a touch phone", () => {
 
 // ui-sdk's agent bridge (window.agent, test builds): an agent finds the
 // search icon by name, opens Search, searches and runs a chat, which
-// opens it.
+// opens it. It finds each by query, not in the snapshot: the snapshot
+// lists only the first 100 components, and Dev's list grows with every
+// chat the other tests make, which pushed Search's field past it.
 test("an agent can search and open a chat", async ({ page }) => {
   await signInAsDev(page)
-  const result = await page.evaluate(async () => {
-    const { agent } = window
-    const find = (label: string) =>
-      agent
-        .snapshot()
-        .find((entry) => entry.label === label && entry.offPage !== true)
-    const opened = await agent.act({
-      steps: [{ ref: find("Search")?.ref ?? "", action: "press", args: [] }],
-    })
-    // The list's code loads as Search opens.
-    for (
-      let tries = 0;
-      find("Search chats") === undefined && tries < 50;
-      tries++
-    )
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    const search = find("Search chats")?.ref ?? ""
-    const searched = await agent.act({
-      steps: [
-        { ref: search, action: "setQuery", args: ["kept title"] },
-        { ref: search, action: "run", args: [] },
-      ],
-    })
-    return {
-      opened: opened.ok,
-      searched: searched.ok,
-      error: searched.error?.message,
-    }
-  })
-  expect(result.opened).toBe(true)
-  expect(result.searched, result.error).toBe(true)
+  /** The ref of the on-page component labelled `label`, or "" if none. */
+  const refOf = (label: string) =>
+    page.evaluate(async (wanted) => {
+      const found = await window.agent.query({ text: wanted })
+      const match =
+        "error" in found
+          ? undefined
+          : found.find(
+              (entry) => entry.label === wanted && entry.offPage !== true
+            )
+      return match?.ref ?? ""
+    }, label)
+  const opened = await page.evaluate(
+    (ref) => window.agent.act({ steps: [{ ref, action: "press", args: [] }] }),
+    await refOf("Search")
+  )
+  // The list's code loads as Search opens.
+  await expect.poll(() => refOf("Search chats")).not.toBe("")
+  const search = await refOf("Search chats")
+  const searched = await page.evaluate(
+    (ref) =>
+      window.agent.act({
+        steps: [
+          { ref, action: "setQuery", args: ["kept title"] },
+          { ref, action: "run", args: [] },
+        ],
+      }),
+    search
+  )
+  expect(opened.ok).toBe(true)
+  expect(searched.ok, searched.error?.message).toBe(true)
   await expect(page).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
   await expect(dialog(page)).toHaveCount(0)
 })

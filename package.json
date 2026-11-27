@@ -18,7 +18,8 @@
     "e2e": "vite build --mode test && playwright test",
     "smoke": "vite build --mode test && NVIDIA_SMOKE=1 playwright test",
     "check": "oxfmt --check && oxlint && tsc --noEmit",
-    "verify": "pnpm check && knip && pnpm e2e && node scripts/worker-size.mjs",
+    "test": "vitest run",
+    "verify": "pnpm check && knip && pnpm test && pnpm e2e && node scripts/worker-size.mjs",
     "skills:update": "npx skills update -p -y && perl -ni -e 'print unless /^disable-model-invocation: true$/' .claude/skills/implement/SKILL.md .claude/skills/to-spec/SKILL.md .claude/skills/to-tickets/SKILL.md .claude/skills/retro/SKILL.md .claude/skills/wayfinder/SKILL.md",
     "postinstall": "wrangler types --strict-vars=false && ln -sfn ../../node_modules/@ui-sdk/core/skills/ui-sdk .claude/skills/ui-sdk"
   },
@@ -40,8 +41,8 @@
     "better-auth": "^1.7.25",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
-    "katex": "~0.16.47",
     "drizzle-orm": "^0.45.4",
+    "katex": "~0.16.47",
     "lucide-react": "^1.75.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -52,6 +53,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@cloudflare/vite-plugin": "^1.70.0",
+    "@fast-check/vitest": "^0.5.0",
     "@playwright/test": "^1.65.1",
     "@shadcn/lint": "^0.2.5",
     "@tailwindcss/vite": "^4.3.5",
@@ -67,6 +69,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
+    "vitest": "^5.1.1",
     "wrangler": "^4.164.0"
   }
 }

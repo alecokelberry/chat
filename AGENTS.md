@@ -22,7 +22,7 @@ The open GitHub issues are the plan, `docs/decisions.md` says why it's built thi
 3. **Ship:** one PR per ticket, titled as a plain imperative sentence, body from the `pr` skill in the template's sections, saying `Closes #N`. Alec's standing go covers a green PR whose review is addressed; live data, secrets and iPhone feel checks still need him. The PR's thread brings the branch up to date and turns on auto-merge; GitHub squash-merges it once `verify` passes. The `review` workflow reviews each PR once, when it opens, and `review.yml` says which files get Opus and `security-review`. Fix its real findings in one round, with no re-review. Each push to `main` deploys through Workers Builds.
 4. **Learn:** `retro` after a build that went badly; `diagnosing-bugs` for a hard bug; `cloudflare:workers-profiling` when live CPU goes over 10 ms; `cloudflare:web-perf` for a slow load or a laggy phone.
 
-- Tests: while iterating, run only the affected spec (`pnpm e2e <file>`) or test; the full suite runs once, in `pnpm verify`.
+- Tests: while iterating, run only the affected spec (`pnpm e2e <file>`) or unit test (`pnpm test <file>`); the full suite runs once, in `pnpm verify`. Unit tests are Vitest in Node, for pure logic only, beside the module (`*.test.ts`); a rule that must hold for every input is a fast-check property (`it.prop`), with inputs spread wide enough to reach the edge (fast-check's doubles cluster near 0).
 - Commits: one logical change each, an imperative subject in plain English (50 characters ideally, never over 72), and a body that says why. Not Conventional Commits. `main` gets one commit per PR, made from its title and body, so those follow the same rules.
 
 ## Agent skills
