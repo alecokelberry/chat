@@ -13,8 +13,9 @@
 // An edited question is sent in the old one's place, with the picker's
 // model: the SDK drops it and everything after it, here and in the agent,
 // and the reply is asked again.
-// The first send's focus comes along too: if it was in the composer, this
-// page's composer takes it, so typing can go on.
+// A new chat's composer takes focus as it opens: the first send came from
+// the new-chat page's composer (Enter, or Send, which Safari doesn't focus),
+// so typing can go on.
 // The tab is titled after the chat, from the list the layout loaded, so it
 // follows a rename or the model naming it once the list loads again.
 // A reload (or a second tab) while a reply streams picks it up where it is:
@@ -50,10 +51,11 @@ import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
+import { pageTitle } from "@/lib/utils"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
-    firstMessage?: { text: string; model: ModelKey; focused: boolean }
+    firstMessage?: { text: string; model: ModelKey }
   }
 }
 
@@ -75,8 +77,8 @@ export const Route = createFileRoute("/_app/c/$id")({
     meta: [
       {
         title: CHAT_ID.test(params.id)
-          ? `${loaderData?.title ?? "New chat"} – Chat`
-          : "Not found – Chat",
+          ? pageTitle(loaderData?.title ?? "New chat")
+          : pageTitle("Not found"),
       },
     ],
   }),
@@ -144,10 +146,6 @@ function ChatHeader({ chat }: { chat: ChatRef }) {
 const Chat = memo(function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
-  const sentFocused = useLocation({
-    select: (l) => l.state.firstMessage?.focused === true,
-  })
-  const [focusComposer] = useState(sentFocused)
   const router = useRouter()
   const { data } = Route.useSearch()
   const agent = useAgent({
@@ -220,7 +218,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           the thread's text; 16px in on a computer. */}
       <div className="mx-auto w-full max-w-composer px-2 pb-2 sm:px-0">
         <Composer
-          focusOnMount={focusComposer}
+          focusOnMount={isNew}
           busy={busy}
           model={model}
           onModelChange={setModel}

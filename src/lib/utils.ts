@@ -30,3 +30,6 @@ export const cn = createCn({
     },
   },
 })
+
+/** A tab's title: the page's name, then the app's. */
+export const pageTitle = (name: string) => `${name} – Chat`

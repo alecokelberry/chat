@@ -43,9 +43,11 @@ export function Composer({
   const [text, setText] = useState("")
   const message = text.trim()
   const field = useRef<HTMLTextAreaElement>(null)
+  // Read once: it's about the moment this composer appears.
+  const focusAtMount = useRef(focusOnMount)
   useEffect(() => {
-    if (focusOnMount) field.current?.focus()
-  }, [focusOnMount])
+    if (focusAtMount.current) field.current?.focus()
+  }, [])
 
   function send() {
     if (message === "" || busy) return

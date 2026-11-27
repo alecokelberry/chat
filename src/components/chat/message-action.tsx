@@ -57,11 +57,12 @@ export function MessageAction({
 
 export function CopyAction({
   text,
-  label = "Copy message",
+  label,
 }: {
   /** What to copy; a function reads it at the press (a table's rows). */
   text: string | (() => string)
-  label?: string
+  /** Says what it copies, as it differs where it sits ("Copy code"). */
+  label: string
 }) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {

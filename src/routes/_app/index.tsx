@@ -2,23 +2,23 @@
 // under the header, beside the sidebar (src/routes/_app/route.tsx, which
 // also checks the session). The first send makes the chat: a fresh id, then
 // /c/<id> with the message and its model in history state, which that page
-// sends once it's connected (src/routes/_app/c.$id.tsx), and whether focus
-// was in the composer, so that page's composer takes it.
-import { useRef, useState } from "react"
+// sends once it's connected (src/routes/_app/c.$id.tsx), and whose composer
+// takes focus, so typing can go on.
+import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { Composer } from "@/components/chat/composer"
 import { DEFAULT_MODEL } from "@/lib/ai/models"
+import { pageTitle } from "@/lib/utils"
 
 export const Route = createFileRoute("/_app/")({
-  head: () => ({ meta: [{ title: "New chat – Chat" }] }),
+  head: () => ({ meta: [{ title: pageTitle("New chat") }] }),
   component: NewChat,
 })
 
 function NewChat() {
   const navigate = useNavigate()
   const [model, setModel] = useState(DEFAULT_MODEL)
-  const composer = useRef<HTMLDivElement>(null)
   return (
     // The one-line composer (h-14.5, its 58px) sits at the exact middle of
     // the space under the header: a 1fr / auto / 1fr grid, with the greeting
@@ -35,10 +35,7 @@ function NewChat() {
       <h1 className="self-end px-4 pb-7 text-center text-3xl font-medium">
         What can I help with?
       </h1>
-      <div
-        ref={composer}
-        className="mx-auto h-14.5 w-full max-w-composer px-2 sm:px-0"
-      >
+      <div className="mx-auto h-14.5 w-full max-w-composer px-2 sm:px-0">
         <Composer
           model={model}
           onModelChange={setModel}
@@ -46,14 +43,7 @@ function NewChat() {
             void navigate({
               to: "/c/$id",
               params: { id: crypto.randomUUID() },
-              state: {
-                firstMessage: {
-                  text,
-                  model,
-                  focused:
-                    composer.current?.contains(document.activeElement) === true,
-                },
-              },
+              state: { firstMessage: { text, model } },
             })
           }
         />

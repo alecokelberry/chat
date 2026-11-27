@@ -109,7 +109,7 @@ export function Question({
           >
             <PencilIcon aria-hidden />
           </MessageAction>
-          <CopyAction text={text} />
+          <CopyAction text={text} label="Copy message" />
         </MessageToolbar>
       )}
     </div>
