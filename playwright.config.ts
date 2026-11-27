@@ -35,6 +35,9 @@ export default defineConfig({
   // Ends a stuck run in time to write its report, inside the CI job's
   // 15 minutes (Playwright's CI docs: always set one).
   globalTimeout: ci ? 12 * 60_000 : 0,
+  // A paced mock reply ("(paced)", src/lib/ai/mock.ts) takes about 3 s, too
+  // close to the default 5 s wait on a busy CI runner, where it ran past it.
+  expect: { timeout: 10_000 },
   use: { baseURL: BASE_URL, trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   ...(smoke ? { grep: /@nvidia/ } : { grepInvert: /@nvidia/ }),

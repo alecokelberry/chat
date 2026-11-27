@@ -93,14 +93,24 @@ test("a long code line scrolls inside its block on a phone", async ({
   await highlighted(reply)
 
   const body = reply.locator('[data-streamdown="code-block-body"]')
-  const sizes = await body.evaluate((el) => ({
-    scroll: el.scrollWidth,
-    client: el.clientWidth,
-    page: document.documentElement.scrollWidth,
-    viewport: window.innerWidth,
-  }))
-  expect(sizes.scroll).toBeGreaterThan(sizes.client)
-  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport)
+  const sizes = () =>
+    body.evaluate((el) => ({
+      scroll: el.scrollWidth,
+      client: el.clientWidth,
+      page: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }))
+  // The block lays out a moment after the reply ends (the highlighter loads
+  // while idle), and measures 0 wide until then.
+  await expect.poll(async () => (await sizes()).client).toBeGreaterThan(0)
+  await expect
+    .poll(async () => {
+      const { scroll, client } = await sizes()
+      return scroll > client
+    })
+    .toBe(true)
+  const { page: wide, viewport } = await sizes()
+  expect(wide).toBeLessThanOrEqual(viewport)
 })
 
 test("the Worker carries no markdown renderer", () => {
@@ -211,8 +221,12 @@ test("a long block folds behind Show more, by keyboard too", async ({
   await highlighted(reply)
   const body = reply.locator('[data-streamdown="code-block-body"]')
   const height = async () => (await body.boundingBox())?.height ?? 0
-  const folded = await height()
   const more = reply.getByRole("button", { name: "Show more" })
+  // Measured once laid out: the block is 0 tall until the highlighter,
+  // loaded while idle, renders it.
+  await expect(more).toBeVisible()
+  await expect.poll(height).toBeGreaterThan(0)
+  const folded = await height()
   await more.focus()
   await page.keyboard.press("Enter")
   await expect(reply.getByRole("button", { name: "Show less" })).toBeVisible()
