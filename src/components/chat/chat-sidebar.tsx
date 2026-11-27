@@ -322,8 +322,9 @@ function ChatList({
   useEffect(() => {
     const top = keptListScroll()
     if (!restoreScroll || top === undefined) return
-    if (shown !== listed || listed.length === 0) return
-    if (list.current) list.current.scrollTop = top
+    if (shown !== listed) return
+    // An empty list has nothing to scroll; the page shows all the same.
+    if (list.current && listed.length > 0) list.current.scrollTop = top
     restored("list")
   }, [restoreScroll, shown, listed])
   return (

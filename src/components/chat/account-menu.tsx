@@ -12,6 +12,7 @@ import { CompassIcon, LogOutIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
+  createMenuController,
   Menu,
   MenuContent,
   MenuGroup,
@@ -61,15 +62,14 @@ export function AccountMenu({
    *  it starts open again (src/lib/reload-for-status-bar.ts). */
   reopen?: boolean
 }) {
-  // Read once: it's about the moment the menu appears. It opens from an
-  // effect rather than defaultOpen, so onOpenChangeComplete says when it's
-  // up.
+  // Read once: it's about the moment the menu appears. It opens through
+  // its controller once it's on the page, rather than defaultOpen, so
+  // onOpenChangeComplete says when it's up.
   const reopening = useRef(reopen)
-  const [open, setOpen] = useState(false)
+  const [controller] = useState(() => createMenuController<undefined, string>())
   useEffect(() => {
-    // oxlint-disable-next-line react-hooks-js/set-state-in-effect -- opens once it's on the page, so its open completes
-    if (reopening.current) setOpen(true)
-  }, [])
+    if (reopening.current) void controller.open()
+  }, [controller])
   const navigate = useNavigate()
   const router = useRouter()
   const toggleTheme = useToggleTheme()
@@ -90,8 +90,7 @@ export function AccountMenu({
   }
   return (
     <Menu
-      open={open}
-      onOpenChange={setOpen}
+      controller={controller}
       onOpenChangeComplete={(open) => {
         if (!open || !reopening.current) return
         reopening.current = false

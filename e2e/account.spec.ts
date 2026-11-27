@@ -363,6 +363,15 @@ test.describe("on a phone", () => {
     // page comes back with the drawer and menu open and the draft kept.
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "standalone", { value: true })
+      // When the page shows again after the reload, to tell the reopened
+      // drawer and menu apart from the 1.5 s cap.
+      const watch = () => {
+        const root = document.querySelector("html")
+        if (root !== null && !root.hasAttribute("data-restoring"))
+          return void Object.assign(window, { shownAt: performance.now() })
+        requestAnimationFrame(watch)
+      }
+      watch()
       addEventListener("pagereveal", (event) => {
         Object.assign(window, { crossfaded: event.viewTransition !== null })
       })
@@ -403,6 +412,9 @@ test.describe("on a phone", () => {
     await expect(drawer).toBeVisible()
     await expect(menu(page)).toBeVisible()
     await expect(page.locator("html")).not.toHaveAttribute("data-restoring")
+    expect(
+      await page.evaluate(() => ("shownAt" in window ? window.shownAt : 0))
+    ).toBeLessThan(1200)
     await expect(page.locator("body")).toHaveCSS("visibility", "visible")
     await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
       "half a thought"
