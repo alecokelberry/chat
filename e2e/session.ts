@@ -90,6 +90,21 @@ export async function hydrated(page: Page) {
   )
 }
 
+/** Counts the times the page starts to unload. A reload marks it the
+ *  moment it starts (beforeunload runs inside location.reload()), before the
+ *  next load, so a check after settled() can't miss one still on its way.
+ *  The count lives in sessionStorage, which a reload keeps. */
+export async function watchUnloads(page: Page) {
+  await page.addInitScript(() => {
+    addEventListener("beforeunload", () => {
+      const n = Number(sessionStorage.getItem("e2e-unloads") ?? "0")
+      sessionStorage.setItem("e2e-unloads", String(n + 1))
+    })
+  })
+  return () =>
+    page.evaluate(() => Number(sessionStorage.getItem("e2e-unloads") ?? "0"))
+}
+
 /** Waits until the page is still: hydrated, two frames drawn, so effects,
  *  media query changes and new transitions have all run, and every running
  *  animation that can end has ended (not a scroll-driven one, like the

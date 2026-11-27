@@ -5,6 +5,8 @@ import {
   expectNoHeldStart,
   hydrated,
   recordStartTimes,
+  settled,
+  watchUnloads,
   signInAsDev,
   test,
 } from "./session"
@@ -149,6 +151,7 @@ test.describe("on a computer", () => {
       Object.defineProperty(navigator, "standalone", { value: true })
     })
     await watchStatusBar(page)
+    const unloads = await watchUnloads(page)
     await page.goto("/sign-in")
     await expect(page.getByRole("button", { name: "Dark theme" })).toBeVisible()
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
@@ -163,7 +166,8 @@ test.describe("on a computer", () => {
     // The next launch starts dark too: theme-color is what it reads first.
     const statusBarTag = page.locator('meta[name="theme-color"]')
     await expect(statusBarTag.first()).toHaveAttribute("content", DARK_HEX)
-    await page.waitForTimeout(500)
+    await settled(page)
+    expect(await unloads()).toBe(0)
     expect(loads).toHaveLength(0)
   })
 
@@ -244,7 +248,7 @@ test.describe("on a computer", () => {
           )
         })
     )
-    await page.waitForTimeout(300)
+    await settled(page)
     expect(await toggle.evaluate((el) => getComputedStyle(el).color)).toBe(
       atOnce
     )
@@ -400,6 +404,7 @@ test.describe("on a phone", () => {
       )
     })
     await watchStatusBar(page)
+    const unloads = await watchUnloads(page)
     await signInAsDev(page)
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
     await page.getByRole("textbox", { name: "Message" }).fill("half a thought")
@@ -458,6 +463,8 @@ test.describe("on a phone", () => {
     await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
       "half a thought"
     )
+    await settled(page)
+    expect(await unloads()).toBe(0)
     expect(loads).toHaveLength(0)
   })
 })

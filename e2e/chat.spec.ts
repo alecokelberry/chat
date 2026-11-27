@@ -2,7 +2,15 @@ import type { Page } from "@playwright/test"
 import type { UIMessage } from "ai"
 
 import { REPLY } from "../src/lib/ai/mock"
-import { expect, send, signInAsDev, signInAsOwner, test } from "./session"
+import {
+  expect,
+  questions,
+  replies,
+  send,
+  signInAsDev,
+  signInAsOwner,
+  test,
+} from "./session"
 
 // Chatting (src/lib/chat, src/lib/ai) on the mock model: `/` starts a chat,
 // the first send moves to /c/<id>, the reply streams in and survives a
@@ -175,10 +183,16 @@ test("Shift+Enter starts a new line and Enter sends", async ({ page }) => {
 
 test("an empty message doesn't send", async ({ page }) => {
   await signInAsDev(page)
-  await page.getByRole("textbox", { name: "Message" }).fill("   ")
+  const message = page.getByRole("textbox", { name: "Message" })
+  await message.fill("   ")
   await page.keyboard.press("Enter")
-  await page.waitForTimeout(300)
   await expect(page).toHaveURL(/\/$/)
+  // A real one sent after it is the chat's only question: had the empty
+  // one gone, it would have come first.
+  await message.fill("A real one")
+  await page.keyboard.press("Enter")
+  await expect(replies(page)).toContainText("Done.")
+  await expect(questions(page)).toHaveText(["A real one"])
 })
 
 test("another account can't open the chat", async ({ page, browser }) => {
