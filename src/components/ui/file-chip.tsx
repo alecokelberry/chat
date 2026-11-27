@@ -1,7 +1,8 @@
 // File chip: a document's tile (a PDF or text file attached to a question,
 // chat/attachments.tsx), in the composer and in the thread: a 56px-tall
 // tile, 176px wide, with 12px corners, a file icon in a 32px square, then
-// the file's name over its kind ("PDF", "Text") in muted 12px. A long name
+// the file's name over its kind ("PDF", "Text") in muted 12px, on the
+// opaque muted fill, where muted text keeps its contrast. A long name
 // gives way in the middle, keeping its last 8 characters (the extension,
 // and the "-v12" that tells two files apart); the whole name is its title.
 import type * as React from "react"
@@ -23,7 +24,7 @@ function FileChip({
       data-slot="file-chip"
       title={name}
       className={cn(
-        "flex h-14 w-44 shrink-0 items-center gap-2.5 rounded-xl border border-border bg-secondary px-2.5 text-start",
+        "flex h-14 w-44 shrink-0 items-center gap-2.5 rounded-xl border border-border bg-muted px-2.5 text-start",
         className
       )}
       {...props}

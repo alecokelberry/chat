@@ -312,7 +312,7 @@ const chips = (page: Page) =>
     .getByRole("list", { name: "Attached files" })
     .locator("[data-slot=file-chip]")
 
-test("a PDF and a text file reach the model as text, and stay as chips", async ({
+test("a PDF, a text file and a code file reach the model as text, and stay as chips", async ({
   page,
 }) => {
   await signInAsDev(page)
@@ -323,19 +323,28 @@ test("a PDF and a text file reach the model as text, and stay as chips", async (
       mimeType: "text/markdown",
       buffer: Buffer.from("# Plan\n\nHike at dawn."),
     },
+    // Some systems type .ts as an MPEG stream: only its extension lets it in.
+    {
+      name: "main.ts",
+      mimeType: "video/mp2t",
+      buffer: Buffer.from("export const answer = 42\n"),
+    },
   ])
-  await expect(chips(page)).toHaveCount(2)
-  await expect(chips(page).first()).toContainText("PDF")
+  await expect(chips(page)).toHaveText([
+    /notes\.pdf.*PDF/,
+    /plan\.md.*Text/,
+    /main\.ts.*Text/,
+  ])
   await page.getByRole("textbox", { name: "Message" }).fill(unique("Sum up"))
   await page.keyboard.press("Enter")
 
   await expect(replies(page)).toHaveText(
-    [/Read notes\.pdf\. Read plan\.md\. .*Done\.$/],
+    [/Read notes\.pdf\. Read plan\.md\. Read main\.ts\. .*Done\.$/],
     { timeout: 15_000 }
   )
   await page.reload()
-  await expect(chips(page)).toHaveCount(2)
-  await expect(chips(page).last()).toContainText("plan.md")
+  await expect(chips(page)).toHaveCount(3)
+  await expect(chips(page).last()).toContainText("main.ts")
 })
 
 test("a long text file is cut, and any model reads documents", async ({
@@ -351,7 +360,7 @@ test("a long text file is cut, and any model reads documents", async ({
       buffer: Buffer.from("x".repeat(120_000)),
     },
   ])
-  await expect(chips(page)).toHaveCount(1)
+  await expect(chips(page)).toHaveText([/log\.txt.*Text/])
   await expect(page.getByText("can't see images")).toHaveCount(0)
   await page.getByRole("button", { name: "Send" }).click()
   await expect(replies(page)).toHaveText(

@@ -60,7 +60,7 @@ function FileInputItem({
   return (
     <FileInputItemPrimitive
       className={cn(
-        "relative flex h-14 min-w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground outline-hidden no-touch-callout focus-visible:ring-2 focus-visible:ring-ring has-data-[slot=file-chip]:border-0 [&>img]:aspect-square [&>img]:h-full [&>img]:rounded-xl [&>img]:object-cover",
+        "relative flex h-14 min-w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground outline-hidden no-touch-callout focus-visible:ring-2 focus-visible:ring-ring has-data-[slot=file-chip]:border-0 has-data-[slot=file-chip]:bg-transparent [&>img]:aspect-square [&>img]:h-full [&>img]:rounded-xl [&>img]:object-cover",
         className
       )}
       {...props}
