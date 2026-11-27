@@ -1,16 +1,17 @@
 // The composer's attachments (src/lib/chat/attachments.ts has the rules),
 // and a question's images and documents in the thread. The + at the
-// composer's start opens a menu (a sheet on a phone) whose one row, "Add photos & files",
-// opens the system picker; on an iPhone that offers the photo library,
-// the camera and Files. Pasting into the message or dropping anywhere on
-// the page (an overlay says "Drop to attach") adds files too. Each file
-// shows as a tile above the text, a spinner until it's ready (an image's
-// thumbnail, or a document's name and kind),
-// with ✕ to take it out; a file the rules turn away, or one that won't
-// decode, never joins, and a toast says why. A PDF with no text (a scan)
-// stays, its chip saying "No text found", and Send waits until it's out. A question shows its images
-// as a row of thumbnails above its bubble, a tap opening one full size,
-// and its documents as chips.
+// composer's start opens a menu (a sheet on a phone) whose one row, "Add
+// photos & files", opens the system picker; on an iPhone that offers the
+// photo library, the camera and Files. Pasting into the message or
+// dropping anywhere on the page (an overlay says "Drop to attach") adds
+// files too. Each file shows as a tile above the text, a spinner until
+// it's ready (an image's thumbnail, or a document's name and kind), with ✕
+// to take it out; a file the rules turn away, or one that won't decode,
+// never joins, and a toast says why. A PDF with no text (a scan) stays,
+// its chip saying "No text found", and Send waits until it's out. Editing
+// a question starts from what it was sent with, under the same rules. A
+// question shows its images as a row of thumbnails above its bubble, a
+// tap opening one full size, and its documents as chips.
 // With images attached and a model that can't see them (Ultra, Lightning),
 // Send waits and a line under the composer offers "Switch to Super".
 import { useRef, useState } from "react"
@@ -67,18 +68,29 @@ function reasonFor({ file, reasons: [reason] }: FileRejection) {
   return reason === "too-many-files" ? words : `${file.name}: ${words}`
 }
 
-/** The composer's files: what's attached, which are ready to send, and
- *  the file input's controller and handlers. */
-export function useAttachments() {
-  const [files, setFiles] = useState<File[]>([])
-  const [ready, setReady] = useState(() => new Map<File, AttachmentPart>())
+/** A sent attachment as a file the file input can hold: empty, named
+ *  and typed like it, and already ready as `part`. */
+const standIn = (part: AttachmentPart) =>
+  part.type === "file"
+    ? new File([], part.filename ?? "image.jpg", { type: part.mediaType })
+    : new File([], part.data.name, { type: part.data.mediaType })
+
+/** The composer's files, or an edited question's (starting from what it
+ *  was sent with, `initial`): what's attached, which are ready to send,
+ *  and the file input's controller and handlers. */
+export function useAttachments(initial: readonly AttachmentPart[] = []) {
+  const [seed] = useState(() =>
+    initial.map((part) => [standIn(part), part] as const)
+  )
+  const [files, setFiles] = useState(() => seed.map(([file]) => file))
+  const [ready, setReady] = useState(() => new Map<File, AttachmentPart>(seed))
   // Documents with no text: still attached, holding Send.
   const [empty, setEmpty] = useState(() => new Set<File>())
   const [controller] = useState(createFileInputController)
 
   // The files attached right now, for a preparation that ends after its
   // file was taken out: it's dropped, without a toast.
-  const attached = useRef<File[]>([])
+  const attached = useRef(files)
 
   /** Keeps `ready` to the files still attached. */
   function keep(value: File[]) {
@@ -141,21 +153,24 @@ export function useAttachments() {
 export type Attachments = ReturnType<typeof useAttachments>
 
 /** The file input around the composer: picker, paste into `pasteInto`,
- *  and drops anywhere on the page. */
+ *  and drops anywhere on the page. An edited question's (no `pasteInto`)
+ *  takes the picker only, so a drop still goes to the composer. */
 export function AttachmentsInput({
   attachments,
   pasteInto,
+  label = "Attachments",
   children,
 }: {
   attachments: Attachments
-  pasteInto: () => HTMLElement | null
+  pasteInto?: () => HTMLElement | null
+  label?: string
   children: React.ReactNode
 }) {
   return (
     <FileInput
       // A labelled group: aria-label alone isn't allowed on a plain div.
       role="group"
-      aria-label="Attachments"
+      aria-label={label}
       multiple
       accept={ACCEPT}
       maxFiles={MAX_FILES}
@@ -166,9 +181,11 @@ export function AttachmentsInput({
       controller={attachments.controller}
     >
       {children}
-      <FileInputDropOverlay pasteTarget={pasteInto}>
-        Drop to attach
-      </FileInputDropOverlay>
+      {pasteInto && (
+        <FileInputDropOverlay pasteTarget={pasteInto}>
+          Drop to attach
+        </FileInputDropOverlay>
+      )}
     </FileInput>
   )
 }
@@ -203,11 +220,18 @@ export function AttachMenu({
   )
 }
 
-/** The attached files as tiles above the text, each with ✕. */
-export function AttachmentTiles({ attachments }: { attachments: Attachments }) {
+/** The attached files as tiles above the text, each with ✕: at the
+ *  start in the composer, at the end in an edited question. */
+export function AttachmentTiles({
+  attachments,
+  align,
+}: {
+  attachments: Attachments
+  align?: "start" | "end"
+}) {
   if (attachments.files.length === 0) return null
   return (
-    <FileInputList aria-label="Attached files" className="w-full">
+    <FileInputList aria-label="Attached files" className="w-full" align={align}>
       <FileInputItem>
         {({ file }) => {
           const part = attachments.partFor(file)

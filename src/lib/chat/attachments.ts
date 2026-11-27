@@ -15,7 +15,7 @@
 // for a model, and createImageBitmap turns a photo upright.
 import type { FileUIPart, UIMessage } from "ai"
 
-import { isDocument, TEXT_LIMIT, type DocumentPart } from "@/lib/chat/documents"
+import { TEXT_LIMIT, type DocumentPart } from "@/lib/chat/documents"
 
 export const MAX_FILES = 4
 export const MAX_FILE_BYTES = 10_000_000
@@ -172,12 +172,6 @@ export const questionParts = (
 ): UIMessage["parts"] => [
   ...attachments,
   ...(text === "" ? [] : [{ type: "text" as const, text }]),
-]
-
-/** A message's attachments: its images, then its documents. */
-export const attachmentsOf = (message: UIMessage): AttachmentPart[] => [
-  ...imagesOf(message),
-  ...message.parts.filter(isDocument),
 ]
 
 /** A message's images, in the order they were attached. */
