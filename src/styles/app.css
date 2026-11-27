@@ -612,13 +612,14 @@
   transition-duration: var(--duration-base);
 }
 
-/* Text fields: body size, but 16px on touch screens, so iOS never zooms in
-   on focus (DESIGN.md › Phones). */
 /* No iOS link preview or callout on a long press: for controls that are
    links underneath (sidebar rows), with select-none. */
 @utility no-touch-callout {
   -webkit-touch-callout: none;
 }
+
+/* Text fields: body size, but 16px on touch screens, so iOS never zooms in
+   on focus (DESIGN.md › Phones). */
 @utility field-text {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
