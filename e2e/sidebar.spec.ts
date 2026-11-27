@@ -359,7 +359,7 @@ test("a rename that fails goes back and says so", async ({ page }) => {
   await menu(page).getByRole("menuitem", { name: "Rename" }).click()
   await page.keyboard.type(unique("Not mine"))
   await page.keyboard.press("Enter")
-  await expect(page.getByText("Couldn't rename the chat")).toBeVisible()
+  await expect(toasts(page).getByText("Couldn't rename the chat")).toBeVisible()
   await expect(openRow(page).getByRole("link")).toHaveText(TITLE)
 })
 
@@ -530,7 +530,7 @@ test("a delete that fails brings the chat back and says so", async ({
   await menu(page).getByRole("menuitem", { name: "Delete" }).click()
   await expect(rowFor(page, path)).toHaveCount(0)
   await page.evaluate(() => window.toast.dismiss())
-  await expect(page.getByText("Couldn't delete the chat")).toBeVisible()
+  await expect(toasts(page).getByText("Couldn't delete the chat")).toBeVisible()
   await expect(rowFor(page, path)).toHaveText(TITLE)
   expect(await savedMessages(page, id)).toBe(2)
   await page.unrouteAll()
