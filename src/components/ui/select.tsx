@@ -5,10 +5,10 @@
 // zooms in from the trigger (popup-motion), 4px away. Rows are 32px with
 // 12px corners and a muted check on the chosen one. On a phone it's a
 // sheet from the bottom instead (presentation "auto"), with 48px rows and
-// padding clear of the home indicator, its fill carried on below its
-// edge (sheet-bleed, a still shadow that moves with it). The sheet moves only by ui-sdk's
-// own translate: no fade, zoom, blur or shadow of ours animates while it
-// slides, so it stays on the compositor. As a popover it's `fixed` from
+// padding clear of the home indicator, on the screen's bottom edge, its
+// fill carried on below it for a drag up past its height (app.css). The sheet moves only by ui-sdk's own translate: no fade,
+// zoom, blur or shadow of ours animates while it slides, so it stays on
+// the compositor. As a popover it's `fixed` from
 // the first frame, since popups render in place and Safari painted one
 // inside the composer's row for a few frames.
 import type * as React from "react"
