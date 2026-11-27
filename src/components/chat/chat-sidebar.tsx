@@ -8,7 +8,7 @@
 // each is a menu an agent can find by the row's name, and Rename edits
 // that row's title in place.
 //
-// The list scrolls up behind New Chat (it starts 20px under the button and
+// The list scrolls up behind New Chat (it starts --spacing-list-overlap under the button and
 // fades over its top 56px, scroll-fade-y), so rows dim softly under the button's
 // shadow instead of ending at a hard edge.
 //
@@ -259,9 +259,9 @@ function ChatList({
     <ScrollArea
       aria-label="Chat list"
       fade
-      className="-mt-5 flex-1 fade-size-long group-data-collapsed/sidebar:hidden"
+      className="-mt-list-overlap flex-1 fade-size-long group-data-collapsed/sidebar:hidden"
     >
-      <div className="pt-5 pb-2">
+      <div className="pt-list-overlap pb-2">
         {groups.map((group) => (
           <SidebarGroup key={group.label} label={group.label}>
             {group.chats.map((chat) => (
