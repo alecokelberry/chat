@@ -292,3 +292,36 @@ test("on a chat, an agent can find the thread's controls and stop a reply", asyn
   expect(result.stopped).toBe(true)
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 })
+
+test("offline, Send waits and a line says so; the draft stays, and online again sends it", async ({
+  page,
+  context,
+}) => {
+  await signInAsDev(page)
+  await send(page, "Before the network drops")
+  await expect(replies(page).last()).toContainText("Done.")
+
+  const field = page.getByRole("textbox", { name: "Message" })
+  await field.fill("Typed while offline")
+  const sendButton = page.getByRole("button", { name: "Send" })
+  await expect(sendButton).toBeEnabled()
+
+  await context.setOffline(true)
+  const line = page.getByText("Offline. Reconnecting…")
+  await expect(
+    page.getByRole("status").filter({ hasText: "Offline" })
+  ).toHaveCount(1)
+  await expect(line.last()).toBeVisible()
+  await expect(sendButton).toBeDisabled()
+  // Enter doesn't send it into the void either, and the words stay.
+  await field.press("Enter")
+  await expect(questions(page)).toHaveCount(1)
+  await expect(field).toHaveValue("Typed while offline")
+
+  await context.setOffline(false)
+  await expect(line).toHaveCount(0)
+  await expect(sendButton).toBeEnabled()
+  await field.press("Enter")
+  await expect(questions(page)).toHaveCount(2)
+  await expect(replies(page).last()).toContainText("Done.")
+})
