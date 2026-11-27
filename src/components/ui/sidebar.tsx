@@ -284,9 +284,9 @@ function SidebarItem({ className, ...props }: React.ComponentProps<"li">) {
 
 /** A chat row's 24px …, its menu's trigger, 6px from its end, with a
  *  rounded square behind it (the row's wash, stacked on the row's own)
- *  while it's hovered or its menu is open; a 40px
- *  invisible touch area on touch screens, where the open menu is a sheet
- *  and the row's wash alone marks its chat (no square on the …). The trigger is the button
+ *  while it's hovered or its menu is open; a 40px invisible touch area on
+ *  touch screens, where the open menu is a sheet and the row's wash alone
+ *  marks its chat (no square on the …). The trigger is the button
  *  itself, not a Button inside it, so an agent sees one control per row's
  *  menu, not two. */
 function SidebarRowAction({
