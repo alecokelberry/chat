@@ -20,6 +20,8 @@ test("a new chat streams the reply and keeps it after a reload", async ({
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   const thread = page.getByRole("log", { name: "Messages" })
   await expect(thread).toContainText("Hello there")
+  // The chat's own composer takes over, and focus stays in it.
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeFocused()
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
   await expect(thread).toContainText("Done.")
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
@@ -28,6 +30,20 @@ test("a new chat streams the reply and keeps it after a reload", async ({
   await page.reload()
   await expect(thread).toContainText("Hello there")
   await expect(thread).toContainText("Done.")
+})
+
+test("a first send by the Send button leaves focus in the composer", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const message = page.getByRole("textbox", { name: "Message" })
+  await message.fill("Sent by a click")
+  await page.getByRole("button", { name: "Send" }).click()
+  await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
+  await expect(page.getByRole("log", { name: "Messages" })).toContainText(
+    "Sent by a click"
+  )
+  await expect(message).toBeFocused()
 })
 
 // The mock's whole reply, once: it opens by naming the model, which has no
