@@ -137,14 +137,14 @@ function schemeShowing() {
  *  (LocalFrameView::fixedContainerEdges) samples the top edge only when a
  *  fixed or sticky element is added or removed, and takes a fresh color
  *  only from a full-width bar taller than 10px and at least 10% opaque.
- *  It never takes one while anything in the top layer shows (the phone's
- *  drawer and its menu, wherever they sit), and a strip in the top layer
+ *  It never takes one while anything shows in the top layer (the phone's
+ *  drawer and its menu are popovers), and a strip in the top layer
  *  doesn't count. So for one frame this shows such a bar, a plain fixed
  *  one in the page's background at 12% over the top 16px, and, on iOS,
- *  hides what the top layer holds: the frame the colors snap in shows the
- *  page alone, then the drawer and menu are back and iOS fades the bar to
- *  the new color. Measured on iOS 27.2 in the Simulator's Home Screen app.
- *  Returns its cleanup. */
+ *  lifts the open popovers out of the top layer (liftOut) looking just as
+ *  they did, then puts them back. iOS fades the bar to the new color.
+ *  Measured on iOS 27.2 in the Simulator's Home Screen app: no frame
+ *  differs but the bar. Returns its cleanup. */
 function nudgeStatusBar() {
   let undo = () => {}
   let second = 0
@@ -154,24 +154,17 @@ function nudgeStatusBar() {
     strip.dataset.slot = "status-bar-nudge"
     strip.style.cssText =
       "position:fixed;inset:0 0 auto 0;height:16px;background:var(--background);opacity:0.12;pointer-events:none;z-index:2147483647"
-    // navigator.standalone is iOS's alone: elsewhere nothing blinks.
-    const open = !("standalone" in navigator)
-      ? []
-      : [
-          ...document.querySelectorAll<HTMLElement>(
-            ":popover-open, dialog:modal"
-          ),
-        ].filter((el) => el.style.visibility === "")
-    // A hidden element can't hold focus, so WebKit drops it: it goes back
-    // where it was (the menu's Theme), for a keyboard or VoiceOver.
-    const focused = document.activeElement
-    for (const el of open) el.style.visibility = "hidden"
+    // navigator.standalone is iOS's alone: elsewhere nothing moves.
+    const putBack =
+      "standalone" in navigator
+        ? [...document.querySelectorAll<HTMLElement>(":popover-open")].map(
+            liftOut
+          )
+        : []
     document.body.appendChild(strip)
     undo = () => {
       strip.remove()
-      for (const el of open) el.style.visibility = ""
-      if (focused instanceof HTMLElement && document.activeElement !== focused)
-        focused.focus({ preventScroll: true })
+      for (const back of putBack) back()
       undo = () => {}
     }
     // Back on the next frame, so exactly one is drawn with the strip.
@@ -182,6 +175,51 @@ function nudgeStatusBar() {
     cancelAnimationFrame(second)
     undo()
   }
+}
+
+/** Takes an open popover out of the top layer without a visible change:
+ *  it keeps its display, box and stacking with inline styles, and its
+ *  ::backdrop's dim becomes its own fill (no ::backdrop outside the top
+ *  layer). Returns what puts it back as it was, focus included. */
+function liftOut(el: HTMLElement, index: number) {
+  const box = el.getBoundingClientRect()
+  const focused = document.activeElement
+  const dim = backdropFill(el)
+  const set: [string, string][] = [
+    ["display", getComputedStyle(el).display],
+    ["z-index", String(2147483000 + index)],
+    ["width", `${box.width}px`],
+    ["height", `${box.height}px`],
+  ]
+  if (dim !== null) set.push(["background-color", dim])
+  const before = set.map(([name]): [string, string] => [
+    name,
+    el.style.getPropertyValue(name),
+  ])
+  for (const [name, value] of set) el.style.setProperty(name, value)
+  el.hidePopover()
+  const moved = el.getBoundingClientRect()
+  const shift = `${box.x - moved.x}px ${box.y - moved.y}px`
+  const translate = el.style.getPropertyValue("translate")
+  if (moved.x !== box.x || moved.y !== box.y)
+    el.style.setProperty("translate", shift)
+  return () => {
+    el.showPopover()
+    for (const [name, value] of before) el.style.setProperty(name, value)
+    el.style.setProperty("translate", translate)
+    if (focused instanceof HTMLElement && document.activeElement !== focused)
+      focused.focus({ preventScroll: true })
+  }
+}
+
+/** A popover's ::backdrop fill with its opacity folded in, or null. */
+function backdropFill(el: HTMLElement) {
+  const backdrop = getComputedStyle(el, "::backdrop")
+  const rgb = /rgba?\(([^)]+)\)/.exec(backdrop.backgroundColor)?.[1]
+  if (rgb === undefined) return null
+  const [r, g, b, a = 1] = rgb.split(",").map(Number)
+  const alpha = a * Number(backdrop.opacity)
+  return alpha > 0 ? `rgb(${r} ${g} ${b} / ${alpha})` : null
 }
 
 /** Flips light and dark, from whichever is showing. */

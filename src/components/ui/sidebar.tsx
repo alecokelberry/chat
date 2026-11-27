@@ -116,7 +116,10 @@ function SidebarToggle({
         {children}
       </div>
       {/* The app's mark, at the column's end; the rail has no room. */}
-      <BrandMark className="ms-auto me-1 size-icon group-data-collapsed/sidebar:hidden" />
+      <BrandMark
+        tone="icon"
+        className="ms-auto me-1 size-icon group-data-collapsed/sidebar:hidden"
+      />
     </div>
   )
 }
@@ -130,11 +133,14 @@ function SidebarToggle({
 function SidebarSearchTrigger({
   shortcut,
   tooltip = true,
+  tooltipSide = "bottom",
   onIntent,
   onOpen,
 }: {
   shortcut: string
   tooltip?: boolean
+  /** Where the tooltip shows: beside the icon in the rail. */
+  tooltipSide?: "bottom" | "right"
   /** The pointer or focus arrived: Search may open next. */
   onIntent?: () => void
   onOpen: () => void
@@ -159,7 +165,7 @@ function SidebarSearchTrigger({
       >
         <SearchIcon aria-hidden className="size-icon" />
       </TooltipTrigger>
-      <TooltipContent side="bottom">
+      <TooltipContent side={tooltipSide}>
         Search
         <TooltipShortcut className="text-muted-foreground" />
       </TooltipContent>
@@ -362,7 +368,7 @@ const sidebarRowVariants = cva(
         // 20px pink plus; hover deepens the fill.
         // In the rail, only its plus on the sidebar's plane, in a 36px square.
         raised:
-          "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row ring-1 ring-border-strong group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none group-data-collapsed/sidebar:ring-0 hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-icon [&>svg]:shrink-0",
+          "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-icon [&>svg]:shrink-0",
         // The account, Grok's: a 26px avatar (12px initials) and the name,
         // medium in full ink, 8px in, 44px clear at the end for the gear
         // (SidebarAccountAction), in a muted row; hover and open fill the row at once

@@ -162,6 +162,9 @@
   --spacing-icon: 20px; /* icons in icon buttons, nav rows, toggles */
   --spacing-sidebar: 254px; /* the sidebar's column and phone drawer */
   --spacing-sidebar-rail: 56px; /* the collapsed column */
+  --spacing-sidebar-row: calc(
+    var(--spacing-sidebar) - 21px
+  ); /* a row's width: the column less its 10px margins and 1px edge */
   --spacing-sidebar-header: 56px;
   --spacing-list-overlap: 20px; /* the chat list's start under New Chat: its negative margin and its top padding */
   --spacing-header: var(--header-height);
@@ -230,12 +233,11 @@
   --popover-shadow: /* Grok's */
     0 2px 6px 0 rgb(43 28 0 / 0.03), 0 8px 12px 0 rgb(43 28 0 / 0.03);
   --elevated-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.04);
-  /* New Chat. One shape in both themes (same offset and blur); only the
-     strength differs, because a shadow darkens a light page far more than
-     a dark one. Dark adds a 1px top highlight, the usual way to keep a
-     raised edge readable on a dark surface. Stronger than Grok's (3% and
-     20%) on purpose: docs/decisions.md. */
-  --raised-row-shadow: 0 12px 32px 0 rgb(43 28 0 / 0.08);
+  /* New Chat: its hairline and lift, one shape in both themes. Light keeps
+     8%, since a shadow darkens a light page far more than a dark one; dark
+     is Grok's, measured on its iPhone web app (docs/decisions.md). */
+  --raised-row-shadow:
+    0 0 0 1px var(--border-strong), 0 12px 32px 0 rgb(43 28 0 / 0.08);
   --dialog-shadow: /* Grok's */
     0 12px 40px 0 rgb(10 9 8 / 0.18), 0 2px 8px 0 rgb(10 9 8 / 0.08);
   --tooltip-shadow:
@@ -275,7 +277,7 @@
     --bubble-user: #282726;
     --highlight: oklch(0.62 0.13 95); /* darker, so light ink reads on it */
     --send: #f15aa6;
-    --destructive-foreground: var(--color-red-300); /* 4.5:1 on its tint */
+    --destructive-foreground: #f75c60; /* Grok's red, lifted to 4.6:1 on its tint */
     --sidebar-border: hsl(0 0% 99% / 6%);
     --ink-secondary: rgb(230 229 227 / 75.6%); /* 8:1 */
     --sidebar-rail: hsl(0 0% 99% / 20%);
@@ -283,7 +285,7 @@
       0 2px 6px 0 rgb(0 0 0 / 0.3), 0 8px 12px 0 rgb(0 0 0 / 0.25);
     --elevated-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.24);
     --raised-row-shadow:
-      0 12px 32px 0 rgb(0 0 0 / 0.4), inset 0 1px 0 0 hsl(0 0% 99% / 6%);
+      0 0 0 1px hsl(0 0% 100% / 8.6%), 0 12px 32px 0 rgb(0 0 0 / 0.25); /* Grok's, measured on its iPhone web app */
     --dialog-shadow: 0 16px 48px 0 rgb(0 0 0 / 0.5);
     --tooltip-shadow:
       inset 0 0 0 0.5px var(--sidebar-border), 0 1px 2px 0 rgb(0 0 0 / 0.3),

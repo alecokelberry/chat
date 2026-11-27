@@ -2,8 +2,9 @@
 // items) with the look of the archived Chat's menus, Grok's, like Select's
 // list: a 256px popover with 20px corners, 8px in, a hairline and two soft
 // drops, that fades and zooms in from its trigger (popup-motion), 6px
-// away. Rows are 32px with 12px corners and 16px muted icons; a pending
-// row dims, and a destructive one (Delete) is red. On a phone it's a
+// away. Rows are 32px with 12px corners and 16px icons in the row's ink,
+// 6px from its text (Grok's); a pending row dims, and a destructive one
+// (Delete) is red on a red tint. On a phone it's a
 // sheet from the bottom instead (presentation "auto", DESIGN.md ›
 // Phones), with 48px rows and padding clear of the home indicator, on the
 // screen's bottom edge, its fill carried on below it for a drag up past
@@ -55,7 +56,7 @@ function MenuItem({
   return (
     <MenuItemPrimitive
       className={cn(
-        "relative flex min-h-8 items-center gap-3.5 rounded-item px-2 py-0.75 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-destructive:active:bg-destructive/10 data-destructive:active:text-destructive-foreground data-disabled:opacity-50 data-pending:opacity-50 highlighted:bg-accent highlighted:text-accent-foreground data-destructive:highlighted:bg-destructive/10 data-destructive:highlighted:text-destructive-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground data-destructive:[&_svg]:text-destructive-foreground",
+        "relative flex min-h-8 items-center gap-1.5 rounded-item px-2 py-0.75 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:px-3 in-data-[presentation=sheet]:text-base data-destructive:text-destructive-foreground data-destructive:active:bg-destructive-foreground/14 data-destructive:active:text-destructive-foreground data-disabled:opacity-50 data-pending:opacity-50 highlighted:bg-accent highlighted:text-accent-foreground data-destructive:highlighted:bg-destructive-foreground/14 data-destructive:highlighted:text-destructive-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-current data-destructive:[&_svg]:text-destructive-foreground",
         className
       )}
       {...props}

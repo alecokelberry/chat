@@ -371,8 +371,16 @@ test.describe("on a phone", () => {
             node.dataset.slot === "status-bar-nudge"
         )
         if (!strip) return
-        for (const el of document.querySelectorAll(":popover-open"))
-          seen.push(getComputedStyle(el).visibility)
+        for (const el of document.querySelectorAll(
+          '[data-slot="drawer-viewport"], [data-slot="menu-viewport"]'
+        )) {
+          const style = getComputedStyle(el)
+          const shown =
+            style.display !== "none" && style.visibility === "visible"
+          seen.push(
+            `${el.matches(":popover-open") ? "top" : "lifted"} ${shown ? "shown" : "gone"}`
+          )
+        }
       }).observe(document, { childList: true, subtree: true })
       addEventListener(
         "click",
@@ -406,8 +414,9 @@ test.describe("on a phone", () => {
       "dark"
     )
     await expect.poll(() => statusBar(page)).toBe(DARK)
-    // The drawer and menu were hidden for the one frame the strip showed,
-    // then came back with focus where the tap left it.
+    // The drawer and menu were out of the top layer but still shown for
+    // the one frame the strip showed, then back, focus where the tap left
+    // it.
     await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
     const seen = await page.evaluate(() =>
       "nudgeSeen" in window && Array.isArray(window.nudgeSeen)
@@ -415,7 +424,7 @@ test.describe("on a phone", () => {
         : []
     )
     expect(seen.length).toBeGreaterThan(1)
-    expect(new Set(seen)).toEqual(new Set(["hidden"]))
+    expect(new Set(seen)).toEqual(new Set(["lifted shown"]))
     expect(
       await page.evaluate(
         () =>
