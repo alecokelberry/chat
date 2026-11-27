@@ -5,6 +5,7 @@ import {
   expect,
   greeting,
   pick,
+  pickModel,
   send,
   settled,
   signInAsDev,
@@ -106,6 +107,14 @@ for (const colorScheme of ["light", "dark"] as const) {
           page.getByRole("list", { name: "Attached files" }).locator("img")
         ).toHaveCount(1)
         await scan(page)
+
+        // The line under the composer when the model can't see images.
+        await pickModel(page, "Ultra")
+        await expect(
+          page.getByRole("status").filter({ hasText: "Ultra can't see images" })
+        ).toHaveCount(1)
+        await scan(page)
+        await page.getByRole("button", { name: "Switch to Super" }).click()
 
         await send(page, "What's this?")
         await expect(

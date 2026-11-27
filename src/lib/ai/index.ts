@@ -11,7 +11,8 @@
 // When NVIDIA goes quiet for 30 s, before the first word or between two,
 // the reply ends with an error and Retry too (src/lib/ai/silence.ts).
 // A question's images go to the model inline (only as data URLs, so the
-// server never fetches a link a message names).
+// server never fetches a link a message names), or, for a model that can't
+// see them, as "[image: name]" in their place.
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 //
@@ -81,7 +82,9 @@ export async function streamReply(
   return streamText({
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages)),
-    messages: await convertToModelMessages(messages.map(inlineImagesOnly)),
+    messages: await convertToModelMessages(
+      messages.map((message) => imagesFor(message, chosen.seesImages))
+    ),
     tools: { webSearch: webSearch(), readPage: readPage() },
     // At most one step per search or read, and one more to answer.
     stopWhen: isStepCount(SEARCH_LIMIT + READ_LIMIT + 1),
@@ -100,15 +103,21 @@ export async function streamReply(
   })
 }
 
-/** A message with only the attachments a question can carry: images
- *  inline as data URLs (src/lib/chat/attachments.ts). Any other file
- *  part, like a link the AI SDK would fetch from the server, is dropped. */
-function inlineImagesOnly(message: UIMessage): UIMessage {
+/** A message's images as the model takes them: inline, for a model
+ *  that sees images, or "[image: name]" in each one's place for one that
+ *  doesn't, so a chat with images goes on after a switch to Ultra. Only
+ *  inline images (data URLs, src/lib/chat/attachments.ts) count: any other
+ *  file part, like a link the AI SDK would fetch from the server, is
+ *  dropped. */
+function imagesFor(message: UIMessage, seesImages: boolean): UIMessage {
   return {
     ...message,
-    parts: message.parts.filter(
-      (part) => part.type !== "file" || isImagePart(part)
-    ),
+    parts: message.parts.flatMap((part): UIMessage["parts"] => {
+      if (part.type !== "file") return [part]
+      if (!isImagePart(part)) return []
+      if (seesImages) return [part]
+      return [{ type: "text", text: `[image: ${part.filename ?? "image"}]` }]
+    }),
   }
 }
 

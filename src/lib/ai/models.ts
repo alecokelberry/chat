@@ -1,9 +1,9 @@
 // The models Chat offers (docs/nvidia.md): each one's short name (the
-// picker's button), full name (its list), NVIDIA id and the
-// chat template switch that turns its thinking on or off. Super is the
-// default with thinking off; Ultra is the one that thinks hard. Shared by
-// the server (src/lib/ai) and the composer's picker, so it imports only a
-// tiny data reader.
+// picker's button), full name (its list), NVIDIA id, whether it can see
+// images (Super and Nano Omni can) and the chat template switch that turns
+// its thinking on or off. Super is the default with thinking off; Ultra
+// is the one that thinks hard. Shared by the server (src/lib/ai) and the
+// composer's picker, so it imports only a tiny data reader.
 // A message records the model it was sent with in its metadata, which is
 // how a chat remembers its last one, and the browser's time zone, which
 // the model is told (src/lib/ai/index.ts).
@@ -16,6 +16,7 @@ export const MODELS = [
     name: "Super",
     fullName: "Nemotron 3.5 Super",
     id: "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    seesImages: true,
     chatTemplate: { enable_thinking: false },
   },
   {
@@ -23,6 +24,7 @@ export const MODELS = [
     name: "Ultra",
     fullName: "Nemotron 3 Ultra",
     id: "nvidia/nemotron-3-ultra-550b-a55b",
+    seesImages: false,
     chatTemplate: { enable_thinking: true },
   },
   {
@@ -30,6 +32,7 @@ export const MODELS = [
     name: "Nano Omni",
     fullName: "Nemotron 3 Nano Omni",
     id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    seesImages: true,
     chatTemplate: { enable_thinking: false },
   },
   {
@@ -37,6 +40,7 @@ export const MODELS = [
     name: "Lightning",
     fullName: "Nemotron 3.5 Lightning",
     id: "nvidia/nemotron-3.5-lightning-30b-a3b",
+    seesImages: false,
     chatTemplate: { enable_thinking: false },
   },
 ] as const
@@ -74,7 +78,9 @@ export function lastTimeZone(messages: Messages): string {
 
 /** The model a chat goes on with: the one its last message was sent
  *  with, or Super for anything else. */
-export function lastModel(messages: Messages): Model {
-  const key = lastAsked(messages, "model")
-  return MODELS.find((model) => model.key === key) ?? DEFAULT
-}
+export const lastModel = (messages: Messages): Model =>
+  modelOf(lastAsked(messages, "model"))
+
+/** A model by its key, or Super for a key no model has. */
+export const modelOf = (key: unknown): Model =>
+  MODELS.find((model) => model.key === key) ?? DEFAULT

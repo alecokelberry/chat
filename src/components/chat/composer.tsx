@@ -8,9 +8,10 @@
 // in, 29px corners, the + (attachments.tsx) at the start, then the text,
 // the model and a 32px Send at the end; longer text grows the row and they
 // stay on its last line. Attached files sit as tiles above the row, inside
-// the pill; a question can be only files, and Send waits until each is
-// ready. A tap doesn't change it (the caret shows where you are): only
-// keyboard focus rings it (the keyboard variant, focus-modality.tsx).
+// the pill; a question can be only files. Send waits until each is ready,
+// and while the model can't see them (attachments.tsx). A tap doesn't
+// ring the pill (the caret shows where you are): only keyboard focus does
+// (the keyboard variant, focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
@@ -27,12 +28,13 @@ import {
 } from "@/components/ui/tooltip"
 import {
   AttachMenu,
+  CantSeeImages,
   AttachmentsInput,
   AttachmentTiles,
   useAttachments,
 } from "@/components/chat/attachments"
 import { ModelPicker } from "@/components/chat/model-picker"
-import type { ModelKey } from "@/lib/ai/models"
+import { DEFAULT_MODEL, modelOf, type ModelKey } from "@/lib/ai/models"
 
 export function Composer({
   focusOnMount = false,
@@ -60,7 +62,10 @@ export function Composer({
 
   const attachments = useAttachments()
   const empty = message === "" && attachments.files.length === 0
-  const ready = !empty && !attachments.preparing
+  const chosen = modelOf(model)
+  // Every attachment is an image for now (#151 adds documents).
+  const blind = attachments.files.length > 0 && !chosen.seesImages
+  const ready = !empty && !attachments.preparing && !blind
 
   function send() {
     if (!ready || busy) return
@@ -126,6 +131,12 @@ export function Composer({
           )}
         </div>
       </form>
+      <CantSeeImages
+        blind={blind}
+        model={chosen.name}
+        to={modelOf(DEFAULT_MODEL).name}
+        onSwitch={() => onModelChange(DEFAULT_MODEL)}
+      />
     </AttachmentsInput>
   )
 }

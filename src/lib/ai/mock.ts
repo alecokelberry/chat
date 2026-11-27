@@ -27,8 +27,9 @@
 // after a reload or a second tab opens, even on a slow runner. One with
 // "(backwards <word>)" gets that word spelt backwards in its reply, so a
 // test has a word only the reply holds (Search's message matches). A
-// question with images gets "Saw N images." after the opening, so a test
-// sees what reached the model.
+// chat with images gets "Saw N images." after the opening, or "Told of N
+// images." when a model that can't see got "[image: name]" instead, so a
+// test sees what reached the model.
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
 //
@@ -137,13 +138,14 @@ const replyTo = (
   message: string,
   modelId: string,
   thinking: boolean,
-  images: number
+  images: number,
+  told: number
 ) =>
   message.includes("long code")
     ? LONG_CODE_REPLY
     : message.includes("markdown")
       ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${sawImages(images)}${backwards(message)}${REPLY}`
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -318,7 +320,8 @@ type ToolPart = Extract<
 >["content"][number]
 
 /** The last question, and the searches and reads made for it so far: how
- *  many of each, and whether one failed. */
+ *  many of each, and whether one failed. `images` and `told` count across
+ *  the whole chat, since every image goes along with every send. */
 function askedOf(prompt: Prompt) {
   const at = prompt.findLastIndex((m) => m.role === "user")
   const parts = prompt
@@ -331,7 +334,8 @@ function askedOf(prompt: Prompt) {
       .length
   return {
     message: textOf(prompt[at]),
-    images: imagesIn(prompt[at]),
+    images: prompt.reduce((sum, m) => sum + imagesIn(m), 0),
+    told: prompt.map(textOf).join("").split("[image: ").length - 1,
     calls: { webSearch: called("webSearch"), readPage: called("readPage") },
     failed: parts.some(
       (part) =>
@@ -356,9 +360,16 @@ const imagesIn = (message: Prompt[number] | undefined) =>
       ).length
     : 0
 
-/** What the reply says it was sent, besides words: "Saw 2 images. " */
-const sawImages = (images: number) =>
-  images === 0 ? "" : `Saw ${images} image${images === 1 ? "" : "s"}. `
+/** What the reply says the chat sent it, besides words: "Saw 2 images. "
+ *  for the images in it, and "Told of 1 image. " for each "[image: name]"
+ *  a model that can't see got in an image's place. */
+function imagesNote(images: number, told: number) {
+  const count = (n: number) => `${n} image${n === 1 ? "" : "s"}`
+  return (
+    (images === 0 ? "" : `Saw ${count(images)}. `) +
+    (told === 0 ? "" : `Told of ${count(told)}. `)
+  )
+}
 
 /** How many searches a message asks for: none without "search". */
 const searchesWanted = (message: string) =>
@@ -473,7 +484,7 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
         ? BURSTS
         : wordsOf(
             afterTools(asked) ??
-              replyTo(message, modelId, thinking, asked.images)
+              replyTo(message, modelId, thinking, asked.images, asked.told)
           )
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
