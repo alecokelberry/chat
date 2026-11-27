@@ -1,0 +1,140 @@
+import { randomUUID } from "node:crypto"
+
+import {
+  SEARCH_FAILED_REPLY,
+  SEARCH_RESULTS,
+  SEARCHED_REPLY,
+} from "@/lib/ai/mock"
+import { lastTimeZone } from "@/lib/ai/models"
+import { searchedLabel, searchesOf, sourcesOf } from "@/lib/chat/searches"
+
+import { expect, replies, send, signInAsDev, test } from "./session"
+
+// Web search in a reply (src/lib/ai/search.ts, thread.tsx, sources.tsx), on
+// the mock model: a message that says "search" makes it search first, with
+// canned results after a second and a half; "(search N)" asks for N
+// searches, and "(search down)" makes the search fail (src/lib/ai/mock.ts).
+// Nothing here reaches Keenable.
+
+/** A message nobody has sent before. */
+const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
+
+test("a question that says search shows the step, then its sources, kept on reload", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const question = unique("Please search for the news")
+  await send(page, question)
+  const searching = page.getByRole("button", { name: "Searching the web…" })
+  await expect(searching).toBeVisible()
+  await expect(searching).toHaveAttribute("aria-expanded", "false")
+  const searched = page.getByRole("button", { name: "Searched · 5 sites" })
+  await expect(searched).toBeVisible()
+  await expect(replies(page)).toHaveText(SEARCHED_REPLY)
+
+  const sources = page.getByRole("navigation", { name: "Sources" })
+  await expect(sources.getByRole("link")).toHaveCount(SEARCH_RESULTS.length)
+  const first = sources.getByRole("link", { name: "example.com" })
+  await expect(first).toHaveAttribute("href", "https://example.com/")
+  await expect(first).toHaveAttribute("target", "_blank")
+  await expect(first).toHaveAttribute("rel", "noopener noreferrer")
+
+  await page.reload()
+  await expect(searched).toHaveAttribute("aria-expanded", "false")
+  await expect(sources.getByRole("link")).toHaveCount(SEARCH_RESULTS.length)
+  await searched.click()
+  await expect(searched).toHaveAttribute("aria-expanded", "true")
+  const thread = page.getByRole("log", { name: "Messages" })
+  await expect(thread.getByText("Example Domain · example.com")).toBeVisible()
+})
+
+test("a simple question doesn't search", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, "Hello")
+  await expect(replies(page)).toContainText("Done.")
+  await expect(page.getByRole("button", { name: /^Search/ })).toHaveCount(0)
+  await expect(page.getByRole("navigation", { name: "Sources" })).toHaveCount(0)
+})
+
+test("a failed search still gets a reply, saying it couldn't search", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await send(page, unique("Please search for this (search down)"))
+  const step = page.getByRole("button", { name: "Couldn't search the web" })
+  await expect(step).toBeVisible()
+  await expect(replies(page)).toHaveText(SEARCH_FAILED_REPLY)
+  await step.click()
+  await expect(
+    page.getByText("The web search failed, so nothing was found.")
+  ).toBeVisible()
+  await expect(page.getByRole("navigation", { name: "Sources" })).toHaveCount(0)
+})
+
+test("Stop during a search stops it", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, unique("Please search for the news"))
+  await expect(
+    page.getByRole("button", { name: "Searching the web…" })
+  ).toBeVisible()
+  await page.getByRole("button", { name: "Stop" }).click()
+  await expect(
+    page.getByRole("button", { name: "Search stopped" })
+  ).toBeVisible()
+  // The results would have come a second and a half in; nothing follows.
+  await page.waitForTimeout(2500)
+  await expect(replies(page)).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Search stopped" })
+  ).toBeVisible()
+})
+
+test("a reply searches at most three times", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, unique("Please search for the news (search 5)"))
+  const searched = page.getByRole("button", { name: "Searched · 5 sites" })
+  await expect(replies(page)).toHaveText(SEARCHED_REPLY, { timeout: 15_000 })
+  await searched.click()
+  const thread = page.getByRole("log", { name: "Messages" })
+  await expect(thread.getByText("Example Domain · example.com")).toHaveCount(3)
+})
+
+// A saved reply is data: its parts are whatever was stored.
+const reply = (parts: unknown[]) => ({ parts })
+
+test("a saved search keeps only web links, and counts each site once", () => {
+  const searches = searchesOf(
+    reply([
+      {
+        type: "tool-webSearch",
+        toolCallId: "1",
+        state: "output-available",
+        input: { query: "q" },
+        output: {
+          results: [
+            { title: "A", url: "https://a.example/1", site: "a.example" },
+            { title: "A again", url: "https://a.example/2", site: "a.example" },
+            { title: "Bad", url: "javascript:alert(1)", site: "bad.example" },
+            { title: 7, url: "https://b.example/", site: "b.example" },
+          ],
+        },
+      },
+    ])
+  )
+  expect(sourcesOf(searches)).toEqual([
+    { title: "A", url: "https://a.example/1", site: "a.example" },
+    { title: "b.example", url: "https://b.example/", site: "b.example" },
+  ])
+  expect(searchedLabel(searches, false)).toBe("Searched · 2 sites")
+  expect(searchedLabel(searches.slice(0, 1), true)).toBe("Searching the web…")
+})
+
+test("the model is told the question's time zone only if it's real", () => {
+  const asked = (timeZone: unknown) => [
+    { role: "user", metadata: { model: "super", timeZone } },
+  ]
+  expect(lastTimeZone(asked("America/Denver"))).toBe("America/Denver")
+  expect(lastTimeZone(asked("Not/AZone"))).toBe("UTC")
+  expect(lastTimeZone(asked(42))).toBe("UTC")
+  expect(lastTimeZone([])).toBe("UTC")
+})

@@ -125,6 +125,58 @@ const message = (
   metadata?: unknown
 ): UIMessage => ({ id, role, parts: [{ type: "text", text }], metadata })
 
+/** Three searches as a reply saves them (src/lib/ai/search.ts): long
+ *  and non-Latin queries and titles, unbreakable sites, a dozen sources,
+ *  and one search that failed. */
+const SITES = [
+  "a-very-long-subdomain-name-that-never-breaks.example-industries-holdings.co.uk",
+  "例え.テスト",
+  "x.io",
+  "news.example.org",
+  "en.wikipedia.org",
+  "developer.mozilla.org",
+  "github.com",
+  "stackoverflow.com",
+  "theverge.com",
+  "bbc.co.uk",
+  "nytimes.com",
+  "arxiv.org",
+]
+const searchPart = (i: number, query: string, sites: string[]) => ({
+  type: "tool-webSearch" as const,
+  toolCallId: `worst-search-${i}`,
+  state: "output-available" as const,
+  input: { query },
+  output: {
+    results: sites.map((site, j) => ({
+      title:
+        j === 0
+          ? `${"A very long page title that keeps going and going ".repeat(4)}`
+          : j === 1
+            ? "王秀英と東京の旅行計画についての長いページのタイトル"
+            : `Result ${j + 1} from ${site}`,
+      url: `https://${site}/${"path/".repeat(j)}page?id=${i}${j}`,
+      site,
+      snippet: "",
+    })),
+  },
+})
+const SEARCH_PARTS = [
+  searchPart(
+    1,
+    `${"latest news about the launch ".repeat(6)}`,
+    SITES.slice(0, 5)
+  ),
+  searchPart(2, "ما هو أفضل وقت لإطلاق المنتج", SITES.slice(5)),
+  {
+    type: "tool-webSearch" as const,
+    toolCallId: "worst-search-3",
+    state: "output-error" as const,
+    input: { query: "J" },
+    errorText: "The web search failed, so nothing was found.",
+  },
+]
+
 /** `messages`, or the fixture's thread. */
 export function previewMessages(
   messages: UIMessage[],
@@ -147,9 +199,12 @@ export function previewMessages(
     ),
     message("worst-2", "assistant", REPLY, meta),
     message("worst-3", "user", "ما هو أفضل وقت لإطلاق المنتج؟ 🚀"),
-    message("worst-4", "assistant", "Short answer: 🦊", {
-      ...meta,
-      model: "ultra",
-    }),
+    {
+      ...message("worst-4", "assistant", "Short answer: 🦊", {
+        ...meta,
+        model: "ultra",
+      }),
+      parts: [...SEARCH_PARTS, { type: "text", text: "Short answer: 🦊" }],
+    },
   ]
 }
