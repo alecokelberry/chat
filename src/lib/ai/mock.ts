@@ -25,20 +25,13 @@
 // A message that mentions "search" makes it call the webSearch tool first
 // (src/lib/ai/search.ts), with the message as the query, and answer once
 // the results are in; "(search N)" asks for N searches in a row, and with
-// "(at once)" all N in one step, so a test sees the reply's cap stop them. Under MOCK_MODEL the tool itself answers
-// with mockSearch's canned results after a second and a half, so a test
-// sees the step run and can Stop it; a query with "(search down)" fails,
-// as Keenable does when it's down.
+// "(at once)" all N in one step, so a test sees the reply's cap stop them.
+// Under MOCK_MODEL the tool itself answers with mockSearch's canned
+// results after a second and a half, so a test sees the step run and can
+// Stop it; a query with "(search down)" fails, as Keenable does when it's
+// down.
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
-
-/** A search result, the shape search.ts hands the model. */
-type SearchResult = {
-  title: string
-  url: string
-  site: string
-  snippet: string
-}
 
 type LanguageModelV4StreamPart =
   Awaited<
@@ -180,7 +173,7 @@ export const SEARCH_FAILED_REPLY =
 
 /** Five canned results, each from its own site, the last with a long
  *  address. */
-export const SEARCH_RESULTS: SearchResult[] = [
+export const SEARCH_RESULTS = [
   {
     title: "Example Domain",
     url: "https://example.com/",
@@ -216,7 +209,7 @@ export const SEARCH_RESULTS: SearchResult[] = [
 export async function mockSearch(
   query: string,
   abortSignal: AbortSignal | undefined
-): Promise<SearchResult[]> {
+) {
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(resolve, 1500)
     abortSignal?.addEventListener(
