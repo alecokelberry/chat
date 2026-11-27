@@ -2,11 +2,12 @@
 // colors its status bar from the theme-color a page loads with, so a new
 // theme needs a load before the bar follows. It waits until nothing is
 // open over the page (the drawer, a menu, a sheet) and no reply is coming
-// in, keeps the composer's draft, and crossfades from the old page to the
-// new one (a cross-document view transition, app.css) instead of flashing.
-// The page looks the same on both sides, so the only change is the bar.
+// in, and keeps the composer's draft. It's a plain reload: the server
+// renders the page in the new theme, and WebKit holds the old frame until
+// the new one paints, so the only visible change is the bar. No view
+// transition: its full-screen layer covers the top edge while the new page
+// arrives, and iOS keeps the bar's old color under a full-screen layer.
 
-const FLAG = "reload-for-status-bar"
 const DRAFT = "reload-draft"
 const SETTLED = '[role="dialog"], [role="menu"], [data-busy]'
 
@@ -33,10 +34,8 @@ export function reloadForStatusBar() {
       )?.value
       if (draft !== undefined && draft !== "")
         sessionStorage.setItem(DRAFT, draft)
-      sessionStorage.setItem(FLAG, "1")
     } catch {}
-    // A replace, not reload(): a reload never gets a view transition.
-    location.replace(location.href)
+    location.reload()
   }, 200)
 }
 
@@ -50,19 +49,3 @@ export function takeReloadDraft() {
     return ""
   }
 }
-
-/** Runs in the head of every page: the crossfade is for this reload alone,
- *  so any other navigation between pages skips it, on both sides. */
-export const RELOAD_TRANSITION_SCRIPT = `(() => {
-  const ours = () => {
-    try { return sessionStorage.getItem(${JSON.stringify(FLAG)}) === "1" } catch { return false }
-  }
-  addEventListener("pageswap", (event) => {
-    if (event.viewTransition && !ours()) event.viewTransition.skipTransition()
-  })
-  addEventListener("pagereveal", (event) => {
-    const mine = ours()
-    try { sessionStorage.removeItem(${JSON.stringify(FLAG)}) } catch {}
-    if (event.viewTransition && !mine) event.viewTransition.skipTransition()
-  })
-})()`

@@ -341,10 +341,6 @@ test.describe("on a phone", () => {
       })
     })
     await signInAsDev(page)
-    // An ordinary page load doesn't crossfade.
-    expect(
-      await page.evaluate(() => "crossfaded" in window && window.crossfaded)
-    ).toBe(false)
     await page.getByRole("textbox", { name: "Message" }).fill("half a thought")
     const loads: string[] = []
     page.on("load", () => loads.push(page.url()))
@@ -385,10 +381,21 @@ test.describe("on a phone", () => {
     await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
       "half a thought"
     )
-    // It crossfades from the old page instead of flashing.
+    // A real reload, the kind iOS recolors the bar on, with no crossfade:
+    // a view transition's full-screen layer makes iOS keep the old color.
+    expect(
+      await page.evaluate(
+        () =>
+          (
+            performance.getEntriesByType(
+              "navigation"
+            )[0] as PerformanceNavigationTiming
+          ).type
+      )
+    ).toBe("reload")
     expect(
       await page.evaluate(() => "crossfaded" in window && window.crossfaded)
-    ).toBe(true)
+    ).toBe(false)
     await page.waitForTimeout(1000)
     expect(loads).toHaveLength(1)
   })
