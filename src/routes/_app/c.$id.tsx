@@ -5,8 +5,8 @@
 // list changed, the sidebar loads it again; when it says the chat is being
 // deleted (from another tab), this tab goes to a new chat. A new
 // chat arrives from / with its first message in history state: it skips
-// loading (there's nothing yet), sends it with any images it attached, and clears the state so a
-// reload doesn't send it again. Each message carries its model in its
+// loading (there's nothing yet), sends it with any images it attached,
+// and clears the state so a reload doesn't send it again. Each message carries its model in its
 // metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last,
 // and Retry, which regenerates the last reply in place, asks the same one;
 // and the browser's time zone, so the model knows what "today" is.

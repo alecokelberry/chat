@@ -1,11 +1,12 @@
 // A question you sent: its images (attachments.tsx), its bubble on the end
-// side (none for images alone), and under it Edit and Copy (on hover or focus; always on touch). Edit turns the bubble into a
-// field holding the question, the caret at its end: Enter or ✓ (Save)
-// sends it, Shift+Enter starts a new line, and Escape or ✕ (Cancel) puts
-// the bubble back unchanged; either way focus returns to Edit. An empty or
-// unchanged question just closes. Sending replaces this question and
-// everything after it, and the reply is asked again (the chat's onEdit).
-// Edit and Save wait while a reply streams.
+// side (none for images alone), and under it Edit and Copy (on hover or
+// focus; always on touch). Edit turns the bubble into a field holding
+// the question, the caret at its end: Enter or ✓ (Save) sends it,
+// Shift+Enter starts a new line, and Escape or ✕ (Cancel) puts the bubble
+// back unchanged; either way focus returns to Edit. An empty or unchanged
+// question just closes. Sending replaces this question and everything
+// after it, and the reply is asked again (the chat's onEdit). Edit and
+// Save wait while a reply streams.
 import { useEffect, useRef, useState, type ComponentProps } from "react"
 import { CheckIcon, PencilIcon, XIcon } from "lucide-react"
 

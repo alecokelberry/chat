@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test"
 import {
   expect,
   expectNoHeldStart,
+  hydrated,
   recordStartTimes,
   signInAsDev,
   test,
@@ -73,6 +74,8 @@ test.describe("on a computer", () => {
     )
     expect(background).toBe("rgb(30, 29, 29)")
 
+    // The scheme above is set before React runs; a click needs it hydrated.
+    await hydrated(page)
     await accountRow(page).click()
     await menu(page).getByRole("menuitem", { name: "Theme" }).click()
     await expect(html).toHaveAttribute("data-color-scheme", "light")

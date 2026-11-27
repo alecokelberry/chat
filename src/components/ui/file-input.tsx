@@ -2,8 +2,9 @@
 // accept and size checks, a list with one Tab stop where Delete removes
 // the focused file, and announcements) with the composer's look. Its list
 // is a row of 56px tiles with 12px corners, 8px apart, that scrolls
-// sideways, fading at its ends, when it runs out of room; a tile's ✕ is a 20px circle on its
-// top corner (a 40px touch area on touch screens), in the popover fill.
+// sideways, fading at its ends, when it runs out of room; a tile's ✕ is a
+// 20px circle on its top corner (a 40px touch area on touch screens), in
+// the popover fill.
 // The page-wide drop zone is a dimmed overlay that shows only while files
 // are dragged over the window, saying what a drop does.
 import type * as React from "react"
