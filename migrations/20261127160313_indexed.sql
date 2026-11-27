@@ -1,0 +1,1 @@
+ALTER TABLE `chat` ADD `indexed` integer DEFAULT false NOT NULL;

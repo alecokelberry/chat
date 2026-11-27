@@ -7,7 +7,10 @@
 // chat's agent tell its open tabs (on any device) to load the list again;
 // a delete drops the row, then has the agent tell its tabs and wipe its
 // messages. Feature tour in the account menu adds the demo chat
-// (src/lib/chat/tour.ts) through addTour.
+// (src/lib/chat/tour.ts) through addTour. Search finds chats by their
+// messages' words through findInMessages (src/lib/chat/message-index.ts),
+// and as it opens, indexOlderChats has a few chats whose words the index
+// doesn't hold yet index themselves.
 import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -16,10 +19,12 @@ import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
 import { CHAT_ID } from "@/lib/chat/id"
+import { searchMessages } from "@/lib/chat/message-index"
 import {
   deleteChatRow,
   listChats,
   putPinnedChat,
+  unindexedChats,
   updateChat,
   type ChatOwner,
 } from "@/lib/chat/store"
@@ -41,6 +46,9 @@ export const getChats = createServerFn({ method: "GET" }).handler(async () => {
 /** The longest title a rename keeps. */
 export const TITLE_MAX = 200
 
+/** The longest text Search sends. */
+export const QUERY_MAX = 200
+
 const chatId = z.string().regex(CHAT_ID)
 const Rename = z.object({
   id: chatId,
@@ -48,6 +56,7 @@ const Rename = z.object({
 })
 const Pin = z.object({ id: chatId, pinned: z.boolean() })
 const Delete = z.object({ id: chatId })
+const Find = z.object({ query: z.string().max(QUERY_MAX) })
 
 /** The signed-in user's chat `id`, or a throw for no one signed in. */
 async function ownChat(id: string): Promise<ChatOwner> {
@@ -101,8 +110,42 @@ export const deleteChat = createServerFn({ method: "POST" })
     await (await agentOf(owner)).deleteChat()
   })
 
+/** The signed-in user's chats whose messages hold the words typed, best
+ *  first, each with its best line (src/lib/chat/message-index.ts). */
+export const findInMessages = createServerFn({ method: "GET" })
+  .validator(Find)
+  .handler(async ({ data: { query } }) => {
+    const user = await userId()
+    return user === null ? [] : searchMessages(env.DB, user, query)
+  })
+
+/** How many chats one indexOlderChats asks to index: each is a call to
+ *  its agent, well inside the free plan's 50 subrequests a request. */
+const INDEX_BATCH = 10
+
+/** Has up to INDEX_BATCH of the signed-in user's chats that Search's index
+ *  doesn't hold yet index themselves whole, the latest first, so their
+ *  words become findable: Search calls it each time it opens, and a long
+ *  history fills in over a few opens. Only the user's own chats, and only
+ *  their index rows change, never a chat. A chat that fails is left for
+ *  the next call. */
+export const indexOlderChats = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const user = await userId()
+    if (user === null) return
+    const chats = await unindexedChats(env.DB, user, INDEX_BATCH)
+    const results = await Promise.allSettled(
+      chats.map(async (owner) => (await agentOf(owner)).indexAll())
+    )
+    for (const result of results)
+      if (result.status === "rejected")
+        console.error("Couldn't index an older chat", result.reason)
+  }
+)
+
 /** Puts the feature tour (src/lib/chat/tour.ts) in the signed-in user's
- *  list, pinned, or refreshes it there: always the same chat, so it never
+ *  list, pinned and unindexed (Search's next open indexes it), or
+ *  refreshes it there: always the same chat, so it never
  *  adds a second and touches no other. The row goes first, so the agent's
  *  CHATS_CHANGED loads a list that has it. The chat's id, to open it. */
 export const addTour = createServerFn({ method: "POST" }).handler(async () => {

@@ -32,6 +32,11 @@ export const chat = sqliteTable(
     title: text(),
     /** Listed under Pinned, above the day groups. */
     pinned: integer({ mode: "boolean" }).notNull().default(false),
+    /** Whether Search's index holds all its words
+     *  (src/lib/chat/message-index.ts). False for chats from before the
+     *  index, and for the tour each time it's put back, until their agent
+     *  indexes them whole. */
+    indexed: integer({ mode: "boolean" }).notNull().default(false),
     createdAt: integer().notNull(),
     updatedAt: integer().notNull(),
   },
@@ -56,16 +61,22 @@ const db = (d1: D1Database) => drizzle(d1)
 const isChat = ({ userId, id }: ChatOwner) =>
   and(eq(chat.userId, userId), eq(chat.id, id))
 
-/** Adds the chat, or moves it to the top: it just got a message. */
-export async function touchChat(d1: D1Database, { userId, id }: ChatOwner) {
+/** Adds the chat, or moves it to the top: it just got a message.
+ *  Whether Search's index already holds all its words. */
+export async function touchChat(
+  d1: D1Database,
+  { userId, id }: ChatOwner
+): Promise<boolean> {
   const now = Date.now()
-  await db(d1)
+  const [row] = await db(d1)
     .insert(chat)
     .values({ userId, id, createdAt: now, updatedAt: now })
     .onConflictDoUpdate({
       target: [chat.userId, chat.id],
       set: { updatedAt: now },
     })
+    .returning({ indexed: chat.indexed })
+  return row?.indexed ?? false
 }
 
 /** Adds the chat with `title`, pinned, at the top, or puts an existing one
@@ -82,7 +93,7 @@ export async function putPinnedChat(
     .values({ userId, id, title, pinned: true, createdAt: now, updatedAt: now })
     .onConflictDoUpdate({
       target: [chat.userId, chat.id],
-      set: { title, pinned: true, updatedAt: now },
+      set: { title, pinned: true, indexed: false, updatedAt: now },
     })
 }
 
@@ -139,6 +150,21 @@ export async function deleteChatRow(
     .where(isChat(owner))
     .returning({ id: chat.id })
   return rows.length > 0
+}
+
+/** Up to `limit` of the user's chats whose words Search's index doesn't
+ *  hold yet, the latest first. */
+export async function unindexedChats(
+  d1: D1Database,
+  userId: string,
+  limit: number
+): Promise<ChatOwner[]> {
+  return db(d1)
+    .select({ userId: chat.userId, id: chat.id })
+    .from(chat)
+    .where(and(eq(chat.userId, userId), eq(chat.indexed, false)))
+    .orderBy(desc(chat.updatedAt))
+    .limit(limit)
 }
 
 /** The user's chats, pinned ones first, then latest activity first, so
