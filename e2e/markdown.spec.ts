@@ -221,8 +221,12 @@ test("a long block folds behind Show more, by keyboard too", async ({
   await highlighted(reply)
   const body = reply.locator('[data-streamdown="code-block-body"]')
   const height = async () => (await body.boundingBox())?.height ?? 0
-  const folded = await height()
   const more = reply.getByRole("button", { name: "Show more" })
+  // Measured once laid out: the block is 0 tall until the highlighter,
+  // loaded while idle, renders it.
+  await expect(more).toBeVisible()
+  await expect.poll(height).toBeGreaterThan(0)
+  const folded = await height()
   await more.focus()
   await page.keyboard.press("Enter")
   await expect(reply.getByRole("button", { name: "Show less" })).toBeVisible()
