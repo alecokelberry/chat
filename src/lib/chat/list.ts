@@ -7,7 +7,8 @@
 // chat's agent tell its open tabs (on any device) to load the list again;
 // a delete drops the row, then has the agent tell its tabs and wipe its
 // messages. Feature tour in the account menu adds the demo chat
-// (src/lib/chat/tour.ts) through addTour.
+// (src/lib/chat/tour.ts) through addTour. Search finds chats by their
+// messages' words through findInMessages (src/lib/chat/message-index.ts).
 import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -16,6 +17,7 @@ import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
 import { CHAT_ID } from "@/lib/chat/id"
+import { searchMessages } from "@/lib/chat/message-index"
 import {
   deleteChatRow,
   listChats,
@@ -41,6 +43,9 @@ export const getChats = createServerFn({ method: "GET" }).handler(async () => {
 /** The longest title a rename keeps. */
 export const TITLE_MAX = 200
 
+/** The longest text Search sends. */
+export const QUERY_MAX = 200
+
 const chatId = z.string().regex(CHAT_ID)
 const Rename = z.object({
   id: chatId,
@@ -48,6 +53,7 @@ const Rename = z.object({
 })
 const Pin = z.object({ id: chatId, pinned: z.boolean() })
 const Delete = z.object({ id: chatId })
+const Find = z.object({ query: z.string().max(QUERY_MAX) })
 
 /** The signed-in user's chat `id`, or a throw for no one signed in. */
 async function ownChat(id: string): Promise<ChatOwner> {
@@ -99,6 +105,15 @@ export const deleteChat = createServerFn({ method: "POST" })
     const owner = await ownChat(id)
     if (!(await deleteChatRow(env.DB, owner))) throw new Error("No such chat")
     await (await agentOf(owner)).deleteChat()
+  })
+
+/** The signed-in user's chats whose messages hold the words typed, best
+ *  first, each with its best line (src/lib/chat/message-index.ts). */
+export const findInMessages = createServerFn({ method: "GET" })
+  .validator(Find)
+  .handler(async ({ data: { query } }) => {
+    const user = await userId()
+    return user === null ? [] : searchMessages(env.DB, user, query)
   })
 
 /** Puts the feature tour (src/lib/chat/tour.ts) in the signed-in user's

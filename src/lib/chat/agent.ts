@@ -25,6 +25,10 @@
 // The SDK's own deferred destroy waits a second for the same reason; the
 // scheduler rounds a delay down to a whole second, so it takes 2 to be sure.
 //
+// After every reply, finished, stopped or failed, it brings Search's index
+// of the chat's words up to date (src/lib/chat/message-index.ts): that
+// turn's question and reply, minus whatever an edit or Retry removed.
+//
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
 // model thought, from its first thought to the end of its last (or to
@@ -39,6 +43,7 @@ import type { UIMessage } from "ai"
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
+import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   isUntitled,
@@ -94,6 +99,7 @@ export class ChatAgent extends AIChatAgent<Env> {
     this.resetTurnState()
     await this.sessions.session().clearMessages()
     await this.persistMessages(messages)
+    await this.index(messages)
     this.broadcast(CHATS_CHANGED)
   }
 
@@ -134,6 +140,21 @@ export class ChatAgent extends AIChatAgent<Env> {
     if (result.status === "aborted" || result.status === "error")
       await this.saveTimeOf(result.message)
     if (result.status !== "error") await this.nameIfUntitled()
+    const question = this.messages.findLastIndex(
+      (message) => message.role === "user"
+    )
+    await this.index(this.messages.slice(Math.max(question, 0)))
+  }
+
+  /** Writes `changed` to Search's index and drops what the chat no longer
+   *  holds. Best effort: a chat that fails to index still answered; that
+   *  turn's words are only missing from Search. */
+  private async index(changed: readonly UIMessage[]) {
+    try {
+      await indexMessages(this.env.DB, this.owner, this.messages, changed)
+    } catch (error) {
+      console.error("Couldn't index the chat's words for Search", error)
+    }
   }
 
   // A stopped or failed reply ends without a finish, so its time is the

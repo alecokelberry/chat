@@ -1,18 +1,58 @@
 import type { Page } from "@playwright/test"
 
-import { expect, signInAsDev, tapInSheet, test } from "./session"
+import {
+  expect,
+  questions,
+  replies,
+  send,
+  signInAsDev,
+  tapInSheet,
+  test,
+} from "./session"
 
 // Search (src/components/chat/search.tsx, search-chats.tsx): ⌘K or a search icon opens it,
 // a dialog on a computer and a sheet on a phone. With nothing typed it
 // lists the chats grouped like the sidebar; typing narrows them by title,
 // fuzzily, with the matched letters in bold, and Enter or a click opens
 // one. Dev's chats come from e2e/seed.sql ("Seeded …"); other tests add
-// chats as Dev at the same time, so these look for their own rows. With
-// 1,000 chats: e2e/sidebar.spec.ts.
+// chats as Dev at the same time, so these look for their own rows. From
+// two letters it also finds chats by their messages' words
+// (src/lib/chat/message-index.ts), under Messages with the matching line;
+// these use made-up words no other test sends, and the mock's
+// "(backwards …)" for a word only a reply holds. With 1,000 chats, and
+// another user's words: e2e/sidebar.spec.ts.
 
 const dialog = (page: Page) => page.getByRole("dialog", { name: "Search" })
 const field = (page: Page) =>
   page.getByRole("combobox", { name: "Search chats" })
+const messages = (page: Page) =>
+  dialog(page).getByRole("group", { name: "Messages" })
+
+/** A made-up word of letters only, that no other test sends. */
+const madeUpWord = () =>
+  `zq${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`
+
+/** Sends `text` in a new chat and waits for the reply; the chat's path. */
+async function chatSaying(page: Page, text: string) {
+  await send(page, text)
+  await expect(replies(page)).toHaveText([/Done\.$/])
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+  return new URL(page.url()).pathname
+}
+
+/** Opens Search and types `text` until a message match shows: the
+ *  chat's words reach the index just after its reply ends. */
+async function findWords(page: Page, text: string) {
+  await expect(async () => {
+    if ((await dialog(page).count()) === 0)
+      await page.keyboard.press("ControlOrMeta+k")
+    await field(page).fill("")
+    await field(page).fill(text)
+    await expect(messages(page).getByRole("option")).not.toHaveCount(0, {
+      timeout: 2000,
+    })
+  }).toPass()
+}
 
 test("⌘K opens Search, typing narrows by title, and Enter opens the chat", async ({
   page,
@@ -72,6 +112,99 @@ test("no match says so", async ({ page }) => {
   await field(page).fill("zzqxv")
   await expect(dialog(page)).toContainText("No chats match “zzqxv”")
   await expect(dialog(page).getByRole("option")).toHaveCount(0)
+})
+
+test("a word from a question or a reply finds its chat, with the line", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const [asked, answered] = [madeUpWord(), madeUpWord()]
+  const path = await chatSaying(
+    page,
+    `Where do ${asked} live? (backwards ${answered})`
+  )
+
+  // The last word typed is a prefix.
+  await findWords(page, asked.slice(0, 6))
+  const match = messages(page).getByRole("option")
+  await expect(match).toHaveCount(1)
+  await expect(match).toContainText(`Where do ${asked} live?`)
+  await expect(match.locator("strong")).toHaveText(asked)
+
+  // A word only the reply holds.
+  const reversed = answered.split("").reverse().join("")
+  await field(page).fill(reversed)
+  await expect(messages(page).getByRole("option")).toHaveCount(1)
+  await expect(messages(page).locator("strong")).toHaveText(reversed)
+
+  // FTS5's own syntax is only text: no error, and the words still match.
+  await field(page).fill(`"${asked}" -* NEAR(`)
+  await expect(dialog(page)).toContainText("No chats match")
+  await field(page).fill(`${asked}*"`)
+  await expect(messages(page).getByRole("option")).toHaveCount(1)
+  await expect(dialog(page)).not.toContainText("Couldn’t search messages")
+
+  await messages(page).getByRole("option").click()
+  await expect(page).toHaveURL(new RegExp(`${path}$`))
+  await expect(dialog(page)).toHaveCount(0)
+})
+
+test("one letter searches titles only, and a title match comes first", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  // Seeded kept title's question (e2e/seed.sql) holds "zanzibarite"; its
+  // title doesn't, so only its words find it.
+  await findWords(page, "zanzibarite")
+  await expect(messages(page).getByRole("option")).toHaveText(
+    /^Seeded kept title.*zanzibarite crystals/
+  )
+  // A word in the title too: the title row, and no repeat below.
+  await field(page).fill("seeded kept zanzibarite")
+  await expect(messages(page)).toHaveCount(0)
+  await field(page).fill("z")
+  await expect(messages(page)).toHaveCount(0)
+})
+
+test("an edited question and a deleted chat stop matching", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const [before, after] = [madeUpWord(), madeUpWord()]
+  const path = await chatSaying(page, `Tell me about ${before}`)
+  await findWords(page, before)
+  await page.keyboard.press("Escape")
+  await expect(dialog(page)).toHaveCount(0)
+
+  await questions(page).first().hover()
+  await page
+    .getByRole("toolbar", { name: "Question actions" })
+    .getByRole("button", { name: "Edit message" })
+    .click()
+  await page
+    .getByRole("textbox", { name: "Edit question" })
+    .fill(`Tell me about ${after}`)
+  await page.keyboard.press("Enter")
+  await expect(replies(page)).toHaveText([/Done\.$/])
+  await findWords(page, after)
+  await field(page).fill(before)
+  await expect(dialog(page)).toContainText(`No chats match “${before}”`)
+  await page.keyboard.press("Escape")
+  await expect(dialog(page)).toHaveCount(0)
+
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await page.getByRole("menuitem", { name: "Delete" }).click()
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/_serverFn/") &&
+      response.request().method() === "POST"
+  )
+  await page.evaluate(() => window.toast.dismiss())
+  expect((await deleted).ok()).toBe(true)
+  await expect(page).not.toHaveURL(new RegExp(`${path}$`))
+  await page.keyboard.press("ControlOrMeta+k")
+  await field(page).fill(after)
+  await expect(dialog(page)).toContainText(`No chats match “${after}”`)
 })
 
 test.describe("on a touch phone", () => {
