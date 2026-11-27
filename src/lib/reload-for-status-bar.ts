@@ -20,7 +20,7 @@ function settled() {
 }
 
 /** Reloads once the page is settled for two checks in a row, so a closing
- *  drawer has finished sliding away before the old page is captured. */
+ *  drawer has finished sliding away and the reload isn't seen. */
 export function reloadForStatusBar() {
   if (waiting !== undefined) return
   let calm = 0
