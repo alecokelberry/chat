@@ -7,7 +7,9 @@
 // head also makes it installable: public/manifest.webmanifest names the app
 // and its icons, iOS reads the apple-touch-icon, and theme-color paints the
 // status bar in the page's background, light or dark, following the
-// theme the account menu picks (from the first paint: THEME_COLOR_SCRIPT).
+// theme the account menu picks: the server writes the saved one from its
+// cookie (src/lib/theme.ts), since an iPhone's Home Screen app reads the
+// tag once, as the page loads.
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "@/components/ui/dev-agent"
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/preferences"
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
+import { savedTheme } from "@/lib/theme"
 
 import appCss from "@/styles/app.css?url"
 
@@ -49,10 +52,16 @@ export const Route = createRootRoute({
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
+  loader: () => ({ theme: savedTheme() }),
   shellComponent: RootDocument,
 })
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const { theme } = Route.useLoaderData()
+  // A saved Light or Dark points both tags at its color; System leaves
+  // each on its own.
+  const color = (own: "light" | "dark") =>
+    THEME_COLOR[theme === "system" ? own : theme]
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -61,12 +70,12 @@ function RootDocument({ children }: { children: ReactNode }) {
         <meta
           name="theme-color"
           media="(prefers-color-scheme: light)"
-          content={THEME_COLOR.light}
+          content={color("light")}
         />
         <meta
           name="theme-color"
           media="(prefers-color-scheme: dark)"
-          content={THEME_COLOR.dark}
+          content={color("dark")}
         />
         <ScriptOnce>{THEME_COLOR_SCRIPT}</ScriptOnce>
       </head>
