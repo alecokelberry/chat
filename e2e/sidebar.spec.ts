@@ -297,6 +297,8 @@ test("a pin stays put when a stale list load lands", async ({ page }) => {
       .locator("a[aria-current=page]")
   ).toBeVisible()
   await expect(rowMenu(page)).toBeFocused()
+  // The stale answer has been served, and the page has drawn what it got.
+  await expect.poll(() => replayed.size).toBeGreaterThan(0)
   await settled(page)
   const seen = await page.evaluate(() => Reflect.get(window, "seen"))
   expect(seen).toEqual(["Today", "Pinned"])
