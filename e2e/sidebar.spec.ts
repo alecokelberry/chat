@@ -659,6 +659,21 @@ test("an agent can't delete a chat", async ({ page }) => {
 
 // ui-sdk's agent test: each row's menu is a named control an agent can
 // open, and its actions are named.
+// Grok's: an open menu marks its … alone; the row keeps its own fill.
+test("a row's open menu shades its …, not the row", async ({ page }) => {
+  await signInAsDev(page)
+  const row = sidebar(page)
+    .getByRole("listitem")
+    .filter({ hasText: "Seeded pinned" })
+  const link = row.getByRole("link")
+  const opener = row.getByRole("button", { name: /^Actions for / })
+  await opener.click()
+  await expect(opener).toHaveAttribute("data-open")
+  await page.mouse.move(0, 0)
+  await expect(link).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+  await expect(opener).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+})
+
 test("an agent can open a row's menu", async ({ page }) => {
   await signInAsDev(page)
   await showAllChats(page)
@@ -814,7 +829,7 @@ test.describe("on a phone", () => {
   })
 
   // Touch has no hover: every row's … shows, its menu is a sheet (the
-  // row's wash alone marks it, with no second square on the …), and
+  // …'s own square marks it, not the whole row, as on a computer), and
   // Rename edits the row without closing the drawer.
   test("a row's menu works in the drawer", async ({ page }) => {
     await startChat(page, "Rename from my phone")
@@ -828,7 +843,7 @@ test.describe("on a phone", () => {
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
     const opener = row.getByRole("button", { name: /^Actions for / })
     await expect(opener).toHaveAttribute("data-open")
-    await expect(opener).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    await expect(opener).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
     // The keyboard's Return reads Done.
     await expect(titleField(page)).toHaveAttribute("enterkeyhint", "done")
