@@ -214,6 +214,13 @@ test.describe("on a phone", () => {
         )
       )
       .toBe("1")
+    // It's never lifted for a keyboard (app.css), whatever inset ui-sdk
+    // sets; model.spec.ts fakes the short viewport iOS 26 reports.
+    const viewport = page.locator('[data-slot="menu-viewport"]')
+    await viewport.evaluate((el) =>
+      el.style.setProperty("--keyboard-inset", "230px")
+    )
+    await expect(viewport).toHaveCSS("--keyboard-inset", "0px")
     const box = await theme.boundingBox()
     if (box === null) throw new Error("Theme has no box")
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)

@@ -7,8 +7,8 @@
 // sheet from the bottom instead (presentation "auto", DESIGN.md ›
 // Phones), with 48px rows and padding clear of the home indicator, on the
 // screen's bottom edge (app.css), moved only by ui-sdk's own translate. As
-// a popover it's `fixed` from the first frame, since popups render in place and Safari
-// painted one inside its trigger's row for a few frames.
+// a popover it's `fixed` from the first frame, since popups render in
+// place and Safari painted one inside its trigger's row for a few frames.
 import type * as React from "react"
 import {
   Menu as MenuPrimitive,

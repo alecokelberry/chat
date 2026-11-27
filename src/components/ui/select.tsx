@@ -6,8 +6,9 @@
 // 12px corners and a muted check on the chosen one. On a phone it's a
 // sheet from the bottom instead (presentation "auto"), with 48px rows and
 // padding clear of the home indicator, on the screen's bottom edge
-// (app.css). The sheet moves only by ui-sdk's own translate: no fade, zoom, blur or shadow of ours animates while it
-// slides, so it stays on the compositor. As a popover it's `fixed` from
+// (app.css). The sheet moves only by ui-sdk's own translate: no fade,
+// zoom, blur or shadow of ours animates while it slides, so it stays on
+// the compositor. As a popover it's `fixed` from
 // the first frame, since popups render in place and Safari painted one
 // inside the composer's row for a few frames.
 import type * as React from "react"
