@@ -89,15 +89,18 @@ const RECENT = 50
 export function SearchPanel({
   controller,
   content,
+  onPick,
 }: {
   controller: DialogController
   content: RefObject<HTMLDivElement | null>
+  /** A chat was picked: the phone's drawer under Search closes too. */
+  onPick?: () => void
 }) {
   return (
     <Dialog controller={controller}>
       <DialogContent ref={content} wide>
         <DialogTitle className="sr-only">Search</DialogTitle>
-        <SearchChats close={() => controller.close()} />
+        <SearchChats close={() => controller.close()} onPick={onPick} />
       </DialogContent>
     </Dialog>
   )
@@ -217,7 +220,13 @@ function SearchPreview({ id }: { id: string | null }) {
 /** A message match, ready to show: its chat's title and its line. */
 type WordsItem = CommandDataItem & { line: MatchSegment[] }
 
-function SearchChats({ close }: { close: () => void }) {
+function SearchChats({
+  close,
+  onPick,
+}: {
+  close: () => void
+  onPick?: () => void
+}) {
   const { chats } = useChatList()
   const navigate = useNavigate()
   const field = useRef<HTMLInputElement>(null)
@@ -312,6 +321,7 @@ function SearchChats({ close }: { close: () => void }) {
         const id = chatIdOf(value)
         if (!(event instanceof MouseEvent || event instanceof KeyboardEvent))
           void navigate({ to: "/c/$id", params: { id } })
+        onPick?.()
         close()
       }}
       onQueryChange={(next) => {
