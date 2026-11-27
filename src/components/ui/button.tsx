@@ -33,6 +33,10 @@ const buttonVariants = cva(
         // stop a streaming reply.
         send: "bg-send text-primary-foreground hover:bg-send/90 active:bg-send/80 disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100 aria-disabled:bg-secondary aria-disabled:text-muted-foreground aria-disabled:opacity-100 [&_svg:not([class*='size-'])]:size-4.5",
         stop: `${INK} [&_svg:not([class*='size-'])]:size-3`,
+        // A starter under the new chat's composer: a quiet row, an icon
+        // then the words, left-aligned, 12px corners.
+        starter:
+          "h-10 w-full justify-start gap-3 rounded-xl px-3 font-normal text-muted-foreground hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active [&_svg:not([class*='size-'])]:size-5",
         // Floats over the thread (jump to latest): a translucent raised
         // circle.
         float:
@@ -59,7 +63,7 @@ const buttonVariants = cva(
         // sm) with 12px corners and a hairline, the image filling it.
         thumbnail:
           "size-16 overflow-hidden rounded-xl border-border sm:size-20 [&>img]:size-full [&>img]:object-cover",
-        // The variant brings its own size (prompt).
+        // The variant brings its own size (prompt, starter).
         none: "",
       },
     },
