@@ -5,15 +5,17 @@
 // sits at the top of <body>; on the server it renders an inline script
 // that sets the attributes before the first paint, so CSS that selects
 // them is right from the start, with nothing to flash.
-// The status bar follows the choice too. iOS 26 ignores theme-color and
-// colors the bar from the fixed or sticky element at the top edge (here,
-// the shell's solid background), or the page's when there's none. It looks
-// again only when such an element comes or goes, and keeps the color it has
-// while a full-screen layer or the drawer covers the edge, so a theme change
-// briefly shows a strip it does take its color from (nudgeStatusBar).
-// theme-color, which other browsers read, follows too: an inline script in
-// the head (THEME_COLOR_SCRIPT) points the tags at the saved choice before
-// the first paint, and StatusBarColor keeps them in step after.
+// The status bar follows the choice too, three ways. The Home Screen app
+// on an iPhone draws the bar itself, in the theme-color the page loads
+// with, and never looks again: so the choice is copied into a cookie
+// (src/lib/theme.ts) for the server to write the right color into the
+// HTML, and a change there reloads the page. Safari on iOS 26 ignores
+// theme-color and colors the bar from the fixed or sticky element at the
+// top edge (here, the shell's solid background), looking again only when
+// such an element comes or goes, so a change briefly shows a strip it
+// takes its color from (nudgeStatusBar). Other browsers read theme-color,
+// which StatusBarColor keeps in step; THEME_COLOR_SCRIPT sets it before
+// the first paint for a choice saved before the cookie was.
 import * as React from "react"
 // oxlint-disable-next-line no-restricted-imports -- preferences and storage have no entry of their own
 import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
@@ -21,6 +23,7 @@ import { Preferences, usePreference } from "@ui-sdk/react/preferences"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 
 import { StatusBarDebug } from "@/components/ui/status-bar-debug"
+import { saveTheme, themeCookie } from "@/lib/theme"
 
 /** The status bar's color, light and dark: the page's --background in
  *  app.css, repeated here because the server writes it into the head. */
@@ -30,12 +33,20 @@ const THEME_COLOR = { light: "#f9f8f7", dark: "#1e1d1d" } as const
 const STORAGE_KEY = "theme"
 
 /** Runs in the head, right after the theme-color tags: a saved Light or
- *  Dark points both at its color before the first paint, so a home-screen
- *  app launches with the bar in the app's theme, not the phone's. */
+ *  Dark points both at its color before the first paint, and the choice is
+ *  copied into the cookie, so a choice saved before there was one reaches
+ *  the server from the next load on. */
 const THEME_COLOR_SCRIPT = `(() => {
   try {
     const colors = ${JSON.stringify(THEME_COLOR)}
-    const color = colors[localStorage.getItem(${JSON.stringify(STORAGE_KEY)})]
+    const cookies = ${JSON.stringify({
+      light: themeCookie("light"),
+      dark: themeCookie("dark"),
+      system: themeCookie("system"),
+    })}
+    const saved = localStorage.getItem(${JSON.stringify(STORAGE_KEY)})
+    if (cookies[saved]) document.cookie = cookies[saved]
+    const color = colors[saved]
     if (!color) return
     for (const meta of document.querySelectorAll('meta[name="theme-color"]')) meta.content = color
   } catch {}
@@ -56,37 +67,75 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** The theme-color metas (src/routes/__root.tsx) follow the system; a
- *  Light or Dark choice points both at its color. Each is swapped for a
- *  fresh copy rather than edited: the phone drawer dims the tags it found
- *  when it opened (ui-sdk's themeColor) and puts their old colors back when
- *  it closes, which would undo a theme picked inside it. React never
- *  changes these tags after the first render, so it doesn't miss them. */
+/** Keeps the cookie and the theme-color metas (src/routes/__root.tsx) on
+ *  the choice: a Light or Dark choice points both tags at its color. Each
+ *  is swapped for a fresh copy rather than edited: the phone drawer dims
+ *  the tags it found when it opened (ui-sdk's themeColor) and puts their
+ *  old colors back when it closes, which would undo a theme picked inside
+ *  it. React never changes these tags after the first render, so it
+ *  doesn't miss them. The first renders can carry the server's guess
+ *  rather than the saved choice; <html>, set before the first paint, says
+ *  which is real, so a guess is never saved or acted on. */
 function StatusBarColor() {
   const { value, resolved } = usePreference(colorScheme)
+  const picked = React.useRef<string | null>(null)
   React.useEffect(() => {
-    const metas = document.querySelectorAll<HTMLMetaElement>(
-      'meta[name="theme-color"]'
-    )
-    for (const meta of metas) {
-      const own = meta.media.includes("dark") ? "dark" : "light"
-      const content = THEME_COLOR[value === "system" ? own : value]
-      if (meta.content === content) continue
-      const fresh = document.createElement("meta")
-      fresh.name = "theme-color"
-      fresh.media = meta.media
-      fresh.content = content
-      meta.replaceWith(fresh)
-    }
+    if (value !== choiceShowing()) return
+    saveTheme(value)
+    pointMetasAt(value)
+    picked.current ??= value
+    if (picked.current === value) return
+    picked.current = value
+    // The Home Screen app reads the color again only on a load, so a new
+    // pick reloads (it's saved by now). A system flip under System waits
+    // for the next launch rather than drop a draft or a streaming reply.
+    if (isHomeScreenApp()) location.reload()
   }, [value])
-  // Only when the colors change: at launch the shell's are already right.
-  const shown = React.useRef(resolved)
+  // Only when the colors change: at launch the bar is already right.
+  const shown = React.useRef<"light" | "dark" | null>(null)
   React.useEffect(() => {
-    if (shown.current === resolved) return
+    const showing = schemeShowing()
+    shown.current ??= showing
+    if (resolved !== showing || shown.current === resolved) return
     shown.current = resolved
+    if (isHomeScreenApp()) return
     return nudgeStatusBar()
   }, [resolved])
   return null
+}
+
+function pointMetasAt(value: "light" | "dark" | "system") {
+  const metas = document.querySelectorAll<HTMLMetaElement>(
+    'meta[name="theme-color"]'
+  )
+  for (const meta of metas) {
+    const own = meta.media.includes("dark") ? "dark" : "light"
+    const content = THEME_COLOR[value === "system" ? own : value]
+    if (meta.content === content) continue
+    const fresh = document.createElement("meta")
+    fresh.name = "theme-color"
+    fresh.media = meta.media
+    fresh.content = content
+    meta.replaceWith(fresh)
+  }
+}
+
+/** The choice <html> carries: light, dark or system. */
+function choiceShowing() {
+  return document.documentElement.dataset.colorScheme ?? "system"
+}
+
+/** The scheme <html> shows: its saved choice, or the system's. */
+function schemeShowing() {
+  const scheme = choiceShowing()
+  if (scheme === "light" || scheme === "dark") return scheme
+  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+/** Whether this is an iPhone's Home Screen app, which draws its own
+ *  status bar: navigator.standalone is iOS's alone. */
+function isHomeScreenApp() {
+  return "standalone" in navigator && navigator.standalone === true
 }
 
 /** How long the strip stays: a few frames, so iOS samples it at least
