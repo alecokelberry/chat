@@ -49,7 +49,7 @@ test("the owner adds a passkey with the setup code and signs in with it", async 
   await page.goto("/")
   await expect(page).toHaveURL(/\/sign-in$/)
   await page.getByRole("button", { name: "Sign in with passkey" }).click()
-  await expectSignedInAs(page, "Alec")
+  await expectSignedInAs(page, "Alec Okelberry")
 })
 
 test("Dev signs in on this machine without a passkey", async ({ page }) => {
@@ -86,5 +86,5 @@ test("a passkey this server doesn't know isn't offered", async ({
   await context.clearCookies()
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "Sign in with passkey" }).click()
-  await expectSignedInAs(page, "Alec")
+  await expectSignedInAs(page, "Alec Okelberry")
 })
