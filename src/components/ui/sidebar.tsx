@@ -285,7 +285,8 @@ function SidebarItem({ className, ...props }: React.ComponentProps<"li">) {
 /** A chat row's 24px …, its menu's trigger, 6px from its end, with a
  *  rounded square behind it (the row's wash, stacked on the row's own)
  *  while it's hovered or its menu is open; a 40px
- *  invisible touch area on touch screens. The trigger is the button
+ *  invisible touch area on touch screens, where the open menu is a sheet
+ *  and the row's wash alone marks its chat (no square on the …). The trigger is the button
  *  itself, not a Button inside it, so an agent sees one control per row's
  *  menu, not two. */
 function SidebarRowAction({
@@ -296,7 +297,7 @@ function SidebarRowAction({
     <MenuTrigger
       data-slot="sidebar-row-action"
       className={cn(
-        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden select-none no-touch-callout group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:bg-sidebar-accent data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden pointer-fine:hover:bg-sidebar-accent [&>svg]:size-3.5 [&>svg]:shrink-0",
+        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden select-none no-touch-callout group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden pointer-fine:hover:bg-sidebar-accent pointer-fine:data-open:bg-sidebar-accent [&>svg]:size-3.5 [&>svg]:shrink-0",
         className
       )}
       {...props}

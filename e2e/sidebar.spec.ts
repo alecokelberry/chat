@@ -693,7 +693,8 @@ test.describe("on a phone", () => {
     await expect(drawer).toBeHidden()
   })
 
-  // Touch has no hover: every row's … shows, its menu is a sheet, and
+  // Touch has no hover: every row's … shows, its menu is a sheet (the
+  // row's wash alone marks it, with no second square on the …), and
   // Rename edits the row without closing the drawer.
   test("a row's menu works in the drawer", async ({ page }) => {
     await startChat(page, "Rename from my phone")
@@ -705,6 +706,9 @@ test.describe("on a phone", () => {
     await row.getByRole("button", { name: /^Actions for / }).tap()
     const sheet = page.locator('[data-slot="menu-content"]')
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
+    const opener = row.getByRole("button", { name: /^Actions for / })
+    await expect(opener).toHaveAttribute("data-open")
+    await expect(opener).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
     // The keyboard's Return reads Done.
     await expect(titleField(page)).toHaveAttribute("enterkeyhint", "done")
