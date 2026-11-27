@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test"
 
-import { expect, signInAsDev, test } from "./session"
+import { expect, showAllChats, signInAsDev, test } from "./session"
 
 // The computer's sidebar collapsing to its rail (src/components/ui/
 // sidebar.tsx, src/lib/sidebar.ts): from its toggle or ⌘B/Ctrl+B,
@@ -18,6 +18,7 @@ test("the toggle collapses the sidebar to a rail, and it stays after a reload", 
   page,
 }) => {
   await signInAsDev(page)
+  await showAllChats(page)
   await expect(toggle(page)).toHaveAttribute("aria-expanded", "true")
   const seeded = sidebar(page).getByRole("link", {
     name: "Seeded for an agent",
@@ -40,6 +41,7 @@ test("the toggle collapses the sidebar to a rail, and it stays after a reload", 
 
   await toggle(page).click()
   await expect.poll(() => width(page)).toBe(254)
+  await showAllChats(page)
   await expect(seeded).toBeVisible()
 })
 

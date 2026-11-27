@@ -59,6 +59,7 @@ export type ChatSummary = {
   title: string | null
   pinned: boolean
   updatedAt: number
+  createdAt: number
 }
 
 /** Whose chat, and which: the chat's agent knows both from its name. */
@@ -199,6 +200,7 @@ export async function listChats(
       title: chat.title,
       pinned: chat.pinned,
       updatedAt: chat.updatedAt,
+      createdAt: chat.createdAt,
     })
     .from(chat)
     .where(eq(chat.userId, userId))

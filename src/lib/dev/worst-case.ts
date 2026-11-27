@@ -51,6 +51,8 @@ function fakeChats(count: number, now: number): ChatSummary[] {
     pinned: i < 3,
     // An hour apart, from now back: Today through Older.
     updatedAt: now - i * 3_600_000,
+    // Started in the opposite order, so Date created flips the list.
+    createdAt: now - (count - i) * 3_600_000,
   }))
 }
 
@@ -69,6 +71,7 @@ export function previewChats(
         title: "The only chat",
         pinned: false,
         updatedAt: now,
+        createdAt: now,
       },
     ]
   return fakeChats(1000, now)

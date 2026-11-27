@@ -38,7 +38,7 @@ import {
   type ReactNode,
 } from "react"
 import { Link, ScriptOnce, useNavigate } from "@tanstack/react-router"
-import { EllipsisIcon } from "lucide-react"
+import { EllipsisIcon, PlusIcon } from "lucide-react"
 
 import { AccountMenu, type Account } from "@/components/chat/account-menu"
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
@@ -53,9 +53,16 @@ import {
   SettingsDialog,
 } from "@/components/chat/settings-dialog"
 import { BrandMark } from "@/components/ui/brand-mark"
-import { Menu } from "@/components/ui/menu"
+import {
+  Menu,
+  MenuContent,
+  MenuGroupLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
-import { useThemeShortcut } from "@/components/ui/preferences"
+import { useChatsSection, useThemeShortcut } from "@/components/ui/preferences"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   NEW_CHAT_SHORTCUT,
@@ -70,6 +77,8 @@ import {
   SidebarRow,
   SidebarRowAction,
   SidebarRowEdit,
+  SidebarSection,
+  SidebarSectionAction,
   SidebarToggle,
   useNewChatShortcut,
 } from "@/components/ui/sidebar"
@@ -79,7 +88,7 @@ import {
   TooltipShortcut,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { groupChats } from "@/lib/chat/groups"
+import { groupChats, sortChats } from "@/lib/chat/groups"
 import type { Customize } from "@/lib/ai/style"
 import { usePhone } from "@/lib/phone"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
@@ -119,6 +128,10 @@ let movedRow: { id: string; until: number } | null = null
 /** How far in from the row's end its … sits (SidebarRowAction's end-1.5),
  *  so its menu's end can line up with the row's. */
 const ROW_ACTION_INSET = -6
+
+/** How many chats the Chats section shows below the pins before its Show
+ *  more, which shows the rest. */
+const SHOW_FIRST = 30
 
 /** More rows than the tallest phone shows: what the drawer opens with. */
 const FIRST_SCREEN = 40
@@ -234,6 +247,7 @@ export function ChatSidebar({
               <ChatList
                 chats={chats}
                 limit={opened ? undefined : FIRST_SCREEN}
+                tooltip={false}
                 onPick={close}
               />
               <SidebarFooter>
@@ -292,25 +306,50 @@ function NewChatLink({
 function ChatList({
   chats,
   limit,
+  tooltip = true,
   onPick,
 }: {
   chats: ChatSummary[]
   /** Only the first this many (pins, then the newest), while the drawer
    *  slides. */
   limit?: number
+  /** Whether the header's + shows its tooltip (a finger has no hover). */
+  tooltip?: boolean
   onPick?: () => void
 }) {
   const [renaming, setRenaming] = useState<string | null>(null)
-  const listed = useMemo(
-    () => (limit === undefined ? chats : chats.slice(0, limit)),
-    [chats, limit]
-  )
+  const [all, setAll] = useState(false)
+  const { open, setOpen, sort, setSort } = useChatsSection()
+  const sorted = useMemo(() => sortChats(chats, sort), [chats, sort])
+  const pins = sorted.findIndex((chat) => !chat.pinned)
+  const pinCount = pins === -1 ? sorted.length : pins
+  const more = !all && sorted.length - pinCount > SHOW_FIRST
+  const listed = useMemo(() => {
+    const shown = more ? sorted.slice(0, pinCount + SHOW_FIRST) : sorted
+    return limit === undefined ? shown : shown.slice(0, limit)
+  }, [sorted, more, pinCount, limit])
   // The list renders at low priority, so a long one never holds up a
   // streaming reply or a tap: React drops the work when something urgent
   // comes in, and starts it again after.
   const shown = useDeferredValue(listed, NO_CHATS)
-  const groups = useMemo(() => groupChats(shown, Date.now()), [shown])
+  const groups = useMemo(
+    () => groupChats(shown, Date.now(), sort),
+    [shown, sort]
+  )
   const stopRenaming = useCallback(() => setRenaming(null), [])
+  const rows = (chats: ChatSummary[]) =>
+    chats.map((chat) => (
+      <ChatRow
+        key={chat.id}
+        id={chat.id}
+        title={chat.title}
+        pinned={chat.pinned}
+        renaming={chat.id === renaming}
+        onRename={setRenaming}
+        onRenamed={stopRenaming}
+        onPick={onPick}
+      />
+    ))
   return (
     <ScrollArea
       // A role, so its name is allowed (axe: aria-prohibited-attr).
@@ -320,22 +359,79 @@ function ChatList({
       className="-mt-list-overlap flex-1 fade-size-long group-data-collapsed/sidebar:hidden"
     >
       <div className="pt-list-overlap pb-2">
-        {groups.map((group) => (
-          <SidebarGroup key={group.label} label={group.label}>
-            {group.chats.map((chat) => (
-              <ChatRow
-                key={chat.id}
-                id={chat.id}
-                title={chat.title}
-                pinned={chat.pinned}
-                renaming={chat.id === renaming}
-                onRename={setRenaming}
-                onRenamed={stopRenaming}
-                onPick={onPick}
-              />
+        {groups
+          .filter((group) => group.label === "Pinned")
+          .map((group) => (
+            <SidebarGroup key={group.label} label={group.label}>
+              {rows(group.chats)}
+            </SidebarGroup>
+          ))}
+        <SidebarSection
+          label="Chats"
+          open={open}
+          onOpenChange={setOpen}
+          actions={
+            <>
+              <Menu>
+                <MenuTrigger
+                  render={<SidebarSectionAction aria-label="Chats options" />}
+                >
+                  <EllipsisIcon aria-hidden />
+                </MenuTrigger>
+                <MenuContent align="end">
+                  <MenuRadioGroup
+                    value={sort}
+                    onValueChange={(value) =>
+                      setSort(value === "createdAt" ? "createdAt" : "updatedAt")
+                    }
+                  >
+                    <MenuGroupLabel>Sort chats by</MenuGroupLabel>
+                    <MenuRadioItem value="updatedAt">
+                      Last activity
+                    </MenuRadioItem>
+                    <MenuRadioItem value="createdAt">
+                      Date created
+                    </MenuRadioItem>
+                  </MenuRadioGroup>
+                </MenuContent>
+              </Menu>
+              <Tooltip disabled={!tooltip} shortcut={NEW_CHAT_SHORTCUT}>
+                <TooltipTrigger
+                  render={
+                    <SidebarSectionAction
+                      aria-label="Start a chat"
+                      render={<Link to="/" />}
+                      onClick={onPick}
+                    />
+                  }
+                >
+                  <PlusIcon aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>
+                  New Chat
+                  <TooltipShortcut />
+                </TooltipContent>
+              </Tooltip>
+            </>
+          }
+        >
+          {groups
+            .filter((group) => group.label !== "Pinned")
+            .map((group) => (
+              <SidebarGroup key={group.label} label={group.label}>
+                {rows(group.chats)}
+              </SidebarGroup>
             ))}
-          </SidebarGroup>
-        ))}
+          {more && (
+            <div className="px-1.5 py-0.5">
+              <div className="mx-1">
+                <SidebarRow variant="more" onClick={() => setAll(true)}>
+                  Show more
+                </SidebarRow>
+              </div>
+            </div>
+          )}
+        </SidebarSection>
       </div>
     </ScrollArea>
   )

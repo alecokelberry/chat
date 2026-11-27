@@ -13,8 +13,18 @@
 // its end: shown on hover, on focus and while its menu is open, and
 // always on touch screens, which have no hover; the title makes room for
 // it. While a chat is renamed, SidebarRowEdit takes the row's place.
+// The chats below Pinned sit in a SidebarSection, Grok's Chats header: its
+// 14px muted label and chevron fold the rows (ui-sdk's Collapsible, its
+// height animating like a reply step's), with 24px icon buttons at its end
+// (SidebarSectionAction) lined up with the rows' …; a "more" row ends a
+// long list.
 import * as React from "react"
-import { PanelLeftIcon, SearchIcon } from "lucide-react"
+import { ChevronDownIcon, PanelLeftIcon, SearchIcon } from "lucide-react"
+import {
+  Collapsible,
+  CollapsiblePanel,
+  CollapsibleTrigger,
+} from "@ui-sdk/react/collapsible"
 import {
   Drawer,
   DrawerBackdrop,
@@ -278,6 +288,75 @@ function SidebarGroup({
   )
 }
 
+/** A section of the list under a header that folds it: `label` and its
+ *  chevron (pointing down while open), then `actions` at the header's end,
+ *  lined up with the rows' …. */
+function SidebarSection({
+  label,
+  open,
+  onOpenChange,
+  actions,
+  children,
+}: {
+  label: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  actions?: React.ReactNode
+  children: React.ReactNode
+}) {
+  const id = React.useId()
+  return (
+    <Collapsible
+      data-slot="sidebar-section"
+      open={open}
+      onOpenChange={onOpenChange}
+      render={<section aria-labelledby={id} />}
+      className="flex flex-col pt-1.5"
+    >
+      <div className="mx-2.5 flex h-8 items-center">
+        <h2 className="flex min-w-0">
+          <CollapsibleTrigger
+            id={id}
+            className="group/section flex h-8 items-center gap-1 rounded-md ps-2.25 pe-1.5 text-sm text-sidebar-muted ring-sidebar-ring outline-hidden select-none hover:text-sidebar-foreground focus-visible:ring-2"
+          >
+            {label}
+            <ChevronDownIcon
+              aria-hidden
+              className="size-3.5 transition-transform duration-fast ease-standard group-data-closed/section:-rotate-90 rtl:group-data-closed/section:rotate-90"
+            />
+          </CollapsibleTrigger>
+        </h2>
+        <div className="ms-auto flex items-center gap-0.5 pe-1.5">
+          {actions}
+        </div>
+      </div>
+      <CollapsiblePanel className="h-(--collapsible-panel-height) overflow-hidden transition-collapse data-ending-style:h-0 data-starting-style:h-0">
+        {children}
+      </CollapsiblePanel>
+    </Collapsible>
+  )
+}
+
+/** One of a section header's 24px icon buttons, like the rows' …: the
+ *  sidebar's icon ink and 16px glyph, the row's wash under the pointer and
+ *  while its menu is open, and a 40px invisible touch area on touch
+ *  screens. */
+function SidebarSectionAction({
+  className,
+  ...props
+}: React.ComponentProps<typeof ButtonPrimitive>) {
+  return (
+    <ButtonPrimitive
+      data-slot="sidebar-section-action"
+      className={cn(
+        "relative flex size-6 press items-center justify-center rounded-md text-sidebar-icon ring-sidebar-ring outline-hidden select-none after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 active:bg-sidebar-accent data-open:bg-sidebar-accent data-open:text-sidebar-foreground pointer-fine:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 function SidebarItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
@@ -347,6 +426,8 @@ const sidebarRowVariants = cva(
         // its … shows), fading out at the end instead of an ellipsis. The
         // open chat (the link's aria-current) keeps the hover's wash and
         // full ink, and so does a row while its menu is open.
+        // Show more: a chat row's place and inset, in muted ink.
+        more: "ps-3 pe-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent",
         chat: "ps-3 pe-2 group-focus-within/item:pe-9 group-hover/item:pe-9 group-has-data-open/item:bg-sidebar-accent group-has-data-open/item:pe-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground pointer-coarse:pe-9 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
       },
     },
@@ -383,6 +464,8 @@ export {
   SidebarRowAction,
   SidebarRowEdit,
   SidebarSearchTrigger,
+  SidebarSection,
+  SidebarSectionAction,
   SidebarToggle,
   NEW_CHAT_SHORTCUT,
   useNewChatShortcut,

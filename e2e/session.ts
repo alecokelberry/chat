@@ -54,6 +54,16 @@ export { expect }
 export const sidebar = (page: Page) =>
   page.getByRole("navigation", { name: "Chats" })
 
+/** Shows every chat in the sidebar: past the first 30, the rest wait
+ *  behind Show more, and a worker's own Dev gathers more than that as its
+ *  tests send messages. Call it once the page has hydrated: the list comes
+ *  from the server, so whether the button shows is settled by then. */
+export async function showAllChats(page: Page) {
+  const more = sidebar(page).getByRole("button", { name: "Show more" })
+  if ((await more.count()) > 0) await more.click()
+  await expect(more).toHaveCount(0)
+}
+
 /** A new chat's heading. */
 export const greeting = (page: Page) =>
   page.getByRole("heading", { name: "What can I help with?" })
