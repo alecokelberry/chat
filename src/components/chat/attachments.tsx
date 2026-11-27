@@ -8,6 +8,8 @@
 // with ✕ to take it out; a file the rules turn away, or one that won't
 // decode, never joins, and a toast says why. A question shows its images
 // as a row of thumbnails above its bubble, and a tap opens one full size.
+// With images attached and a model that can't see them (Ultra, Lightning),
+// Send waits and a line under the composer offers "Switch to Super".
 import { useRef, useState } from "react"
 import type { FileUIPart } from "ai"
 import { ImageOffIcon, ImagePlusIcon, PlusIcon, XIcon } from "lucide-react"
@@ -129,6 +131,8 @@ export function AttachmentsInput({
 }) {
   return (
     <FileInput
+      // A labelled group: aria-label alone isn't allowed on a plain div.
+      role="group"
       aria-label="Attachments"
       multiple
       accept={ACCEPT}
@@ -235,5 +239,40 @@ function Thumbnail({ url }: { url: string }) {
     <ImageOffIcon aria-hidden />
   ) : (
     <img src={url} alt="" onError={() => setBroken(true)} />
+  )
+}
+
+/** Under the composer when its images would go to a model that can't see
+ *  them (`blind`): Send waits, and one tap switches to `to`, a model that
+ *  can. The model never changes on its own. The status region is always
+ *  on the page and empty until then, since screen readers often skip a
+ *  live region that arrives already filled; the line people see is
+ *  hidden from them, so it isn't read twice. */
+export function CantSeeImages({
+  blind,
+  model,
+  to,
+  onSwitch,
+}: {
+  blind: boolean
+  model: string
+  to: string
+  onSwitch: () => void
+}) {
+  const line = `${model} can't see images`
+  return (
+    <>
+      <p role="status" className="sr-only">
+        {blind ? line : ""}
+      </p>
+      {blind && (
+        <p className="flex items-center justify-center gap-2 pt-2 text-sm text-muted-foreground">
+          <span aria-hidden>{line}</span>
+          <Button variant="outline" size="sm" onClick={onSwitch}>
+            {`Switch to ${to}`}
+          </Button>
+        </p>
+      )}
+    </>
   )
 }
