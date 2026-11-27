@@ -74,6 +74,7 @@ import { groupChats } from "@/lib/chat/groups"
 import { findInMessages, indexOlderChats, QUERY_MAX } from "@/lib/chat/list"
 import { marksOf } from "@/lib/chat/match-marks"
 import type { ChatSummary } from "@/lib/chat/store"
+import { usePhone } from "@/lib/phone"
 
 const toItem = (chat: ChatSummary): CommandDataItem => ({
   value: chat.id,
@@ -124,7 +125,6 @@ type RowState = {
 }
 
 const RowContext = createContext<RowState | null>(null)
-const Rows = RowContext
 
 /** While its row is highlighted, shows chat `id` in the preview. */
 function Previewed({ id }: { id: string }) {
@@ -238,6 +238,7 @@ function SearchChats({ close }: { close: () => void }) {
   useEffect(() => setMounted(true), [])
   const [renaming, setRenaming] = useState<string | null>(null)
   const renamed = chats.find((chat) => chat.id === renaming)
+  const phone = usePhone()
   const [menus, setMenus] = useState<HTMLDivElement | null>(null)
   const rows = useMemo(
     () => ({
@@ -344,7 +345,7 @@ function SearchChats({ close }: { close: () => void }) {
           }
         }}
       />
-      <Rows value={rows}>
+      <RowContext value={rows}>
         <div className="flex min-h-0 flex-1">
           <div className="flex min-h-0 w-full flex-col md:w-dialog-list md:shrink-0">
             <CommandEmpty>
@@ -398,10 +399,11 @@ function SearchChats({ close }: { close: () => void }) {
               }
             </CommandStatus>
           </div>
-          <SearchPreview id={highlighted} />
+          {/* Not on a phone, where nothing would show it. */}
+          {phone === false && <SearchPreview id={highlighted} />}
         </div>
         <div ref={setMenus} />
-      </Rows>
+      </RowContext>
     </Command>
   )
 }

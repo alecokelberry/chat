@@ -58,9 +58,8 @@ import {
 import { MenuTrigger } from "@/components/ui/menu"
 import { cn } from "@/lib/utils"
 
-/** The search field, led by its glyph. */
-/** `hidden`: kept in the page, out of sight, while CommandFieldEdit
- *  stands in for it. */
+/** The search field, led by its glyph. `hidden`: kept in the page, out
+ *  of sight, while CommandFieldEdit stands in for it. */
 function CommandInput({
   className,
   hidden = false,
