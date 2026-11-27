@@ -13,6 +13,8 @@
 // An edited question is sent in the old one's place, with the picker's
 // model: the SDK drops it and everything after it, here and in the agent,
 // and the reply is asked again.
+// The tab is titled after the chat, from the list the layout loaded, so it
+// follows a rename or the model naming it once the list loads again.
 // A reload (or a second tab) while a reply streams picks it up where it is:
 // useAgentChat asks the agent to resume, and the agent replays the chunks
 // it has kept, then streams the rest. Once the chat has a title (from the
@@ -61,6 +63,21 @@ const sentWith = (model: ModelKey) => ({
 
 export const Route = createFileRoute("/_app/c/$id")({
   ssr: "data-only",
+  loader: async ({ params, parentMatchPromise }) => {
+    const { loaderData: chats } = await parentMatchPromise
+    return {
+      title: chats?.find((chat) => chat.id === params.id)?.title ?? null,
+    }
+  },
+  head: ({ params, loaderData }) => ({
+    meta: [
+      {
+        title: CHAT_ID.test(params.id)
+          ? `${loaderData?.title ?? "New chat"} – Chat`
+          : "Not found – Chat",
+      },
+    ],
+  }),
   component: ChatScreen,
 })
 

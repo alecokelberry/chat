@@ -10,6 +10,7 @@ import { Composer } from "@/components/chat/composer"
 import { DEFAULT_MODEL } from "@/lib/ai/models"
 
 export const Route = createFileRoute("/_app/")({
+  head: () => ({ meta: [{ title: "New chat – Chat" }] }),
   component: NewChat,
 })
 

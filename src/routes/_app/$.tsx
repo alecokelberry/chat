@@ -8,5 +8,6 @@ import { createFileRoute } from "@tanstack/react-router"
 import { NotFoundPage } from "@/components/error-page"
 
 export const Route = createFileRoute("/_app/$")({
+  head: () => ({ meta: [{ title: "Not found – Chat" }] }),
   component: NotFoundPage,
 })

@@ -15,6 +15,7 @@ export const Route = createFileRoute("/sign-in")({
     if ((await getSession()) !== null) throw redirect({ to: "/" })
   },
   loader: () => getSignIn(),
+  head: () => ({ meta: [{ title: "Sign in – Chat" }] }),
   component: SignIn,
 })
 
