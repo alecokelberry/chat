@@ -21,9 +21,11 @@ test("a chat shows its title once it has one, after a reload too", async ({
   await send(page, "Title me (paced)")
   const title = page.getByRole("heading", { level: 1 })
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
-  // Lightning names the chat only once the reply is done.
+  // Lightning names the chat only once the reply is done. The paced reply
+  // alone takes about 3.5 s here, so the default 5 s left a busy CI runner
+  // too little room for it and the naming after.
   await expect(title).toHaveCount(0)
-  await expect(title).toHaveText(TITLE)
+  await expect(title).toHaveText(TITLE, { timeout: 15_000 })
   await page.reload()
   await expect(title).toHaveText(TITLE)
 })
