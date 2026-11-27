@@ -21,7 +21,12 @@ function midnight(now: number, days: number): number {
 }
 
 /** What the list is sorted and grouped by: last activity or creation. */
-export type ChatSort = "updatedAt" | "createdAt"
+export const CHAT_SORTS = ["updatedAt", "createdAt"] as const
+
+export type ChatSort = (typeof CHAT_SORTS)[number]
+
+export const isChatSort = (value: unknown): value is ChatSort =>
+  CHAT_SORTS.some((sort) => sort === value)
 
 type Dated = { pinned: boolean; updatedAt: number; createdAt: number }
 

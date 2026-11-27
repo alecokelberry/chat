@@ -88,7 +88,7 @@ import {
   TooltipShortcut,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { groupChats, sortChats } from "@/lib/chat/groups"
+import { groupChats, isChatSort, sortChats } from "@/lib/chat/groups"
 import type { Customize } from "@/lib/ai/style"
 import { usePhone } from "@/lib/phone"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
@@ -282,20 +282,39 @@ function NewChatLink({
   tooltip?: boolean
 }) {
   return (
+    <NewChatTooltip
+      tooltip={tooltip}
+      side="right"
+      render={
+        <SidebarRow
+          variant="raised"
+          render={<Link to="/" />}
+          onClick={onClick}
+        />
+      }
+    >
+      <NewChatGlyph />
+      <span>New Chat</span>
+    </NewChatTooltip>
+  )
+}
+
+/** "New Chat ⌘J" over `render`, the sidebar's two ways to start a chat. */
+function NewChatTooltip({
+  tooltip,
+  side,
+  render,
+  children,
+}: {
+  tooltip: boolean
+  side?: React.ComponentProps<typeof TooltipContent>["side"]
+  render: React.ReactElement
+  children: React.ReactNode
+}) {
+  return (
     <Tooltip disabled={!tooltip} shortcut={NEW_CHAT_SHORTCUT}>
-      <TooltipTrigger
-        render={
-          <SidebarRow
-            variant="raised"
-            render={<Link to="/" />}
-            onClick={onClick}
-          />
-        }
-      >
-        <NewChatGlyph />
-        <span>New Chat</span>
-      </TooltipTrigger>
-      <TooltipContent side="right">
+      <TooltipTrigger render={render}>{children}</TooltipTrigger>
+      <TooltipContent side={side}>
         New Chat
         <TooltipShortcut />
       </TooltipContent>
@@ -321,8 +340,8 @@ function ChatList({
   const [all, setAll] = useState(false)
   const { open, setOpen, sort, setSort } = useChatsSection()
   const sorted = useMemo(() => sortChats(chats, sort), [chats, sort])
-  const pins = sorted.findIndex((chat) => !chat.pinned)
-  const pinCount = pins === -1 ? sorted.length : pins
+  // sortChats puts the pins first.
+  const pinCount = sorted.filter((chat) => chat.pinned).length
   const more = !all && sorted.length - pinCount > SHOW_FIRST
   const listed = useMemo(() => {
     const shown = more ? sorted.slice(0, pinCount + SHOW_FIRST) : sorted
@@ -336,6 +355,31 @@ function ChatList({
     () => groupChats(shown, Date.now(), sort),
     [shown, sort]
   )
+  const [pinned, dated] = useMemo(
+    () => [
+      groups.filter((group) => group.label === "Pinned"),
+      groups.filter((group) => group.label !== "Pinned"),
+    ],
+    [groups]
+  )
+  // Show more goes once pressed, so focus moves to the first chat it
+  // shows (once the deferred list has it), not back to the page's start.
+  const list = useRef<HTMLDivElement>(null)
+  const focusNext = useRef<string | null>(null)
+  useEffect(() => {
+    const id = focusNext.current
+    if (id === null) return
+    const row = list.current?.querySelector<HTMLElement>(
+      `a[href*="/c/${CSS.escape(id)}"]`
+    )
+    if (!row) return
+    row.focus()
+    focusNext.current = null
+  }, [shown])
+  const showMore = () => {
+    focusNext.current = sorted[pinCount + SHOW_FIRST]?.id ?? null
+    setAll(true)
+  }
   const stopRenaming = useCallback(() => setRenaming(null), [])
   const rows = (chats: ChatSummary[]) =>
     chats.map((chat) => (
@@ -358,14 +402,12 @@ function ChatList({
       fade
       className="-mt-list-overlap flex-1 fade-size-long group-data-collapsed/sidebar:hidden"
     >
-      <div className="pt-list-overlap pb-2">
-        {groups
-          .filter((group) => group.label === "Pinned")
-          .map((group) => (
-            <SidebarGroup key={group.label} label={group.label}>
-              {rows(group.chats)}
-            </SidebarGroup>
-          ))}
+      <div ref={list} className="pt-list-overlap pb-2">
+        {pinned.map((group) => (
+          <SidebarGroup key={group.label} label={group.label}>
+            {rows(group.chats)}
+          </SidebarGroup>
+        ))}
         <SidebarSection
           label="Chats"
           open={open}
@@ -381,51 +423,44 @@ function ChatList({
                 <MenuContent align="end">
                   <MenuRadioGroup
                     value={sort}
-                    onValueChange={(value) =>
-                      setSort(value === "createdAt" ? "createdAt" : "updatedAt")
-                    }
+                    onValueChange={(value) => {
+                      if (isChatSort(value)) setSort(value)
+                    }}
                   >
                     <MenuGroupLabel>Sort chats by</MenuGroupLabel>
-                    <MenuRadioItem value="updatedAt">
+                    <MenuRadioItem value="updatedAt" closeOnSelect>
                       Last activity
                     </MenuRadioItem>
-                    <MenuRadioItem value="createdAt">
+                    <MenuRadioItem value="createdAt" closeOnSelect>
                       Date created
                     </MenuRadioItem>
                   </MenuRadioGroup>
                 </MenuContent>
               </Menu>
-              <Tooltip disabled={!tooltip} shortcut={NEW_CHAT_SHORTCUT}>
-                <TooltipTrigger
-                  render={
-                    <SidebarSectionAction
-                      aria-label="Start a chat"
-                      render={<Link to="/" />}
-                      onClick={onPick}
-                    />
-                  }
-                >
-                  <PlusIcon aria-hidden />
-                </TooltipTrigger>
-                <TooltipContent>
-                  New Chat
-                  <TooltipShortcut />
-                </TooltipContent>
-              </Tooltip>
+              <NewChatTooltip
+                tooltip={tooltip}
+                render={
+                  <SidebarSectionAction
+                    aria-label="Start a chat"
+                    render={<Link to="/" />}
+                    onClick={onPick}
+                  />
+                }
+              >
+                <PlusIcon aria-hidden />
+              </NewChatTooltip>
             </>
           }
         >
-          {groups
-            .filter((group) => group.label !== "Pinned")
-            .map((group) => (
-              <SidebarGroup key={group.label} label={group.label}>
-                {rows(group.chats)}
-              </SidebarGroup>
-            ))}
+          {dated.map((group) => (
+            <SidebarGroup key={group.label} label={group.label}>
+              {rows(group.chats)}
+            </SidebarGroup>
+          ))}
           {more && (
             <div className="px-1.5 py-0.5">
               <div className="mx-1">
-                <SidebarRow variant="more" onClick={() => setAll(true)}>
+                <SidebarRow variant="more" onClick={showMore}>
                   Show more
                 </SidebarRow>
               </div>

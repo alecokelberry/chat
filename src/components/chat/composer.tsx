@@ -18,9 +18,19 @@
 // you are): only keyboard focus does (the keyboard variant,
 // focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
+// `onDraft` tells the new chat page whether there's anything to send, so it
+// can put away the starters the composer would grow over.
+// `fill` (the ref's handle) puts words in it and focuses it: a starter.
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
-import { useEffect, useRef, useState, type RefObject } from "react"
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+  type RefObject,
+} from "react"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -42,7 +52,12 @@ import { cn } from "@/lib/utils"
 import { DEFAULT_MODEL, modelOf, type ModelKey } from "@/lib/ai/models"
 import type { AttachmentPart } from "@/lib/chat/attachments"
 
+/** What a parent can do to the composer: put words in it (a starter). */
+export type ComposerHandle = { fill: (text: string) => void }
+
 export function Composer({
+  ref,
+  onDraft,
   focusOnMount = false,
   busy = false,
   model,
@@ -50,6 +65,9 @@ export function Composer({
   onSend,
   onStop,
 }: {
+  ref?: Ref<ComposerHandle>
+  /** Told when the composer gains or loses anything to send. */
+  onDraft?: (started: boolean) => void
   focusOnMount?: boolean
   busy?: boolean
   model: ModelKey
@@ -66,12 +84,20 @@ export function Composer({
     if (focusAtMount.current) field.current?.focus()
   }, [])
 
+  useImperativeHandle(ref, () => ({
+    fill(next) {
+      setText(next)
+      field.current?.focus()
+    },
+  }))
+
   const wrapped = useWrapped(field, text)
 
   const attachments = useAttachments()
   const empty = message === "" && attachments.files.length === 0
   const chosen = modelOf(model)
   const blind = attachments.hasImages && !chosen.seesImages
+  useEffect(() => onDraft?.(!empty), [onDraft, empty])
   const ready = !empty && !attachments.waiting && !blind
 
   function send() {
