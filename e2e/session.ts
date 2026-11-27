@@ -78,7 +78,7 @@ export async function expectSignedInAs(page: Page, name: string) {
  *  that is lost. The agent bridge sees the controls once it has. The bridge
  *  itself may not be there yet, so check for it first: a TypeError would end
  *  the wait instead of retrying it. */
-export async function hydrated(page: Page) {
+async function hydrated(page: Page) {
   await page.waitForFunction(
     () => "agent" in window && window.agent.snapshot().length > 0
   )
