@@ -69,7 +69,9 @@ test.describe("on a computer", () => {
       .click()
     await expect(page).toHaveURL(/\/c\/.*data=worst/)
     await expect(bar(page)).toBeVisible()
-    await expect(questions(page)).toHaveCount(2)
+    // Three with words: the images-only question has no bubble
+    // (src/lib/dev/worst-case.ts).
+    await expect(questions(page)).toHaveCount(3)
     await expect(replies(page).first()).toContainText("A very long reply")
 
     await bar(page).getByRole("radio", { name: "Empty" }).click()

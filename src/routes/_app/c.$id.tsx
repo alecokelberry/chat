@@ -50,7 +50,11 @@ import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { toast } from "@/components/ui/toast"
-import { imagesOf, takeHandedOffFiles } from "@/lib/chat/attachments"
+import {
+  attachmentsOf,
+  questionParts,
+  takeHandedOffFiles,
+} from "@/lib/chat/attachments"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 import { pageTitle } from "@/lib/utils"
@@ -188,14 +192,13 @@ const Chat = memo(function Chat({ id }: { id: string }) {
     void navigate({ to: ".", replace: true, state: {} })
     const files = takeHandedOffFiles(id)
     // A reload before the first send keeps the words (history state) but
-    // not the images (memory): say so rather than send without them.
+    // not the files (memory): say so rather than send without them.
     if (files.length < (firstMessage.files ?? 0)) {
-      toast.error("Your images didn't come through. Attach them again.")
+      toast.error("Your files didn't come through. Attach them again.")
       if (firstMessage.text === "") return
     }
     void sendMessage({
-      text: firstMessage.text,
-      files,
+      parts: questionParts(firstMessage.text, files),
       metadata: sentWith(firstMessage.model),
     })
   }, [firstMessage, sendMessage, navigate, id])
@@ -221,11 +224,10 @@ const Chat = memo(function Chat({ id }: { id: string }) {
         onEdit={(messageId, text) => {
           if (previewing) return
           setStopped(false)
-          // It keeps its images (#152 lets an edit change them).
+          // It keeps its attachments (#152 lets an edit change them).
           const edited = messages.find((message) => message.id === messageId)
           void sendMessage({
-            text,
-            files: edited ? imagesOf(edited) : [],
+            parts: questionParts(text, edited ? attachmentsOf(edited) : []),
             messageId,
             metadata: sentWith(model),
           })
@@ -242,7 +244,10 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           onSend={(text, files) => {
             if (previewing) return
             setStopped(false)
-            void sendMessage({ text, files, metadata: sentWith(model) })
+            void sendMessage({
+              parts: questionParts(text, files),
+              metadata: sentWith(model),
+            })
           }}
           onStop={() => {
             setStopped(true)
