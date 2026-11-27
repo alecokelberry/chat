@@ -96,14 +96,52 @@ export function SearchPanel({
   /** A chat was picked: the phone's drawer under Search closes too. */
   onPick?: () => void
 }) {
+  // While the sheet slides up and the keyboard rises under it, iOS draws
+  // the field's caret where the field was, not where it is, so it jumped
+  // on Alec's iPhone: it shows once both have settled. Focus still comes
+  // at once, to raise the keyboard.
+  const [settled, setSettled] = useState(false)
   return (
-    <Dialog controller={controller}>
+    <Dialog
+      controller={controller}
+      onOpenChangeComplete={(open) => {
+        if (!open) return setSettled(false)
+        // Unless it closed again in the meantime.
+        void viewportSettled().then(() => setSettled(controller.isOpen()))
+      }}
+    >
       <DialogContent ref={content} wide>
         <DialogTitle className="sr-only">Search</DialogTitle>
-        <SearchChats close={() => controller.close()} onPick={onPick} />
+        <SearchChats
+          close={() => controller.close()}
+          onPick={onPick}
+          settled={settled}
+        />
       </DialogContent>
     </Dialog>
   )
+}
+
+/** Resolves once the visual viewport has stopped resizing (the phone's
+ *  keyboard has finished rising) for 120 ms, or after 800 ms at most. */
+function viewportSettled() {
+  return new Promise<void>((resolve) => {
+    const viewport = window.visualViewport
+    let quiet = 0
+    const done = () => {
+      clearTimeout(quiet)
+      clearTimeout(cap)
+      viewport?.removeEventListener("resize", wait)
+      resolve()
+    }
+    const wait = () => {
+      clearTimeout(quiet)
+      quiet = window.setTimeout(done, 120)
+    }
+    const cap = window.setTimeout(done, 800)
+    viewport?.addEventListener("resize", wait)
+    wait()
+  })
 }
 
 /** Message matches' values: the chat's id after this, apart from its
@@ -223,9 +261,12 @@ type WordsItem = CommandDataItem & { line: MatchSegment[] }
 function SearchChats({
   close,
   onPick,
+  settled,
 }: {
   close: () => void
   onPick?: () => void
+  /** The sheet has finished sliding in: the caret can show. */
+  settled: boolean
 }) {
   const { chats } = useChatList()
   const navigate = useNavigate()
@@ -344,6 +385,7 @@ function SearchChats({
       )}
       <CommandInput
         ref={field}
+        caretHidden={!settled}
         hidden={renamed !== undefined}
         aria-label="Search chats"
         placeholder="Search chats…"

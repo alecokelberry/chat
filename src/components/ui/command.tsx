@@ -63,8 +63,14 @@ import { cn } from "@/lib/utils"
 function CommandInput({
   className,
   hidden = false,
+  caretHidden = false,
   ...props
-}: React.ComponentProps<typeof CommandInputPrimitive> & { hidden?: boolean }) {
+}: React.ComponentProps<typeof CommandInputPrimitive> & {
+  hidden?: boolean
+  /** No caret yet: while a sheet slides in, iOS draws it where the field
+   *  was, so it jumps; show it once the sheet has settled. */
+  caretHidden?: boolean
+}) {
   return (
     <div
       hidden={hidden}
@@ -77,6 +83,7 @@ function CommandInput({
       <CommandInputPrimitive
         className={cn(
           "min-w-0 flex-1 bg-transparent field-text text-foreground outline-hidden placeholder:text-muted-foreground",
+          caretHidden && "caret-transparent",
           className
         )}
         {...props}
