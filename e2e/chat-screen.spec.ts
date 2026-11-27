@@ -13,6 +13,26 @@ const phone = {
   isMobile: true,
 }
 
+// The greeting and composer, as one block, sit as far from the top of the
+// page area as from its bottom.
+async function expectCentered(page: Page) {
+  const box = async (selector: string) =>
+    (await page.locator(selector).boundingBox()) ?? {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    }
+  const [heading, form, main] = await Promise.all([
+    box("h1"),
+    box("form"),
+    box("main"),
+  ])
+  const above = heading.y - main.y
+  const below = main.y + main.height - (form.y + form.height)
+  expect(Math.abs(above - below)).toBeLessThan(24)
+}
+
 const ringOf = (page: Page) =>
   page
     .getByRole("textbox", { name: "Message" })
@@ -30,9 +50,9 @@ test.describe("on a phone", () => {
     const field = page.getByRole("textbox", { name: "Message" })
     await expect(field).not.toBeFocused()
 
-    // The greeting sits 30% down; the composer is 24px in from each edge.
-    const heading = await page.getByRole("heading").boundingBox()
-    expect(Math.abs((heading?.y ?? 0) - 659 * 0.3)).toBeLessThan(2)
+    // The greeting and composer sit centered together under the header;
+    // the composer is 24px in from each edge.
+    await expectCentered(page)
     const composer = await page.locator("form").boundingBox()
     expect(composer?.x).toBe(24)
     expect(composer?.width).toBe(393 - 48)
