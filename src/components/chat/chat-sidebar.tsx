@@ -111,6 +111,10 @@ function takeEarlyTap(): boolean {
  *  the new row's … takes focus (ChatRow). */
 let movedRow: { id: string; until: number } | null = null
 
+/** How far in from the row's end its … sits (SidebarRowAction's end-1.5),
+ *  so its menu's end can line up with the row's. */
+const ROW_ACTION_INSET = -6
+
 /** More rows than the tallest phone shows: what the drawer opens with. */
 const FIRST_SCREEN = 40
 
@@ -168,6 +172,11 @@ export function ChatSidebar({
         <div className="relative z-10 px-2.5">
           <NewChatLink />
         </div>
+        {/* The rail has no room beside its toggle, so Search sits under
+            New Chat there, level with the toggle. */}
+        <div className="mt-1 hidden ps-3 group-data-collapsed/sidebar:flex">
+          <SearchButton controller={search} tooltipSide="right" />
+        </div>
         {phone === false && <ChatList chats={chats} />}
         <SidebarFooter>
           <AccountMenu account={account} tooltip={collapsed} />
@@ -203,7 +212,7 @@ export function ChatSidebar({
           {phone === true && (
             <SidebarDrawerContent title="Chats">
               <div className="flex h-sidebar-header shrink-0 items-center justify-between px-3">
-                <BrandMark className="size-icon" />
+                <BrandMark tone="icon" className="size-icon" />
                 <SearchButton controller={search} tooltip={false} />
               </div>
               <SidebarHeader className="relative z-10">
@@ -354,8 +363,12 @@ const ChatRow = memo(function ChatRow({
         <SidebarRowAction ref={action} aria-label={`Actions for ${name}`}>
           <EllipsisIcon aria-hidden />
         </SidebarRowAction>
+        {/* As wide as the row, its end on the row's: inside the column's
+            margins, where 256px from the … would cross its edge. */}
         <ChatMenuContent
           chat={chat}
+          className="data-[presentation=popover]:w-sidebar-row"
+          alignOffset={ROW_ACTION_INSET}
           onRename={() => onRename(id)}
           onPin={() => {
             movedRow = { id, until: Date.now() + 3000 }

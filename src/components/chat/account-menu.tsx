@@ -95,7 +95,14 @@ export function AccountMenu({
         </TooltipTrigger>
         <TooltipContent side="right">{account.name}</TooltipContent>
       </Tooltip>
-      <MenuContent side="top">
+      {/* As wide as its row, inside the column's margins; the rail's
+          avatar is too narrow to set it, so there it's the usual 256px. */}
+      <MenuContent
+        side="top"
+        className={
+          tooltip ? undefined : "data-[presentation=popover]:w-(--anchor-width)"
+        }
+      >
         <MenuGroup>
           <MenuGroupLabel>
             {account.name}
