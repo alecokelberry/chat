@@ -155,6 +155,33 @@ const titleField = (page: Page) =>
 const unique = (name: string) =>
   `${name} ${Math.random().toString(36).slice(2, 8)}`
 
+test("D leaves the theme alone in a row's menu and its Rename field", async ({
+  page,
+}) => {
+  await startChat(page, "Keep my theme")
+  const html = page.locator("html")
+  const scheme = await html.getAttribute("data-color-scheme")
+
+  // A row's menu holds D for type-ahead (its D is Delete), so the theme
+  // stays; Escape closes it before Delete could be chosen.
+  await openRow(page).hover()
+  await rowMenu(page).click()
+  await expect(menu(page)).toBeVisible()
+  await page.keyboard.press("d")
+  await expect(html).toHaveAttribute("data-color-scheme", scheme ?? "")
+  await page.keyboard.press("Escape")
+  await expect(menu(page)).toBeHidden()
+
+  // Typing in Rename types D.
+  await rowMenu(page).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  await expect(titleField(page)).toBeFocused()
+  await page.keyboard.type("dd")
+  await expect(titleField(page)).toHaveValue("dd")
+  await expect(html).toHaveAttribute("data-color-scheme", scheme ?? "")
+  await page.keyboard.press("Escape")
+})
+
 test("Rename in the row saves on Enter and ✓, cancels on Escape and ✕", async ({
   page,
 }) => {
