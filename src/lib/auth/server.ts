@@ -10,6 +10,7 @@ import {
   APIError,
   createAuthEndpoint,
   createAuthMiddleware,
+  getSessionFromCtx,
 } from "better-auth/api"
 import { setSessionCookie } from "better-auth/cookies"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
@@ -90,17 +91,10 @@ const knownPasskeysOnly = {
       {
         matcher: (ctx) => ctx.path === "/passkey/generate-authenticate-options",
         handler: createAuthMiddleware(async (ctx) => {
-          const options: unknown = ctx.context.returned
-          if (
-            typeof options !== "object" ||
-            options === null ||
-            !("challenge" in options) ||
-            ("allowCredentials" in options &&
-              Array.isArray(options.allowCredentials) &&
-              options.allowCredentials.length > 0)
-          ) {
-            return
-          }
+          // Signed in, Better Auth already sent the account's own passkeys.
+          if ((await getSessionFromCtx(ctx)) !== null) return
+          const options = ctx.context.returned
+          if (typeof options !== "object" || options === null) return
           const passkeys = await ctx.context.adapter.findMany<{
             credentialID: string
             transports?: string | null
