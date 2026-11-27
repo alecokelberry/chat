@@ -171,11 +171,13 @@ export function ChatSidebar({
         <SidebarDrawer
           open={open && phone === true}
           onOpenChange={(next, details) => {
-            // Escape in a row's rename field cancels the rename
-            // (chat-actions.tsx), not the drawer.
+            // Escape in a row being renamed (SidebarRowEdit, holding
+            // chat-actions.tsx's field) cancels the rename, not the drawer.
             if (
               details.reason === "escape-key" &&
-              details.event?.target instanceof HTMLInputElement
+              details.event?.target instanceof Element &&
+              details.event.target.closest("[data-slot=sidebar-row-edit]") !==
+                null
             )
               details.cancel()
             else setOpen(next)
