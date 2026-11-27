@@ -369,11 +369,12 @@ function SidebarItem({ className, ...props }: React.ComponentProps<"li">) {
 
 /** A chat row's 24px …, its menu's trigger, 6px from its end, with a
  *  rounded square behind it (the row's wash, stacked on the row's own)
- *  while it's hovered or its menu is open; a 40px invisible touch area on
- *  touch screens, where the open menu is a sheet and the row's wash alone
- *  marks its chat (no square on the …). The trigger is the button
- *  itself, not a Button inside it, so an agent sees one control per row's
- *  menu, not two. */
+ *  while it's hovered or its menu is open. An open menu marks its …
+ *  alone, never the whole row, on a computer and in the phone's sheet
+ *  alike, so a selected row keeps its own fill and the … shows one step
+ *  darker on it. A 40px invisible touch area on touch screens. The
+ *  trigger is the button itself, not a Button inside it, so an agent sees
+ *  one control per row's menu, not two. */
 function SidebarRowAction({
   className,
   ...props
@@ -382,7 +383,7 @@ function SidebarRowAction({
     <MenuTrigger
       data-slot="sidebar-row-action"
       className={cn(
-        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden select-none no-touch-callout group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden pointer-fine:hover:bg-sidebar-accent pointer-fine:data-open:bg-sidebar-accent [&>svg]:size-3.5 [&>svg]:shrink-0",
+        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden select-none no-touch-callout group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:bg-sidebar-accent data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden pointer-fine:hover:bg-sidebar-accent [&>svg]:size-3.5 [&>svg]:shrink-0",
         className
       )}
       {...props}
@@ -425,10 +426,11 @@ const sidebarRowVariants = cva(
         // A chat: its title only, 12px in and 8px at the end (36px while
         // its … shows), fading out at the end instead of an ellipsis. The
         // open chat (the link's aria-current) keeps the hover's wash and
-        // full ink, and so does a row while its menu is open.
+        // full ink; a row whose menu is open keeps its … showing, and the
+        // …'s own square marks it.
         // Show more: a chat row's place and inset, in muted ink.
         more: "ps-3 pe-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent",
-        chat: "ps-3 pe-2 group-focus-within/item:pe-9 group-hover/item:pe-9 group-has-data-open/item:bg-sidebar-accent group-has-data-open/item:pe-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground pointer-coarse:pe-9 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
+        chat: "ps-3 pe-2 group-focus-within/item:pe-9 group-hover/item:pe-9 group-has-data-open/item:pe-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground pointer-coarse:pe-9 [&>span]:min-w-0 [&>span]:flex-1 [&>span]:overflow-hidden [&>span]:mask-row-fade",
       },
     },
     defaultVariants: { variant: "chat" },
