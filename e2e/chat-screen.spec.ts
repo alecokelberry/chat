@@ -53,6 +53,37 @@ test.describe("on a phone", () => {
     expect((await page.getByRole("heading").boundingBox())?.y).toBe(before)
   })
 
+  test("text that wraps takes the composer's whole width, until it's cleared", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const field = page.getByRole("textbox", { name: "Message" })
+    const box = async (locator: ReturnType<Page["locator"]>) =>
+      (await locator.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 }
+    const attach = page.getByRole("button", { name: "Attach" })
+
+    // One line sits between the + and the model.
+    await field.fill("Hi")
+    expect((await box(field)).x).toBeGreaterThan((await box(attach)).x)
+
+    // Once it wraps, the text has a row of its own above the +, the model
+    // and Send, as wide as the pill inside its 12px.
+    await field.fill("What's the difference between these two pictures?")
+    const form = await box(page.locator("form"))
+    await expect(async () => {
+      const text = await box(field)
+      expect(text.width).toBe(form.width - 24 - 2)
+      expect(text.y + text.height).toBeLessThanOrEqual((await box(attach)).y)
+    }).toPass()
+    // It stays there when shorter text would fit beside them again…
+    await field.fill("What's the difference")
+    expect((await box(field)).width).toBe(form.width - 24 - 2)
+    // …and goes back once the text is cleared.
+    await field.fill("")
+    await expect(page.locator("form")).toHaveJSProperty("offsetHeight", 58)
+    expect((await box(field)).x).toBeGreaterThan((await box(attach)).x)
+  })
+
   test("the new chat sits like the archive's, and a tap doesn't ring the composer", async ({
     page,
   }) => {
