@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite"
 import { fc, it } from "@fast-check/vitest"
 import { beforeAll, expect, test } from "vitest"
 
-import { matchQuery } from "@/lib/chat/message-index"
+import { matchQuery, wordsOf } from "@/lib/chat/message-index"
 
 // Search's query against a real FTS5 index: D1 is SQLite, so the app's own
 // migrations run in Node's built-in SQLite, giving the same table, the
@@ -104,4 +104,67 @@ it.prop([
 test("finds café when cafe is typed", () => {
   const id = holding("a café near the station")
   expect(search("cafe")).toContain(id)
+})
+
+test("a question's attachments are found by their names, not their text", () => {
+  const question = holding(
+    wordsOf({
+      id: "q",
+      role: "user",
+      parts: [
+        {
+          type: "file",
+          mediaType: "image/jpeg",
+          filename: "zion-sunrise.jpg",
+          url: "data:image/jpeg;base64,AA==",
+        },
+        {
+          type: "data-document",
+          data: {
+            name: "Quarterly-report-v12.pdf",
+            mediaType: "application/pdf",
+            text: "Revenue rose in the northwind region",
+            cut: false,
+          },
+        },
+        { type: "text", text: "What changed?" },
+      ],
+    })
+  )
+  expect(search("sunrise")).toContain(question)
+  expect(search("quarterly report")).toContain(question)
+  expect(search("v12")).toContain(question)
+  expect(search("What changed")).toContain(question)
+  expect(search("northwind")).not.toContain(question)
+})
+
+test("a file name is found by the words inside a CamelCase or IMG4021 name", () => {
+  const question = holding(
+    wordsOf({
+      id: "q",
+      role: "user",
+      parts: [
+        {
+          type: "file",
+          mediaType: "image/jpeg",
+          filename: "IMG4021.jpg",
+          url: "data:image/jpeg;base64,AA==",
+        },
+        {
+          type: "data-document",
+          data: {
+            name: "PackingList.md",
+            mediaType: "text/plain",
+            text: "Water",
+            cut: false,
+          },
+        },
+      ],
+    })
+  )
+  expect(search("list")).toContain(question)
+  expect(search("packinglist")).toContain(question)
+  expect(search("4021")).toContain(question)
+  expect(search("img4021")).toContain(question)
+  expect(search("water")).not.toContain(question)
 })
