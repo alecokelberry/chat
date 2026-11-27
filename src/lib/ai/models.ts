@@ -2,10 +2,13 @@
 // picker's button), full name (its list), NVIDIA id and the
 // chat template switch that turns its thinking on or off. Super is the
 // default with thinking off; Ultra is the one that thinks hard. Shared by
-// the server (src/lib/ai) and the composer's picker, so it imports nothing.
+// the server (src/lib/ai) and the composer's picker, so it imports only a
+// tiny data reader.
 // A message records the model it was sent with in its metadata, which is
 // how a chat remembers its last one, and the browser's time zone, which
 // the model is told (src/lib/ai/index.ts).
+
+import { field } from "@/lib/field"
 
 export const MODELS = [
   {
@@ -52,10 +55,7 @@ type Messages = readonly { role: string; metadata?: unknown }[]
 /** A field of the last question's metadata, unchecked: metadata comes
  *  from the browser, so each reader below checks its own. */
 function lastAsked(messages: Messages, key: "model" | "timeZone"): unknown {
-  const metadata = messages.findLast((m) => m.role === "user")?.metadata
-  return typeof metadata === "object" && metadata !== null && key in metadata
-    ? Reflect.get(metadata, key)
-    : undefined
+  return field(messages.findLast((m) => m.role === "user")?.metadata, key)
 }
 
 /** The time zone the last question was sent from, if it names a real
