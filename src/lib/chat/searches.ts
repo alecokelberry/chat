@@ -1,6 +1,8 @@
-// What a reply's web searches show (thread.tsx, sources.tsx), read from its
-// webSearch tool parts (src/lib/ai/search.ts), which the agent saves with
-// the reply like any part. A chat's messages are data, so each field is
+// What a reply's web searches and page reads show (thread.tsx,
+// sources.tsx), read from its webSearch and readPage tool parts
+// (src/lib/ai/search.ts, read-page.ts), which the agent saves with the
+// reply like any part. A page read counts as a search that found that one
+// page, so it joins the step and the sources the same way. A chat's messages are data, so each field is
 // checked, and a result's address is kept only if it's http(s): it
 // becomes a link.
 import { field } from "@/lib/field"
@@ -8,6 +10,9 @@ import { field } from "@/lib/field"
 export type Source = { title: string; url: string; site: string }
 
 export type Search = {
+  /** A web search, or one page read. */
+  kind: "search" | "read"
+  /** What was searched for, or the address read. */
   query: string
   /** Still waiting for its results. */
   running: boolean
@@ -29,8 +34,8 @@ const isWebLink = (url: string) => {
   }
 }
 
-function resultsOf(output: unknown): Source[] {
-  const results = field(output, "results")
+function resultsOf(kind: Search["kind"], output: unknown): Source[] {
+  const results = kind === "read" ? [output] : field(output, "results")
   if (!Array.isArray(results)) return []
   return results.flatMap((result: unknown) => {
     const url = text(field(result, "url"))
@@ -40,16 +45,24 @@ function resultsOf(output: unknown): Source[] {
   })
 }
 
-/** A reply's searches, in the order it made them. */
+const KINDS: Record<string, Search["kind"]> = {
+  "tool-webSearch": "search",
+  "tool-readPage": "read",
+}
+
+/** A reply's searches and reads, in the order it made them. */
 export function searchesOf(message: { parts: readonly unknown[] }): Search[] {
   return message.parts.flatMap((part) => {
-    if (field(part, "type") !== "tool-webSearch") return []
-    // Past the cap, the model was told no: nothing was searched.
+    const kind = KINDS[text(field(part, "type"))]
+    if (kind === undefined) return []
+    // Past the cap, the model was told no: nothing was searched or read.
     if (field(field(part, "output"), "refused") !== undefined) return []
     const state = field(part, "state")
+    const input = field(part, "input")
     return [
       {
-        query: text(field(field(part, "input"), "query")),
+        kind,
+        query: text(field(input, kind === "read" ? "url" : "query")),
         running: state === "input-streaming" || state === "input-available",
         found: state === "output-available",
         error:
@@ -57,7 +70,7 @@ export function searchesOf(message: { parts: readonly unknown[] }): Search[] {
             ? text(field(part, "errorText")).slice(0, 200) ||
               "The search failed."
             : undefined,
-        results: resultsOf(field(part, "output")),
+        results: resultsOf(kind, field(part, "output")),
       },
     ]
   })
@@ -71,15 +84,21 @@ export function sourcesOf(searches: Search[]): Source[] {
   return [...bySite.values()]
 }
 
-/** The search step's label: "Searching the web…" while one runs, then
- *  how many sites it found, or why it found none. */
+/** The step's label: what runs while one does, then how many sites it
+ *  found, or why it found none. A reply that only read pages says so. */
 export function searchedLabel(searches: Search[], running: boolean) {
-  if (running) return "Searching the web…"
+  const reading = searches.every((search) => search.kind === "read")
+  if (running)
+    return searches.some((s) => s.running && s.kind === "read")
+      ? "Reading the page…"
+      : "Searching the web…"
   const sites = sourcesOf(searches).length
-  if (sites > 0) return `Searched · ${sites} ${sites === 1 ? "site" : "sites"}`
+  if (sites > 0) {
+    const counted = `${sites} ${sites === 1 ? "site" : "sites"}`
+    return reading ? `Read · ${counted}` : `Searched · ${counted}`
+  }
   if (searches.some((search) => search.error !== undefined))
-    return "Couldn't search the web"
-  return searches.some((search) => search.found)
-    ? "Searched · nothing found"
-    : "Search stopped"
+    return reading ? "Couldn't read the page" : "Couldn't search the web"
+  if (searches.some((search) => search.found)) return "Searched · nothing found"
+  return reading ? "Reading stopped" : "Search stopped"
 }

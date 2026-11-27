@@ -161,6 +161,9 @@ const searchPart = (i: number, query: string, sites: string[]) => ({
     })),
   },
 })
+/** A page read at an address with no spaces to break at. */
+const LONG_PAGE = `https://a-very-long-subdomain-name-for-testing.example.net/${"segment/".repeat(12)}?q=${"x".repeat(40)}`
+
 const SEARCH_PARTS = [
   searchPart(
     1,
@@ -174,6 +177,17 @@ const SEARCH_PARTS = [
     state: "output-error" as const,
     input: { query: "J" },
     errorText: "The web search failed, so nothing was found.",
+  },
+  {
+    type: "tool-readPage" as const,
+    toolCallId: "worst-read-1",
+    state: "output-available" as const,
+    input: { url: LONG_PAGE },
+    output: {
+      url: LONG_PAGE,
+      site: "a-very-long-subdomain-name-for-testing.example.net",
+      title: `${"A page title that will not stop ".repeat(5)}`,
+    },
   },
 ]
 
