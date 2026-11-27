@@ -6,7 +6,10 @@
 // reply, finished, stopped or failed (src/lib/chat/agent.ts): that turn's
 // question and reply, and it drops whatever the chat no longer holds, so
 // an edited question's old text and the replies an edit or Retry replaced
-// stop matching. Rows belong to their chat's row in the chat list, so
+// stop matching. A chat whose words were never all indexed (one from
+// before the index, or the tour, put back whole) is indexed whole instead:
+// on its next reply, or sooner, when Search opens and asks the agents of a
+// few such chats to (indexOlderChats, src/lib/chat/list.ts). Rows belong to their chat's row in the chat list, so
 // deleting a chat (or its user) deletes its text too.
 import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/d1"
@@ -66,14 +69,16 @@ const db = (d1: D1Database) => drizzle(d1)
 
 /** Brings the chat's text in the index up to `messages`, the whole chat:
  *  drops what it no longer holds, then writes `changed` (the turn's
- *  question and reply, or every message). Two statements whatever the
+ *  question and reply, or every message), and with `whole` marks the chat
+ *  indexed (src/lib/chat/store.ts). Two or three statements whatever the
  *  chat's length, the message list sent as JSON. If the chat's row is gone
  *  (deleted mid-reply), the write fails and nothing changes. */
 export async function indexMessages(
   d1: D1Database,
   { userId, id }: ChatOwner,
   messages: readonly UIMessage[],
-  changed: readonly UIMessage[] = messages
+  changed: readonly UIMessage[],
+  whole: boolean
 ) {
   const ids = JSON.stringify(messages.map((message) => message.id))
   const rows = JSON.stringify(
@@ -102,6 +107,15 @@ export async function indexMessages(
         set text = excluded.text where text is not excluded.text`
       )
       .bind(userId, id, rows),
+    ...(whole
+      ? [
+          d1
+            .prepare(
+              "update chat set indexed = 1 where userId = ?1 and id = ?2"
+            )
+            .bind(userId, id),
+        ]
+      : []),
   ])
 }
 

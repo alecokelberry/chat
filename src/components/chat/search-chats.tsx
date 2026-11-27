@@ -7,11 +7,12 @@
 // only the rows in view. From two letters, as typing pauses, chats whose
 // messages hold the words (src/lib/chat/message-index.ts) follow under
 // Messages, each with its matching line; title matches stay put while they
-// load, and a failure says so quietly under the list. Each result is a link to its chat, so Enter, a
+// load, and a failure says so quietly under the list. Each open also has
+// a few chats from before the index index themselves (indexOlderChats). Each result is a link to its chat, so Enter, a
 // click or a tap opens it (and a middle-click opens a tab); an agent's run
 // goes there too. Opening one closes Search, and so does Escape, at once,
 // even with text typed.
-import { useMemo, useState, type RefObject } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { useChatList } from "@/components/chat/chat-list"
@@ -43,7 +44,7 @@ import {
   type DialogController,
 } from "@/components/ui/dialog"
 import { groupChats } from "@/lib/chat/groups"
-import { findInMessages, QUERY_MAX } from "@/lib/chat/list"
+import { findInMessages, indexOlderChats, QUERY_MAX } from "@/lib/chat/list"
 import { marksOf } from "@/lib/chat/match-marks"
 import type { ChatSummary } from "@/lib/chat/store"
 
@@ -104,6 +105,19 @@ function SearchChats({ close }: { close: () => void }) {
     { minLength: 2 }
   )
   const { list, view, reveal } = useCommandWindow()
+  // Each open has a few chats from before the index index themselves;
+  // words already typed are searched again once they have.
+  const typedRef = useRef(query)
+  typedRef.current = query
+  const { reload } = found
+  useEffect(() => {
+    void indexOlderChats().then(
+      () => {
+        if (typedRef.current.trim().length >= 2) reload()
+      },
+      () => undefined
+    )
+  }, [reload])
   // A chat a title already matches isn't repeated; nor is one the list no
   // longer has (deleted since, or not in ?data=worst's made-up list).
   const words = useMemo<WordsItem[]>(() => {

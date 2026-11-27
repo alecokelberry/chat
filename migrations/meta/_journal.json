@@ -29,6 +29,13 @@
       "when": 1795793999580,
       "tag": "20261127154000_message_fts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795795393008,
+      "tag": "20261127160313_indexed",
+      "breakpoints": true
     }
   ]
 }
