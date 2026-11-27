@@ -234,14 +234,18 @@ function useIsDark() {
 }
 
 /** D flips the theme from anywhere signed in. ui-sdk leaves plain letters
- *  alone in text fields and pauses page shortcuts under a modal; an open
- *  menu isn't modal and takes D as type-ahead, so it holds the key too. */
+ *  alone in text fields and pauses page shortcuts under a modal. An open
+ *  menu takes D as type-ahead (a row's D is Delete), so it holds the key,
+ *  except the account menu (data-theme-menu): Theme lives there, and none
+ *  of its items starts with D. */
 function useThemeShortcut() {
   const toggle = useToggleTheme()
   useShortcut("d", toggle, {
     description: "Switch light and dark",
     when: () =>
-      document.querySelector('[role="menu"], [role="dialog"]') === null,
+      document.querySelector(
+        '[role="dialog"], [role="menu"]:not([data-theme-menu])'
+      ) === null,
   })
 }
 
