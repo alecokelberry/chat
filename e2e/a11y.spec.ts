@@ -102,10 +102,11 @@ for (const colorScheme of ["light", "dark"] as const) {
         page,
       }) => {
         await signInAsDev(page)
-        await pick(page, ["e2e/fixtures/small.jpg"])
-        await expect(
-          page.getByRole("list", { name: "Attached files" }).locator("img")
-        ).toHaveCount(1)
+        await pick(page, ["e2e/fixtures/small.jpg", "e2e/fixtures/notes.pdf"])
+        const attached = page.getByRole("list", { name: "Attached files" })
+        await expect(attached.locator("img")).toHaveCount(1)
+        // A document's chip, here and later in the question.
+        await expect(attached.locator("[data-slot=file-chip]")).toHaveCount(1)
         await scan(page)
 
         // The line under the composer when the model can't see images.

@@ -1,13 +1,16 @@
 // The composer's attachments (src/lib/chat/attachments.ts has the rules),
-// and a question's images in the thread. The + at the composer's start
-// opens a menu (a sheet on a phone) whose one row, "Add photos & files",
+// and a question's images and documents in the thread. The + at the
+// composer's start opens a menu (a sheet on a phone) whose one row, "Add photos & files",
 // opens the system picker; on an iPhone that offers the photo library,
 // the camera and Files. Pasting into the message or dropping anywhere on
 // the page (an overlay says "Drop to attach") adds files too. Each file
-// shows as a tile above the text, a spinner until its image is ready,
+// shows as a tile above the text, a spinner until it's ready (an image's
+// thumbnail, or a document's name and kind),
 // with ✕ to take it out; a file the rules turn away, or one that won't
-// decode, never joins, and a toast says why. A question shows its images
-// as a row of thumbnails above its bubble, and a tap opens one full size.
+// decode, never joins, and a toast says why. A PDF with no text (a scan)
+// stays, its chip saying "No text found", and Send waits until it's out. A question shows its images
+// as a row of thumbnails above its bubble, a tap opening one full size,
+// and its documents as chips.
 // With images attached and a model that can't see them (Ultra, Lightning),
 // Send waits and a line under the composer offers "Switch to Super".
 import { useRef, useState } from "react"
@@ -15,6 +18,7 @@ import type { FileUIPart } from "ai"
 import { ImageOffIcon, ImagePlusIcon, PlusIcon, XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { FileChip } from "@/components/ui/file-chip"
 import {
   createFileInputController,
   FileInput,
@@ -35,10 +39,14 @@ import {
 import {
   ACCEPT,
   AttachmentError,
-  imagePart,
+  NoTextError,
+  attachmentPart,
+  isImageFile,
+  type AttachmentPart,
   MAX_FILE_BYTES,
   MAX_FILES,
 } from "@/lib/chat/attachments"
+import type { DocumentData } from "@/lib/chat/documents"
 
 type FileRejection = Parameters<
   NonNullable<React.ComponentProps<typeof FileInput>["onReject"]>
@@ -47,7 +55,7 @@ type FileRejection = Parameters<
 type RejectReason = FileRejection["reasons"][number]
 
 const REASONS: Partial<Record<RejectReason, string>> = {
-  "file-type": "Only images can be attached",
+  "file-type": "Only images, PDFs and text files can be attached",
   "file-too-large": `Files can be up to ${MAX_FILE_BYTES / 1_000_000} MB`,
   "too-many-files": `Up to ${MAX_FILES} files a message`,
 }
@@ -63,7 +71,9 @@ function reasonFor({ file, reasons: [reason] }: FileRejection) {
  *  the file input's controller and handlers. */
 export function useAttachments() {
   const [files, setFiles] = useState<File[]>([])
-  const [ready, setReady] = useState(() => new Map<File, FileUIPart>())
+  const [ready, setReady] = useState(() => new Map<File, AttachmentPart>())
+  // Documents with no text: still attached, holding Send.
+  const [empty, setEmpty] = useState(() => new Set<File>())
   const [controller] = useState(createFileInputController)
 
   // The files attached right now, for a preparation that ends after its
@@ -77,16 +87,23 @@ export function useAttachments() {
     setReady(
       (parts) => new Map([...parts].filter(([file]) => value.includes(file)))
     )
+    setEmpty(
+      (files) => new Set([...files].filter((file) => value.includes(file)))
+    )
   }
 
   function prepare(file: File) {
-    imagePart(file).then(
+    attachmentPart(file).then(
       (part) => {
         if (attached.current.includes(file))
           setReady((parts) => new Map(parts).set(file, part))
       },
       (error: unknown) => {
         if (!attached.current.includes(file)) return
+        if (error instanceof NoTextError) {
+          setEmpty((files) => new Set(files).add(file))
+          return
+        }
         keep(attached.current.filter((other) => other !== file))
         toast.error(
           error instanceof AttachmentError ? error.message : "Can't attach it"
@@ -100,7 +117,8 @@ export function useAttachments() {
     controller,
     files,
     parts,
-    preparing: parts.length < files.length,
+    /** Send waits: a file is still being prepared, or has no text. */
+    waiting: parts.length < files.length,
     clear: () => keep([]),
     onValueChange: (value: File[], details: { added: readonly File[] }) => {
       keep(value)
@@ -111,8 +129,12 @@ export function useAttachments() {
       const reasons = new Set(rejected.map(reasonFor))
       reasons.forEach((reason) => toast.error(reason))
     },
-    /** The ready image for a file, for its tile. */
+    /** Whether any file is an image, ready or not. */
+    hasImages: files.some(isImageFile),
+    /** The ready part for a file, for its tile. */
     partFor: (file: File) => ready.get(file),
+    /** Whether a file turned out to have no text. */
+    hasNoText: (file: File) => empty.has(file),
   }
 }
 
@@ -191,7 +213,15 @@ export function AttachmentTiles({ attachments }: { attachments: Attachments }) {
           const part = attachments.partFor(file)
           return (
             <>
-              {part ? <img src={part.url} alt={file.name} /> : <Spinner />}
+              {attachments.hasNoText(file) ? (
+                <FileChip name={file.name} kind="No text found" />
+              ) : part === undefined ? (
+                <Spinner />
+              ) : part.type === "file" ? (
+                <img src={part.url} alt={file.name} />
+              ) : (
+                <FileChip name={file.name} kind={kindOf(part.data)} />
+              )}
               <FileInputItemRemove>
                 <XIcon aria-hidden />
               </FileInputItemRemove>
@@ -203,14 +233,23 @@ export function AttachmentTiles({ attachments }: { attachments: Attachments }) {
   )
 }
 
-/** A question's images: thumbnails above its bubble, each opening full
- *  size. */
-export function QuestionImages({ images }: { images: FileUIPart[] }) {
+/** A question's attachments above its bubble: its images as thumbnails,
+ *  each opening full size, then its documents as chips. */
+export function QuestionAttachments({
+  images,
+  documents,
+}: {
+  images: FileUIPart[]
+  documents: DocumentData[]
+}) {
   const [open, setOpen] = useState<FileUIPart | null>(null)
-  if (images.length === 0) return null
+  if (images.length === 0 && documents.length === 0) return null
   return (
     <>
-      <ul aria-label="Images" className="flex flex-wrap justify-end gap-2">
+      <ul
+        aria-label="Attached files"
+        className="flex flex-wrap items-end justify-end gap-2"
+      >
         {images.map((image, index) => (
           <li key={`${index}-${image.filename}`}>
             <Button
@@ -221,6 +260,11 @@ export function QuestionImages({ images }: { images: FileUIPart[] }) {
             >
               <Thumbnail url={image.url} />
             </Button>
+          </li>
+        ))}
+        {documents.map((document, index) => (
+          <li key={`${index}-${document.name}`}>
+            <FileChip name={document.name} kind={kindOf(document)} />
           </li>
         ))}
       </ul>
@@ -276,3 +320,7 @@ export function CantSeeImages({
     </>
   )
 }
+
+/** A document's kind, under its name. */
+const kindOf = (document: Pick<DocumentData, "mediaType">) =>
+  document.mediaType === "application/pdf" ? "PDF" : "Text"

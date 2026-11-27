@@ -12,7 +12,8 @@
 // the reply ends with an error and Retry too (src/lib/ai/silence.ts).
 // A question's images go to the model inline (only as data URLs, so the
 // server never fetches a link a message names), or, for a model that can't
-// see them, as "[image: name]" in their place.
+// see them, as "[image: name]" in their place. Its PDFs and text files
+// reach every model as text (src/lib/chat/documents.ts).
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 //
@@ -43,6 +44,7 @@ import {
 
 import { mockModel } from "@/lib/ai/mock"
 import { styleInstruction, type Customize } from "@/lib/ai/style"
+import { documentPrompt, isDocument } from "@/lib/chat/documents"
 import { lastModel, lastTimeZone, LIGHTNING } from "@/lib/ai/models"
 import { READ_LIMIT, readPage } from "@/lib/ai/read-page"
 import { SEARCH_LIMIT, SearchError, webSearch } from "@/lib/ai/search"
@@ -87,7 +89,13 @@ export async function streamReply(
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages), customize),
     messages: await convertToModelMessages(
-      messages.map((message) => imagesFor(message, chosen.seesImages))
+      messages.map((message) => imagesFor(message, chosen.seesImages)),
+      {
+        convertDataPart: (part) =>
+          isDocument(part)
+            ? { type: "text", text: documentPrompt(part.data) }
+            : undefined,
+      }
     ),
     tools: { webSearch: webSearch(), readPage: readPage() },
     // At most one step per search or read, and one more to answer.

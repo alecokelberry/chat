@@ -226,6 +226,28 @@ const IMAGE_PARTS = [
   ),
 ]
 
+/** Two documents with words: a long name that differs only at its end
+ *  from another, and a cut log. */
+const DOCUMENT_PARTS = [
+  ...[
+    "Quarterly-report-for-the-northwind-holdings-board-final-v12.pdf",
+    "Quarterly-report-for-the-northwind-holdings-board-final-v13.pdf",
+  ].map((name) => ({
+    type: "data-document" as const,
+    data: {
+      name,
+      mediaType: "application/pdf",
+      text: "Revenue rose.",
+      cut: false,
+    },
+  })),
+  {
+    type: "data-document" as const,
+    data: { name: "a.log", mediaType: "text/plain", text: "x", cut: true },
+  },
+  { type: "text" as const, text: "What changed between these?" },
+]
+
 /** `messages`, or the fixture's thread. */
 export function previewMessages(
   messages: UIMessage[],
@@ -257,5 +279,7 @@ export function previewMessages(
     },
     { id: "worst-5", role: "user", parts: IMAGE_PARTS },
     message("worst-6", "assistant", "Four images, one of them broken.", meta),
+    { id: "worst-7", role: "user", parts: DOCUMENT_PARTS },
+    message("worst-8", "assistant", "v13 adds a page.", meta),
   ]
 }

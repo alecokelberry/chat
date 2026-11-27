@@ -1,7 +1,7 @@
-// A question you sent: its images (attachments.tsx), its bubble on the end
-// side (none for images alone), and under it Edit and Copy (on hover or
-// focus; always on touch). Edit turns the bubble into a field holding
-// the question, the caret at its end: Enter or ✓ (Save) sends it,
+// A question you sent: its attachments (attachments.tsx), its bubble on
+// the end side (none for images alone), and under it Edit and Copy (on
+// hover or focus; always on touch). Edit turns the bubble into a field
+// holding the question, the caret at its end: Enter or ✓ (Save) sends it,
 // Shift+Enter starts a new line, and Escape or ✕ (Cancel) puts the bubble
 // back unchanged; either way focus returns to Edit. An empty or unchanged
 // question just closes. Sending replaces this question and everything
@@ -12,7 +12,8 @@ import { CheckIcon, PencilIcon, XIcon } from "lucide-react"
 
 import type { FileUIPart } from "ai"
 
-import { QuestionImages } from "@/components/chat/attachments"
+import type { DocumentData } from "@/lib/chat/documents"
+import { QuestionAttachments } from "@/components/chat/attachments"
 import { CopyAction, MessageAction } from "@/components/chat/message-action"
 import { MessageToolbar } from "@/components/ui/message-toolbar"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,12 +22,14 @@ import { cn } from "@/lib/utils"
 export function Question({
   text,
   images,
+  documents,
   busy,
   onEdit,
 }: {
   text: string
-  /** The images sent with it, shown above the bubble. */
+  /** The images and documents sent with it, shown above the bubble. */
   images: FileUIPart[]
+  documents: DocumentData[]
   /** A reply is streaming: editing waits for it. */
   busy: boolean
   /** Asks this question again with new words. */
@@ -60,7 +63,7 @@ export function Question({
 
   return (
     <div data-slot="message" className="group/message flex flex-col gap-2.5">
-      <QuestionImages images={images} />
+      <QuestionAttachments images={images} documents={documents} />
       {(editing || text !== "") && (
         <QuestionBubble
           // Room to rewrite a short question.

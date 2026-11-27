@@ -12,15 +12,15 @@
 // it stays there until the text is cleared, so it doesn't jump back and
 // forth as it fits and stops fitting. Flex order moves the text without
 // moving it in the page, so the caret stays put. Attached files sit as
-// tiles above the text, inside the pill; a question can be only files. Send waits until each is ready,
-// and while the model can't see them (attachments.tsx). A tap doesn't
-// ring the pill (the caret shows where you are): only keyboard focus does
-// (the keyboard variant, focus-modality.tsx).
+// tiles above the text, inside the pill; a question can be only files.
+// Send waits until each is ready, and while the model can't see them
+// (attachments.tsx). A tap doesn't ring the pill (the caret shows where
+// you are): only keyboard focus does (the keyboard variant,
+// focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
 import { useEffect, useRef, useState, type RefObject } from "react"
-import type { FileUIPart } from "ai"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -40,6 +40,7 @@ import {
 import { ModelPicker } from "@/components/chat/model-picker"
 import { cn } from "@/lib/utils"
 import { DEFAULT_MODEL, modelOf, type ModelKey } from "@/lib/ai/models"
+import type { AttachmentPart } from "@/lib/chat/attachments"
 
 export function Composer({
   focusOnMount = false,
@@ -53,7 +54,7 @@ export function Composer({
   busy?: boolean
   model: ModelKey
   onModelChange: (model: ModelKey) => void
-  onSend: (text: string, files: FileUIPart[]) => void
+  onSend: (text: string, files: AttachmentPart[]) => void
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
@@ -70,9 +71,8 @@ export function Composer({
   const attachments = useAttachments()
   const empty = message === "" && attachments.files.length === 0
   const chosen = modelOf(model)
-  // Every attachment is an image for now (#151 adds documents).
-  const blind = attachments.files.length > 0 && !chosen.seesImages
-  const ready = !empty && !attachments.preparing && !blind
+  const blind = attachments.hasImages && !chosen.seesImages
+  const ready = !empty && !attachments.waiting && !blind
 
   function send() {
     if (!ready || busy) return
