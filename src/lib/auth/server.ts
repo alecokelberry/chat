@@ -6,7 +6,11 @@
 // Sessions are a signed httpOnly cookie and a row in `session`.
 import { env } from "cloudflare:workers"
 import { betterAuth, type BetterAuthPlugin } from "better-auth"
-import { APIError, createAuthEndpoint } from "better-auth/api"
+import {
+  APIError,
+  createAuthEndpoint,
+  createAuthMiddleware,
+} from "better-auth/api"
 import { setSessionCookie } from "better-auth/cookies"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { passkey } from "@better-auth/passkey"
@@ -73,6 +77,49 @@ const devSignIn = {
   },
 } satisfies BetterAuthPlugin
 
+/** Signed out, sign-in asks the device only for passkeys this server knows
+ *  (allowCredentials), so a passkey left on the phone from a deleted row
+ *  isn't offered next to the real one. Better Auth sends that list only
+ *  when signed in; signed out it asks for any passkey for the site. The
+ *  list goes to anyone who opens /sign-in, which is fine here: credential
+ *  ids aren't secret and there's one account. */
+const knownPasskeysOnly = {
+  id: "known-passkeys-only",
+  hooks: {
+    after: [
+      {
+        matcher: (ctx) => ctx.path === "/passkey/generate-authenticate-options",
+        handler: createAuthMiddleware(async (ctx) => {
+          const options: unknown = ctx.context.returned
+          if (
+            typeof options !== "object" ||
+            options === null ||
+            !("challenge" in options) ||
+            ("allowCredentials" in options &&
+              Array.isArray(options.allowCredentials) &&
+              options.allowCredentials.length > 0)
+          ) {
+            return
+          }
+          const passkeys = await ctx.context.adapter.findMany<{
+            credentialID: string
+            transports?: string | null
+          }>({ model: "passkey" })
+          // None yet: let the device offer any, as before.
+          if (passkeys.length === 0) return
+          Object.assign(options, {
+            allowCredentials: passkeys.map((passkey) => ({
+              id: passkey.credentialID,
+              type: "public-key",
+              transports: passkey.transports?.split(","),
+            })),
+          })
+        }),
+      },
+    ],
+  },
+} satisfies BetterAuthPlugin
+
 function createAuth() {
   return betterAuth({
     database: env.DB,
@@ -132,6 +179,7 @@ function createAuth() {
           },
         },
       }),
+      knownPasskeysOnly,
       ...(env.DEV_SIGN_IN === "1" ? [devSignIn] : []),
       // Last, so it sees every cookie the others set.
       tanstackStartCookies(),

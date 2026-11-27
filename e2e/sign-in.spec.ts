@@ -6,7 +6,7 @@ import { expect, expectSignedInAs, test } from "./session"
 
 // Signing in (src/lib/auth): only a signed-in browser reaches Chat, the
 // first passkey needs the setup code, and the passkey then signs in. A
-// passkey this server doesn't know is removed from the device.
+// passkey this server doesn't know isn't offered.
 // Chromium's virtual authenticator stands in for Touch ID.
 
 async function addAuthenticator(page: Page) {
@@ -75,43 +75,36 @@ test("Dev signs in on this machine without a passkey", async ({ page }) => {
   await expectSignedInAs(page, "Dev")
 })
 
-test.describe(() => {
-  // The server answers the unknown passkey with a 401, and the browser
-  // logs it.
-  test.use({ allowedProblems: [/status of 401/] })
-
-  test("a passkey this server doesn't know is removed from the device", async ({
-    page,
-  }) => {
-    // A passkey for this site that no account here has: left over from an
-    // older database, or one re-added since.
-    const { cdp, authenticatorId } = await addAuthenticator(page)
-    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" })
-    await cdp.send("WebAuthn.addCredential", {
-      authenticatorId,
-      credential: {
-        credentialId: randomBytes(16).toString("base64"),
-        isResidentCredential: true,
-        rpId: "localhost",
-        privateKey: privateKey
-          .export({ format: "der", type: "pkcs8" })
-          .toString("base64"),
-        userHandle: randomBytes(16).toString("base64"),
-        signCount: 0,
-      },
-    })
-
-    await page.goto("/sign-in")
-    await page.getByRole("button", { name: "Sign in with passkey" }).click()
-    await expect(page.getByRole("alert")).toHaveText(
-      "That passkey was out of date, so it's been removed. Try again."
-    )
-    await expect
-      .poll(
-        async () =>
-          (await cdp.send("WebAuthn.getCredentials", { authenticatorId }))
-            .credentials.length
-      )
-      .toBe(0)
+test("a passkey this server doesn't know isn't offered", async ({
+  page,
+  context,
+}) => {
+  // A passkey for this site that no account here has: left over from an
+  // older database, or one re-added since. It sits on the device next to
+  // the owner's real one.
+  const { cdp, authenticatorId } = await addAuthenticator(page)
+  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" })
+  await cdp.send("WebAuthn.addCredential", {
+    authenticatorId,
+    credential: {
+      credentialId: randomBytes(16).toString("base64"),
+      isResidentCredential: true,
+      rpId: "localhost",
+      privateKey: privateKey
+        .export({ format: "der", type: "pkcs8" })
+        .toString("base64"),
+      userHandle: randomBytes(16).toString("base64"),
+      signCount: 0,
+    },
   })
+  await page.goto(`/setup#${E2E_SETUP_CODE}`)
+  await page.getByRole("button", { name: "Add a passkey" }).click()
+  await expectSignedInAs(page, "Alec")
+
+  // Signed out, sign-in asks only for passkeys the server knows, so the
+  // device uses the real one without asking which.
+  await context.clearCookies()
+  await page.goto("/sign-in")
+  await page.getByRole("button", { name: "Sign in with passkey" }).click()
+  await expectSignedInAs(page, "Alec")
 })
