@@ -455,8 +455,18 @@ test.describe("a chat wiped for good", () => {
     await menu(page).getByRole("menuitem", { name: "Delete" }).click()
     await expect(rowFor(page, path)).toHaveCount(0)
     await expect(toasts(page)).toContainText("Chat deleted")
-    // As if it timed out, without the wait.
+    // As if it timed out, without the wait. The delete succeeds, so no
+    // toast says it failed: the agent's wipe once beat its own answer.
+    const deleted = page.waitForResponse(
+      (response) =>
+        response.url().includes("/_serverFn/") &&
+        response.request().method() === "POST"
+    )
     await page.evaluate(() => window.toast.dismiss())
+    expect((await deleted).ok()).toBe(true)
+    // The wipe waits until the delete has answered: run at once, it can
+    // end the agent before its answer leaves, and the delete then fails.
+    expect(await savedMessages(page, id)).toBe(2)
     await expect(toasts(page)).toHaveCount(0)
 
     await expect.poll(() => savedMessages(page, id)).toBe(0)

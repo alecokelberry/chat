@@ -17,10 +17,13 @@
 // load the list again; a rename or pin from the menu asks it to as well
 // (chatsChanged). Deleting the chat from the menu ends with deleteChat:
 // its tabs are told to leave, and a schedule (a durable alarm, retried if
-// it fails) runs the SDK's destroy(), which wipes the agent's storage
-// (messages, stream buffers, everything) and evicts it. Not destroy()
-// itself in the RPC: it aborts the agent right after, which can beat the
-// RPC's answer and make the Worker see a failure.
+// it fails) runs the SDK's destroy() at least a second later, which wipes
+// the agent's storage (messages, stream buffers, everything) and evicts it.
+// destroy() aborts the agent, so it must not run before the RPC's answer
+// has left: in the RPC itself, or from an alarm due at once, it can beat
+// that answer, and the Worker then reports a delete that worked as failed.
+// The SDK's own deferred destroy waits a second for the same reason; the
+// scheduler rounds a delay down to a whole second, so it takes 2 to be sure.
 //
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
@@ -49,6 +52,11 @@ const textOf = (message: UIMessage | undefined) =>
     .map((part) => (part.type === "text" ? part.text : ""))
     .join("")
 
+/** Seconds from a delete to its wipe: long enough for the delete's
+ *  answer to reach the Worker first. The scheduler rounds the due time
+ *  down to a whole second, so 2 waits 1 to 2 seconds. */
+const WIPE_AFTER = 2
+
 export class ChatAgent extends AIChatAgent<Env> {
   // The name (user id and chat id) goes to that user's own browser only.
   static options = { sendIdentityOnConnect: true }
@@ -67,12 +75,13 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   /** Tells this chat's open tabs to leave, then deletes everything the
-   *  agent keeps, for good, as soon as the schedule runs. An RPC method,
+   *  agent keeps, for good, once the schedule runs at least a second later (see
+   *  the top of this file). An RPC method,
    *  for the Worker (src/lib/chat/list.ts), once it has deleted the
    *  chat's row. */
   async deleteChat() {
     this.broadcast(CHAT_DELETED)
-    await this.schedule(0, "wipe")
+    await this.schedule(WIPE_AFTER, "wipe")
   }
 
   /** Replaces everything the chat holds with `messages`, stopping any
