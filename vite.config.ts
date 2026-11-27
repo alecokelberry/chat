@@ -10,15 +10,7 @@ import { defaultClientConditions, defineConfig } from "vite"
 // "[ui-sdk]" warning on misuse, which e2e/session.ts fails the test on.
 // React reads NODE_ENV instead and stays a production build. Only the
 // browser bundle changes: the Worker, and what deploys, are untouched.
-// VITE_BUILD names the commit a build came from (Workers Builds sets
-// WORKERS_CI_COMMIT_SHA), for the status bar readout
-// (components/ui/status-bar-debug.tsx).
 export default defineConfig(({ mode }) => ({
-  define: {
-    "import.meta.env.VITE_BUILD": JSON.stringify(
-      (process.env.WORKERS_CI_COMMIT_SHA ?? "local").slice(0, 7)
-    ),
-  },
   resolve: { tsconfigPaths: true },
   environments:
     mode === "test"

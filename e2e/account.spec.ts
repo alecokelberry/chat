@@ -15,7 +15,7 @@ import { statusBar, watchStatusBar } from "./status-bar"
 // no flash on a reload (the status bar's color included), Sign out landing
 // on /sign-in, and on a phone a sheet that opens at once, with iOS's status
 // bar (as e2e/status-bar.ts models it) following a Theme picked inside the
-// drawer.
+// drawer, in Safari and in the Home Screen app, with no reload.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
 const accountRow = (page: Page) =>
@@ -23,7 +23,6 @@ const accountRow = (page: Page) =>
 const menu = (page: Page) => page.getByRole("menu")
 const LIGHT = "rgb(249, 248, 247)"
 const DARK = "rgb(30, 29, 29)"
-const LIGHT_HEX = "#f9f8f7"
 const DARK_HEX = "#1e1d1d"
 
 test.describe("on a computer", () => {
@@ -140,41 +139,29 @@ test.describe("on a computer", () => {
       .toMatchObject({ value: "dark" })
   })
 
-  test("in the Home Screen app, a theme change reloads the page", async ({
+  test("in the Home Screen app, a theme change recolors the bar with no reload", async ({
     page,
   }) => {
-    // Its status bar is drawn from the color the page loaded with.
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "standalone", { value: true })
     })
+    await watchStatusBar(page)
     await page.goto("/sign-in")
     await expect(page.getByRole("button", { name: "Dark theme" })).toBeVisible()
+    await expect.poll(() => statusBar(page)).toBe(LIGHT)
     const loads: string[] = []
     page.on("load", () => loads.push(page.url()))
     await page.getByRole("button", { name: "Dark theme" }).click()
-    await expect.poll(() => loads.length).toBe(1)
     await expect(page.locator("html")).toHaveAttribute(
       "data-color-scheme",
       "dark"
     )
-    const statusBar = page.locator('meta[name="theme-color"]')
-    await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
-    // Once, not again and again: the reloaded page leaves it be.
-    await page.waitForTimeout(1000)
-    expect(loads).toHaveLength(1)
-
-    // Under System, the phone switching to dark doesn't reload: the next
-    // launch picks it up, and a draft or a streaming reply isn't lost.
-    await page.evaluate(() => localStorage.setItem("theme", "system"))
-    await page.reload()
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-color-scheme",
-      "system"
-    )
-    const settled = loads.length
-    await page.emulateMedia({ colorScheme: "dark" })
-    await page.waitForTimeout(1000)
-    expect(loads).toHaveLength(settled)
+    await expect.poll(() => statusBar(page)).toBe(DARK)
+    // The next launch starts dark too: theme-color is what it reads first.
+    const statusBarTag = page.locator('meta[name="theme-color"]')
+    await expect(statusBarTag.first()).toHaveAttribute("content", DARK_HEX)
+    await page.waitForTimeout(500)
+    expect(loads).toHaveLength(0)
   })
 
   test("the sign-in switch flips the theme and keeps it after a reload", async ({
@@ -296,6 +283,10 @@ test.describe("on a phone", () => {
     page,
   }) => {
     await recordStartTimes(page)
+    // iOS Safari: navigator.standalone is there, and false.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "standalone", { value: false })
+    })
     await watchStatusBar(page)
     await signInAsDev(page)
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
@@ -337,7 +328,8 @@ test.describe("on a phone", () => {
     await expect(theme).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
 
     // iOS 26 colors the bar from the top edge, and with the drawer over it
-    // keeps the color it had: the strip has it take the new one.
+    // keeps the color it had: the strip, shown for a frame with the drawer
+    // and menu hidden, has it take the new one.
     await expect.poll(() => statusBar(page)).toBe(DARK)
     await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
     await expect(menu(page)).toBeVisible()
@@ -358,31 +350,20 @@ test.describe("on a phone", () => {
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
   })
 
-  test("in the Home Screen app, Theme in the drawer reloads at once, still open", async ({
+  test("in the Home Screen app, Theme in the drawer recolors the bar with no reload", async ({
     page,
   }) => {
-    // The reload that recolors the bar happens on the tap, and the new
-    // page comes back with the drawer and menu open and the draft kept.
+    // The bar follows the tap at once, with the drawer and menu still
+    // open and the draft untouched: the page never loads again.
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "standalone", { value: true })
-      // When the page shows again after the reload, to tell the reopened
-      // drawer and menu apart from the 1.5 s cap.
-      const watch = () => {
-        const root = document.querySelector("html")
-        if (root !== null && !root.hasAttribute("data-restoring"))
-          return void Object.assign(window, { shownAt: performance.now() })
-        requestAnimationFrame(watch)
-      }
-      watch()
-      addEventListener("pagereveal", (event) => {
-        Object.assign(window, { crossfaded: event.viewTransition !== null })
-      })
     })
+    await watchStatusBar(page)
     await signInAsDev(page)
+    await expect.poll(() => statusBar(page)).toBe(LIGHT)
     await page.getByRole("textbox", { name: "Message" }).fill("half a thought")
     const loads: string[] = []
     page.on("load", () => loads.push(page.url()))
-    const url = page.url()
 
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     const drawer = page.getByRole("dialog", { name: "Chats" })
@@ -398,124 +379,28 @@ test.describe("on a phone", () => {
     const box = await theme.boundingBox()
     if (box === null) throw new Error("Theme has no box")
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-    await expect.poll(() => loads.length).toBe(1)
-    expect(page.url()).toBe(url)
-
-    // The new page: dark from the server, with what was open open again,
-    // and shown once it is.
     await expect(page.locator("html")).toHaveAttribute(
       "data-color-scheme",
       "dark"
     )
-    // The server wrote the dark color into the page iOS reads it from.
-    const html = await (await page.request.get(url)).text()
-    expect(html).toContain('content="#1e1d1d"')
-    expect(html).not.toContain('content="#f9f8f7"')
+    await expect.poll(() => statusBar(page)).toBe(DARK)
+    // The drawer and menu were hidden for the one frame the strip showed.
+    await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
     await expect(drawer).toBeVisible()
     await expect(menu(page)).toBeVisible()
-    await expect(page.locator("html")).not.toHaveAttribute("data-restoring")
-    expect(
-      await page.evaluate(() => ("shownAt" in window ? window.shownAt : 0))
-    ).toBeLessThan(1200)
-    await expect(page.locator("body")).toHaveCSS("visibility", "visible")
-    await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
-      "half a thought"
-    )
-    // A real reload, the kind iOS recolors the bar on, with no crossfade:
-    // a view transition's full-screen layer makes iOS keep the old color.
-    expect(
-      await page.evaluate(() =>
-        performance
-          .getEntriesByType("navigation")
-          .map((entry) => ("type" in entry ? entry.type : ""))
-          .join()
-      )
-    ).toBe("reload")
-    expect(
-      await page.evaluate(() => "crossfaded" in window && window.crossfaded)
-    ).toBe(false)
+    await expect(drawer).toHaveCSS("visibility", "visible")
 
-    // Theme again, from the reopened menu: back to light, once more.
-    await menu(page).getByRole("menuitem", { name: "Theme" }).click()
-    await expect.poll(() => loads.length).toBe(2)
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-color-scheme",
-      "light"
-    )
-    await expect(drawer).toBeVisible()
-    await page.waitForTimeout(1000)
-    expect(loads).toHaveLength(2)
-
-    // Closing them afterwards is an ordinary close, with no reload.
+    // Back to light from the same menu, then closing both: still no load.
+    await theme.click()
+    await expect.poll(() => statusBar(page)).toBe(LIGHT)
     await page.keyboard.press("Escape")
     await expect(menu(page)).toBeHidden()
     await page.keyboard.press("Escape")
     await expect(drawer).toBeHidden()
-    await page.waitForTimeout(600)
-    expect(loads).toHaveLength(2)
-  })
-
-  // A temporary readout for the status bar bug (status-bar-debug.tsx).
-  test("the status bar readout shows from the address or three taps", async ({
-    page,
-  }) => {
-    await signInAsDev(page)
-    const readout = page.locator('[data-slot="status-bar-debug"]')
-    await expect(readout).toHaveCount(0)
-    await page.goto("/?debug=bar")
-    await expect(readout).toContainText("build local")
-    await expect(readout).toContainText("top edge:")
-    await page.goto("/?debug=off")
-    await expect(readout).toHaveCount(0)
-
-    await page.getByRole("button", { name: "Open sidebar" }).tap()
-    const mark = page
-      .getByRole("dialog", { name: "Chats" })
-      .locator("[data-debug-taps]")
-    for (let i = 0; i < 3; i++) await mark.tap()
-    await expect(readout).toContainText("theme system")
-  })
-
-  // Each trial flips one live input iOS might color the bar from, without
-  // a reload, so Alec can watch which (if any) moves the bar.
-  test("the readout's trials flip one input each, with no reload", async ({
-    page,
-  }) => {
-    await signInAsDev(page)
-    await page.goto("/?debug=bar")
-    const readout = page.locator('[data-slot="status-bar-debug"]')
-    const colors = () =>
-      page.evaluate(() =>
-        [
-          ...document.querySelectorAll<HTMLMetaElement>(
-            'meta[name="theme-color"]'
-          ),
-        ].map((m) => `${m.content}|${m.media}`)
-      )
-    const before = await colors()
-    const loaded = await page.evaluate(() => performance.timeOrigin)
-
-    // In place: same tags, new content.
-    const tag = await page.evaluateHandle(() =>
-      document.querySelector('meta[name="theme-color"]')
+    expect(await statusBar(page)).toBe(LIGHT)
+    await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
+      "half a thought"
     )
-    await readout.getByRole("button", { name: "Edit tags" }).tap()
-    expect(await tag.evaluate((m) => m?.isConnected)).toBe(true)
-    expect(await colors()).toEqual(
-      before.map((c) => c.replace(LIGHT_HEX, DARK_HEX))
-    )
-    await expect(readout).toContainText("tried tags dark")
-
-    // One tag with no media query in place of the pair.
-    await readout.getByRole("button", { name: "One tag" }).tap()
-    expect(await colors()).toEqual([`${LIGHT_HEX}|`])
-    await expect(readout).toContainText("tried one light")
-
-    // The page's own background.
-    await readout.getByRole("button", { name: "Page color" }).tap()
-    await expect(page.locator("html")).toHaveCSS("background-color", DARK)
-    await expect(readout).toContainText("tried page dark")
-
-    expect(await page.evaluate(() => performance.timeOrigin)).toBe(loaded)
+    expect(loads).toHaveLength(0)
   })
 })
