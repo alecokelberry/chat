@@ -36,6 +36,7 @@ import { ReplyActions } from "@/components/chat/reply-actions"
 import { Sources } from "@/components/chat/sources"
 import { Button } from "@/components/ui/button"
 import { ReplyStep } from "@/components/ui/reply-step"
+import { imagesOf } from "@/lib/chat/attachments"
 import { answeredBy, thoughtFor } from "@/lib/chat/reply-metadata"
 import {
   searchedLabel,
@@ -112,6 +113,7 @@ export function Thread({
           <MessageScrollerItem key={message.id} anchor>
             <Question
               text={textOf(message)}
+              images={imagesOf(message)}
               busy={busy}
               onEdit={(text) => onEdit(message.id, text)}
             />

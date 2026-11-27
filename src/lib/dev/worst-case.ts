@@ -191,6 +191,37 @@ const SEARCH_PARTS = [
   },
 ]
 
+/** An image a question could carry (src/lib/chat/attachments.ts): a
+ *  `width` × `height` SVG, or bytes that won't decode for `broken`. */
+const image = (name: string, width: number, height: number) => ({
+  type: "file" as const,
+  mediaType: "image/jpeg",
+  filename: name,
+  url:
+    width === 0
+      ? "data:image/jpeg;base64,bm90IGFuIGltYWdl"
+      : `data:image/svg+xml,${encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#5b7bc9"/><circle cx="50%" cy="50%" r="${Math.min(width, height) / 3}" fill="#f2c94c"/></svg>`
+        )}`,
+})
+
+/** Four images and no words: a panorama, a tall screenshot, a 1-pixel
+ *  image and one that won't decode, with long and non-Latin names. */
+const IMAGE_PARTS = [
+  image(
+    "IMG_20261127_183412_HDR_panorama_from_the_top_of_the_hill.jpeg",
+    1600,
+    120
+  ),
+  image(
+    "Screenshot 2026-11-27 at 18.34.12 (very long scrolling capture).png",
+    120,
+    1600
+  ),
+  image("王秀英の写真.jpg", 1, 1),
+  image("broken.jpg", 0, 0),
+]
+
 /** `messages`, or the fixture's thread. */
 export function previewMessages(
   messages: UIMessage[],
@@ -220,5 +251,7 @@ export function previewMessages(
       }),
       parts: [...SEARCH_PARTS, { type: "text", text: "Short answer: 🦊" }],
     },
+    { id: "worst-5", role: "user", parts: IMAGE_PARTS },
+    message("worst-6", "assistant", "Four images, one of them broken.", meta),
   ]
 }

@@ -185,6 +185,7 @@
   --spacing-dialog-list: 360px; /* Search's list beside its preview */
   --spacing-dialog-top: 12dvh; /* a dialog's top, so its height changes downward */
   --spacing-dialog-height: 76dvh; /* the tallest a dialog gets */
+  --spacing-image-viewer: 60dvh; /* the tallest an image in the viewer gets */
 }
 
 :root {
@@ -547,6 +548,10 @@
 /* A longer fade (56px) for a list that scrolls behind a raised row. */
 @utility fade-size-long {
   --fade-size: 3.5rem;
+}
+/* A sideways row that scrolls without a scrollbar (attachment tiles). */
+@utility scrollbar-none {
+  scrollbar-width: none;
 }
 @utility scroll-fade-x {
   mask-image: linear-gradient(

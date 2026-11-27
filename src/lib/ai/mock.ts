@@ -23,7 +23,9 @@
 // about ten seconds in all, for a test that must still catch it mid-reply
 // after a reload or a second tab opens, even on a slow runner. One with
 // "(backwards <word>)" gets that word spelt backwards in its reply, so a
-// test has a word only the reply holds (Search's message matches).
+// test has a word only the reply holds (Search's message matches). A
+// question with images gets "Saw N images." after the opening, so a test
+// sees what reached the model.
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
 //
@@ -113,12 +115,17 @@ function backwards(message: string) {
 }
 
 /** The mock's reply to a message (wordsOf splits it for streaming). */
-const replyTo = (message: string, modelId: string, thinking: boolean) =>
+const replyTo = (
+  message: string,
+  modelId: string,
+  thinking: boolean,
+  images: number
+) =>
   message.includes("long code")
     ? LONG_CODE_REPLY
     : message.includes("markdown")
       ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${backwards(message)}${REPLY}`
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${sawImages(images)}${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -306,6 +313,7 @@ function askedOf(prompt: Prompt) {
       .length
   return {
     message: textOf(prompt[at]),
+    images: imagesIn(prompt[at]),
     calls: { webSearch: called("webSearch"), readPage: called("readPage") },
     failed: parts.some(
       (part) =>
@@ -321,6 +329,18 @@ const textOf = (message: Prompt[number] | undefined) =>
         .map((part) => (part.type === "text" ? part.text : ""))
         .join("")
     : ""
+
+/** How many images a user message carries. */
+const imagesIn = (message: Prompt[number] | undefined) =>
+  message?.role === "user"
+    ? message.content.filter(
+        (part) => part.type === "file" && part.mediaType.startsWith("image/")
+      ).length
+    : 0
+
+/** What the reply says it was sent, besides words: "Saw 2 images. " */
+const sawImages = (images: number) =>
+  images === 0 ? "" : `Saw ${images} image${images === 1 ? "" : "s"}. `
 
 /** How many searches a message asks for: none without "search". */
 const searchesWanted = (message: string) =>
@@ -433,7 +453,10 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       const bursty = message.includes("burst")
       const words = bursty
         ? BURSTS
-        : wordsOf(afterTools(asked) ?? replyTo(message, modelId, thinking))
+        : wordsOf(
+            afterTools(asked) ??
+              replyTo(message, modelId, thinking, asked.images)
+          )
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
         stream: simulateReadableStream({

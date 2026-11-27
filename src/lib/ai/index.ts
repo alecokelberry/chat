@@ -10,6 +10,8 @@
 // second refusal ends the reply with an error the chat shows with Retry.
 // When NVIDIA goes quiet for 30 s, before the first word or between two,
 // the reply ends with an error and Retry too (src/lib/ai/silence.ts).
+// A question's images go to the model inline (only as data URLs, so the
+// server never fetches a link a message names).
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 //
@@ -77,7 +79,7 @@ export async function streamReply(
   return streamText({
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages)),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(messages.map(inlineImagesOnly)),
     tools: { webSearch: webSearch(), readPage: readPage() },
     // At most one step per search or read, and one more to answer.
     stopWhen: isStepCount(SEARCH_LIMIT + READ_LIMIT + 1),
@@ -94,6 +96,18 @@ export async function streamReply(
     maxOutputTokens: 16_384,
     providerOptions: { nvidia: { chat_template_kwargs: chosen.chatTemplate } },
   })
+}
+
+/** A message with only the attachments a question can carry: images
+ *  inline as data URLs (src/lib/chat/attachments.ts). Any other file
+ *  part, like a link the AI SDK would fetch from the server, is dropped. */
+function inlineImagesOnly(message: UIMessage): UIMessage {
+  return {
+    ...message,
+    parts: message.parts.filter(
+      (part) => part.type !== "file" || part.url.startsWith("data:image/")
+    ),
+  }
 }
 
 /** The tools a reply may still call: each until it has been called its

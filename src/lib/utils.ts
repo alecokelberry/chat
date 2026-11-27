@@ -19,6 +19,7 @@ export const cn = createCn({
         "dialog-top",
         "dialog-list",
         "dialog-height",
+        "image-viewer",
       ],
       radius: ["item", "overlay", "composer"],
       container: ["composer", "signin", "dialog", "dialog-wide"],

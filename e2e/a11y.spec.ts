@@ -6,7 +6,8 @@ import { expect, greeting, send, signInAsDev, test } from "./session"
 // An accessibility scan (axe-core) of the main screens, in light and dark
 // at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
 // model picker, the chat list's drawer (at 390), a row's menu, the
-// account menu open, and Search open with a query (its preview beside, at
+// account menu open, attachments (tiles, a question's images and the
+// viewer), and Search open with a query (its preview beside, at
 // 1440) and a result's menu. It fails on serious or
 // critical WCAG 2.2 AA problems, and says which rule and which elements.
 // A new screen joins the list in `screens` when it lands (DESIGN.md ›
@@ -83,6 +84,30 @@ for (const colorScheme of ["light", "dark"] as const) {
 
         await list.getByRole("button", { name: "Dev", exact: true }).click()
         await expect(page.getByRole("menu")).toBeVisible()
+        await scan(page)
+      })
+
+      test("attachments: tiles, a question's images and the viewer", async ({
+        page,
+      }) => {
+        await signInAsDev(page)
+        await page.getByRole("button", { name: "Attach" }).click()
+        const chooser = page.waitForEvent("filechooser")
+        await page.getByRole("menuitem", { name: "Add photos & files" }).click()
+        await (await chooser).setFiles(["e2e/fixtures/small.jpg"])
+        await expect(
+          page.getByRole("list", { name: "Attached files" }).locator("img")
+        ).toHaveCount(1)
+        await scan(page)
+
+        await send(page, "What's this?")
+        await expect(
+          page.getByRole("article", { name: "Reply" })
+        ).toContainText("Done.", { timeout: 15_000 })
+        await scan(page)
+
+        await page.getByRole("button", { name: "View small.jpg" }).click()
+        await expect(page.getByRole("dialog")).toBeVisible()
         await scan(page)
       })
 

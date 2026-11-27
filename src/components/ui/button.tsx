@@ -55,6 +55,10 @@ const buttonVariants = cva(
         // ✕ and ✓ beside a field being edited: a 24px pill, 14px glyph, a
         // 32px invisible touch area (40px on touch screens).
         edit: "size-6 after:absolute after:-inset-1 pointer-coarse:after:-inset-2 [&_svg:not([class*='size-'])]:size-3.5",
+        // A question's image (attachments.tsx): a 64px tile (80px from
+        // sm) with 12px corners and a hairline, the image filling it.
+        thumbnail:
+          "size-16 overflow-hidden rounded-xl border-border sm:size-20 [&>img]:size-full [&>img]:object-cover",
         // The variant brings its own size (prompt).
         none: "",
       },

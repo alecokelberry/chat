@@ -5,14 +5,17 @@
 // the choice, so an edited question is answered by it too).
 //
 // Grok's one-row pill (the archived Chat's): 58px tall for one line, 12px
-// in, 29px corners, the text 20px from the start, then the model and a
-// 32px Send at the end; longer text grows the row and they stay on its
-// last line. A tap doesn't change it (the caret shows where you are): only
+// in, 29px corners, the + (attachments.tsx) at the start, then the text,
+// the model and a 32px Send at the end; longer text grows the row and they
+// stay on its last line. Attached files sit as tiles above the row, inside
+// the pill; a question can be only files, and Send waits until each is
+// ready. A tap doesn't change it (the caret shows where you are): only
 // keyboard focus rings it (the keyboard variant, focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
 import { useEffect, useRef, useState } from "react"
+import type { FileUIPart } from "ai"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -22,6 +25,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  AttachMenu,
+  AttachmentsInput,
+  AttachmentTiles,
+  useAttachments,
+} from "@/components/chat/attachments"
 import { ModelPicker } from "@/components/chat/model-picker"
 import type { ModelKey } from "@/lib/ai/models"
 
@@ -37,7 +46,7 @@ export function Composer({
   busy?: boolean
   model: ModelKey
   onModelChange: (model: ModelKey) => void
-  onSend: (text: string) => void
+  onSend: (text: string, files: FileUIPart[]) => void
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
@@ -49,61 +58,74 @@ export function Composer({
     if (focusAtMount.current) field.current?.focus()
   }, [])
 
+  const attachments = useAttachments()
+  const empty = message === "" && attachments.files.length === 0
+  const ready = !empty && !attachments.preparing
+
   function send() {
-    if (message === "" || busy) return
-    onSend(message)
+    if (!ready || busy) return
+    onSend(message, attachments.parts)
     setText("")
+    attachments.clear()
   }
 
   return (
-    <form
-      className="flex items-end gap-1 rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
-      onSubmit={(event) => {
-        event.preventDefault()
-        send()
-      }}
-    >
-      <Textarea
-        ref={field}
-        aria-label="Message"
-        placeholder="Ask anything…"
-        rows={1}
-        autoResize
-        submitShortcut="enter"
-        value={text}
-        onValueChange={setText}
-      />
-      <ModelPicker value={model} onValueChange={onModelChange} />
-      {busy ? (
-        <Tooltip type="label">
-          <TooltipTrigger
-            render={<Button variant="stop" size="circle" onClick={onStop} />}
-          >
-            <SquareIcon fill="currentColor" />
-          </TooltipTrigger>
-          <TooltipContent>Stop</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Tooltip type="label">
-          <TooltipTrigger
-            render={
-              <Button
-                type="submit"
-                variant="send"
-                size="circle"
-                disabled={message === ""}
-                // Still focusable, so its tooltip reaches keyboards too
-                // (ui-sdk's Tooltip docs, Disabled buttons).
-                focusableWhenDisabled
-                data-agent-confirm="Sends this message to the model"
-              />
-            }
-          >
-            <ArrowUpIcon />
-          </TooltipTrigger>
-          <TooltipContent>Send</TooltipContent>
-        </Tooltip>
-      )}
-    </form>
+    <AttachmentsInput attachments={attachments} pasteInto={() => field.current}>
+      <form
+        className="flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
+        onSubmit={(event) => {
+          event.preventDefault()
+          send()
+        }}
+      >
+        <AttachmentTiles attachments={attachments} />
+        <div className="flex items-end gap-1">
+          <AttachMenu attachments={attachments} />
+          <Textarea
+            ref={field}
+            aria-label="Message"
+            placeholder="Ask anything…"
+            rows={1}
+            autoResize
+            submitShortcut="enter"
+            value={text}
+            onValueChange={setText}
+          />
+          <ModelPicker value={model} onValueChange={onModelChange} />
+          {busy ? (
+            <Tooltip type="label">
+              <TooltipTrigger
+                render={
+                  <Button variant="stop" size="circle" onClick={onStop} />
+                }
+              >
+                <SquareIcon fill="currentColor" />
+              </TooltipTrigger>
+              <TooltipContent>Stop</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip type="label">
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="submit"
+                    variant="send"
+                    size="circle"
+                    disabled={!ready}
+                    // Still focusable, so its tooltip reaches keyboards too
+                    // (ui-sdk's Tooltip docs, Disabled buttons).
+                    focusableWhenDisabled
+                    data-agent-confirm="Sends this message to the model"
+                  />
+                }
+              >
+                <ArrowUpIcon />
+              </TooltipTrigger>
+              <TooltipContent>Send</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </form>
+    </AttachmentsInput>
   )
 }
