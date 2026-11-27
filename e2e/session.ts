@@ -215,7 +215,10 @@ export const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
  *  which is what a sent message does. */
 export async function send(page: Page, text: string) {
   const message = page.getByRole("textbox", { name: "Message" })
-  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0)
+  // Exact: "Search stopped", a stopped search's step, is a button too.
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true })
+  ).toHaveCount(0)
   await message.fill(text)
   await page.keyboard.press("Enter")
   await expect(message).toHaveValue("")

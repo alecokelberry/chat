@@ -157,16 +157,25 @@ test("an agent can edit a question, and sending it needs a person", async ({
       .snapshot()
       .filter((entry) => entry.offPage !== true && entry.ref !== "more")
       .map((entry) => entry.label)
+    // Found by query, not in the snapshot: it lists only the first 100
+    // components, and the chat list can fill them.
+    const shown: string[] = []
+    for (const wanted of ["Edit question", "Cancel", "Save"]) {
+      const found = await agent.query({ text: wanted })
+      if (
+        !("error" in found) &&
+        found.some((entry) => entry.label === wanted && entry.offPage !== true)
+      )
+        shown.push(wanted)
+    }
     const saved = await agent.act({
       steps: [{ ref: "Save", action: "press", args: [] }],
     })
-    return { opened: opened.ok, labels, saved: saved.ok }
+    return { opened: opened.ok, labels, shown, saved: saved.ok }
   })
   expect(result.opened).toBe(true)
   expect(result.labels.every(Boolean)).toBe(true)
-  expect(result.labels).toEqual(
-    expect.arrayContaining(["Edit question", "Cancel", "Save"])
-  )
+  expect(result.shown).toEqual(["Edit question", "Cancel", "Save"])
   expect(result.saved).toBe(false)
   await expect(field(page)).toHaveValue("From an agent")
   await expect(questions(page)).toHaveText(["Hello"])

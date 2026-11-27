@@ -243,23 +243,35 @@ test("Pin moves a chat to Pinned and Unpin moves it back", async ({ page }) => {
 // again with the row, so the new one takes focus.
 test("a pin stays put when a stale list load lands", async ({ page }) => {
   await startChat(page, "Pin through a stale load")
-  let latest: { body: Buffer; headers: Record<string, string> } | null = null
+  // Each server function's last answer, by its address: a stale load
+  // replays the list's own earlier answer, never another function's (which
+  // the list can't read: "find is not a function").
+  const latest = new Map<
+    string,
+    { body: Buffer; headers: Record<string, string> }
+  >()
   let stale = false
+  const replayed = new Set<string>()
   await page.route(/\/_serverFn\//, async (route) => {
     if (route.request().method() !== "GET") return route.continue()
-    if (stale && latest !== null) {
-      stale = false
-      return route.fulfill({ ...latest, status: 200 })
+    const url = route.request().url()
+    const before = latest.get(url)
+    if (stale && before !== undefined && !replayed.has(url)) {
+      replayed.add(url)
+      return route.fulfill({ ...before, status: 200 })
     }
     const response = await route.fetch()
-    latest = { body: await response.body(), headers: response.headers() }
+    latest.set(url, {
+      body: await response.body(),
+      headers: response.headers(),
+    })
     return route.fulfill({ response })
   })
   // A load of the list from before the pin.
   await sidebar(page)
     .getByRole("link", { name: "New Chat", exact: true })
     .click()
-  await expect.poll(() => latest).not.toBeNull()
+  await expect.poll(() => latest.size).toBeGreaterThan(0)
   await page.goBack()
   await expect(openRow(page)).toBeVisible()
 
