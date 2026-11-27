@@ -95,8 +95,11 @@ export function AccountMenu({
         </Tooltip>
         {/* As wide as its row, inside the column's margins; the rail's
             avatar is too narrow to set it, so there it's the usual 256px. */}
+        {/* D flips the theme with this menu open (data-theme-menu,
+            preferences.tsx), and it stays open, as it does for Theme. */}
         <MenuContent
           side="top"
+          data-theme-menu
           className={
             tooltip
               ? undefined

@@ -204,12 +204,23 @@ test.describe("on a computer", () => {
     await expect(message).toHaveValue("dd")
     await expect(html).toHaveAttribute("data-color-scheme", "light")
 
-    // Not under a dialog either: the account menu is open.
+    // With the account menu open, D flips it too, and the menu stays.
     await message.blur()
     await accountRow(page).click()
     await expect(menu(page)).toBeVisible()
     await page.keyboard.press("d")
-    await expect(html).toHaveAttribute("data-color-scheme", "light")
+    await expect(html).toHaveAttribute("data-color-scheme", "dark")
+    await expect(menu(page)).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(menu(page)).toBeHidden()
+
+    // Not under a dialog: Search is open, and D is typed into it.
+    await page.keyboard.press("ControlOrMeta+k")
+    const search = page.getByRole("combobox", { name: "Search chats" })
+    await expect(search).toBeFocused()
+    await page.keyboard.press("d")
+    await expect(search).toHaveValue("d")
+    await expect(html).toHaveAttribute("data-color-scheme", "dark")
   })
 
   test("D snaps every color at once, with no ease from the old theme", async ({

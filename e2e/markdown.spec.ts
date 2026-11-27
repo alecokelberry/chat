@@ -3,11 +3,26 @@ import { join } from "node:path"
 
 import { prepareMarkdown } from "@/lib/chat/markdown"
 
+import type { Locator } from "@playwright/test"
+
 import { expect, send, signInAsDev, test } from "./session"
 
 // Replies render as markdown, with highlighted code and math, in the
 // browser only (src/components/chat/reply.tsx). The mock model answers a
 // message that mentions "markdown" with one of each (src/lib/ai/mock.ts).
+
+/** Waits for a reply's code to be highlighted: Streamdown shows a plain
+ *  body until its lazy highlighted body loads, then swaps it in, so a
+ *  size read across the swap can see a zero-size body (CI did). */
+async function highlighted(reply: Locator) {
+  const keyword = reply
+    .locator('[data-streamdown="code-block"] span', { hasText: /^const$/ })
+    .first()
+  await expect(keyword).not.toHaveCSS(
+    "color",
+    await reply.evaluate((el) => getComputedStyle(el).color)
+  )
+}
 
 test("a reply renders markdown, code and math, without raw syntax while it streams", async ({
   page,
@@ -75,6 +90,7 @@ test("a long code line scrolls inside its block on a phone", async ({
   await send(page, "Show me some markdown")
   const reply = page.getByRole("article", { name: "Reply" })
   await expect(reply).toContainText("Done.", { timeout: 15_000 })
+  await highlighted(reply)
 
   const body = reply.locator('[data-streamdown="code-block-body"]')
   const sizes = await body.evaluate((el) => ({
@@ -192,6 +208,7 @@ test("a long block folds behind Show more, by keyboard too", async ({
   await send(page, "Show me long code")
   const reply = page.getByRole("article", { name: "Reply" })
   await expect(reply).toContainText("Done.", { timeout: 15_000 })
+  await highlighted(reply)
   const body = reply.locator('[data-streamdown="code-block-body"]')
   const height = async () => (await body.boundingBox())?.height ?? 0
   const folded = await height()
