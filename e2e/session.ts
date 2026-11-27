@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto"
-import { test as base, expect, type Locator, type Page } from "@playwright/test"
+import {
+  test as base,
+  expect,
+  type FileChooser,
+  type Locator,
+  type Page,
+} from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
 
@@ -78,7 +84,7 @@ export async function expectSignedInAs(page: Page, name: string) {
  *  that is lost. The agent bridge sees the controls once it has. The bridge
  *  itself may not be there yet, so check for it first: a TypeError would end
  *  the wait instead of retrying it. */
-async function hydrated(page: Page) {
+export async function hydrated(page: Page) {
   await page.waitForFunction(
     () => "agent" in window && window.agent.snapshot().length > 0
   )
@@ -226,4 +232,15 @@ type AgentBridge = {
         items: { value: unknown }[]
       }[]
   >
+}
+
+/** Attaches files with + › Add photos & files. */
+export async function pick(
+  page: Page,
+  files: Parameters<FileChooser["setFiles"]>[0]
+) {
+  await page.getByRole("button", { name: "Attach" }).click()
+  const chooser = page.waitForEvent("filechooser")
+  await page.getByRole("menuitem", { name: "Add photos & files" }).click()
+  await (await chooser).setFiles(files)
 }

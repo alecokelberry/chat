@@ -5,8 +5,8 @@
 // list changed, the sidebar loads it again; when it says the chat is being
 // deleted (from another tab), this tab goes to a new chat. A new
 // chat arrives from / with its first message in history state: it skips
-// loading (there's nothing yet), sends it, and clears the state so a
-// reload doesn't send it again. Each message carries its model in its
+// loading (there's nothing yet), sends it with any images it attached,
+// and clears the state so a reload doesn't send it again. Each message carries its model in its
 // metadata (src/lib/ai/models.ts), so the picker reopens on the chat's last,
 // and Retry, which regenerates the last reply in place, asks the same one;
 // and the browser's time zone, so the model knows what "today" is.
@@ -49,13 +49,15 @@ import { HeaderTitle, HeaderTitleEdit } from "@/components/ui/header-title"
 import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
+import { toast } from "@/components/ui/toast"
+import { imagesOf, takeHandedOffFiles } from "@/lib/chat/attachments"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 import { pageTitle } from "@/lib/utils"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
-    firstMessage?: { text: string; model: ModelKey }
+    firstMessage?: { text: string; model: ModelKey; files?: number }
   }
 }
 
@@ -183,12 +185,20 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   useEffect(() => {
     if (firstMessage === undefined || sent.current) return
     sent.current = true
+    void navigate({ to: ".", replace: true, state: {} })
+    const files = takeHandedOffFiles(id)
+    // A reload before the first send keeps the words (history state) but
+    // not the images (memory): say so rather than send without them.
+    if (files.length < (firstMessage.files ?? 0)) {
+      toast.error("Your images didn't come through. Attach them again.")
+      if (firstMessage.text === "") return
+    }
     void sendMessage({
       text: firstMessage.text,
+      files,
       metadata: sentWith(firstMessage.model),
     })
-    void navigate({ to: ".", replace: true, state: {} })
-  }, [firstMessage, sendMessage, navigate])
+  }, [firstMessage, sendMessage, navigate, id])
 
   // isStreaming also covers a reply another tab started.
   const previewing = previewEnabled && data !== undefined
@@ -211,7 +221,14 @@ const Chat = memo(function Chat({ id }: { id: string }) {
         onEdit={(messageId, text) => {
           if (previewing) return
           setStopped(false)
-          void sendMessage({ text, messageId, metadata: sentWith(model) })
+          // It keeps its images (#152 lets an edit change them).
+          const edited = messages.find((message) => message.id === messageId)
+          void sendMessage({
+            text,
+            files: edited ? imagesOf(edited) : [],
+            messageId,
+            metadata: sentWith(model),
+          })
         }}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
@@ -222,10 +239,10 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           busy={busy}
           model={model}
           onModelChange={setModel}
-          onSend={(text) => {
+          onSend={(text, files) => {
             if (previewing) return
             setStopped(false)
-            void sendMessage({ text, metadata: sentWith(model) })
+            void sendMessage({ text, files, metadata: sentWith(model) })
           }}
           onStop={() => {
             setStopped(true)

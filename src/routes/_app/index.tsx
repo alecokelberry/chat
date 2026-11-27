@@ -1,14 +1,16 @@
 // New chat: a greeting and the composer, with the composer centered in the space
 // under the header, beside the sidebar (src/routes/_app/route.tsx, which
 // also checks the session). The first send makes the chat: a fresh id, then
-// /c/<id> with the message and its model in history state, which that page
-// sends once it's connected (src/routes/_app/c.$id.tsx), and whose composer
+// /c/<id> with the message and its model in history state (its images go
+// through src/lib/chat/attachments.ts), which that page sends once it's
+// connected (src/routes/_app/c.$id.tsx), and whose composer
 // takes focus, so typing can go on.
 import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { Composer } from "@/components/chat/composer"
 import { DEFAULT_MODEL } from "@/lib/ai/models"
+import { handOffFiles } from "@/lib/chat/attachments"
 import { pageTitle } from "@/lib/utils"
 
 export const Route = createFileRoute("/_app/")({
@@ -39,13 +41,15 @@ function NewChat() {
         <Composer
           model={model}
           onModelChange={setModel}
-          onSend={(text) =>
+          onSend={(text, files) => {
+            const id = crypto.randomUUID()
+            handOffFiles(id, files)
             void navigate({
               to: "/c/$id",
-              params: { id: crypto.randomUUID() },
-              state: { firstMessage: { text, model } },
+              params: { id },
+              state: { firstMessage: { text, model, files: files.length } },
             })
-          }
+          }}
         />
       </div>
     </main>
