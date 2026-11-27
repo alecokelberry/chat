@@ -252,4 +252,25 @@ test.describe("on a phone", () => {
     )
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
   })
+
+  // A temporary readout for the status bar bug (status-bar-debug.tsx).
+  test("the status bar readout shows from the address or three taps", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const readout = page.locator('[data-slot="status-bar-debug"]')
+    await expect(readout).toHaveCount(0)
+    await page.goto("/?debug=bar")
+    await expect(readout).toContainText("build local")
+    await expect(readout).toContainText("top edge:")
+    await page.goto("/?debug=off")
+    await expect(readout).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const mark = page
+      .getByRole("dialog", { name: "Chats" })
+      .locator("[data-debug-taps]")
+    for (let i = 0; i < 3; i++) await mark.tap()
+    await expect(readout).toContainText("theme system")
+  })
 })
