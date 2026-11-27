@@ -68,7 +68,7 @@ test("a reply says who answered and how long it took, after a reload too", async
 
 test("a stopped reply says how long it ran before Stop", async ({ page }) => {
   await signInAsDev(page)
-  await send(page, "Hello")
+  await send(page, "Hello (paced)")
   const reply = page.getByRole("article", { name: "Reply" })
   await expect(reply).toContainText("talking")
   await page.getByRole("button", { name: "Stop" }).click()
@@ -92,7 +92,7 @@ test("a thinking model's reasoning streams into a closed step, kept on reload", 
 }) => {
   await signInAsDev(page)
   await pickModel(page, "Ultra")
-  await send(page, "Think about this")
+  await send(page, "Think about this (paced)")
   const step = page.getByRole("button", { name: "Thinking…" })
   await expect(step).toBeVisible()
   await expect(step).toHaveAttribute("aria-expanded", "false")
@@ -118,7 +118,7 @@ test("Stop while thinking keeps the thoughts and how long they ran", async ({
 }) => {
   await signInAsDev(page)
   await pickModel(page, "Ultra")
-  await send(page, "Think about this")
+  await send(page, "Think about this (paced)")
   const thread = page.getByRole("log", { name: "Messages" })
   // Stop at the first thought, well before the thinking ends (the closed
   // panel's text is in the page, hidden until found).
@@ -173,7 +173,7 @@ test("Retry replaces the last reply in place", async ({ page }) => {
   // The last word arrives a moment before the reply ends; until it ends,
   // Enter doesn't send.
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
-  await send(page, "Second question")
+  await send(page, "Second question (paced)")
   await expect(replies).toHaveText([/Done\.$/, /Done\.$/])
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 

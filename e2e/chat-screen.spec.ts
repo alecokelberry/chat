@@ -134,7 +134,7 @@ test("a reply shows the waiting marker until its first word", async ({
   page,
 }) => {
   await signInAsDev(page)
-  await send(page, "Hello")
+  await send(page, "Hello (paced)")
   const waiting = page.getByRole("status").filter({ hasText: "Thinking" })
   await expect(waiting).toBeVisible()
   await expect(page.getByRole("article", { name: "Reply" })).toContainText(

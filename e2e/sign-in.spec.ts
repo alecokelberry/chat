@@ -1,5 +1,7 @@
 import { generateKeyPairSync, randomBytes } from "node:crypto"
 
+import { BASE_URL } from "../playwright.config"
+
 import {
   addAuthenticator,
   expect,
@@ -56,6 +58,35 @@ test("Dev signs in on this machine without a passkey", async ({ page }) => {
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "Sign in as Dev" }).click()
   await expectSignedInAs(page, "Dev")
+})
+
+test("a worker's own Dev signs in only on this machine, by number", async ({
+  playwright,
+}) => {
+  // The same server by another name is refused, as every address but
+  // localhost is (live and Previews among them). The name goes in the Host
+  // header: the dev server listens on localhost alone, which can be ::1.
+  const here = await playwright.request.newContext({ baseURL: BASE_URL })
+  const elsewhere = BASE_URL.replace("localhost", "127.0.0.1")
+  const there = await here.post("/api/auth/dev-sign-in", {
+    data: { as: "1" },
+    headers: { host: new URL(elsewhere).host, origin: elsewhere },
+  })
+  expect(there.ok()).toBe(false)
+  // Here, the same request signs in: the address is what was refused.
+  const mine = await here.post("/api/auth/dev-sign-in", {
+    data: { as: "1" },
+    headers: { origin: BASE_URL },
+  })
+  expect(mine.ok(), await mine.text()).toBe(true)
+
+  // A name that isn't a number never reaches an account.
+  const named = await here.post("/api/auth/dev-sign-in", {
+    data: { as: "owner@chat.test" },
+    headers: { origin: BASE_URL },
+  })
+  expect(named.status()).toBe(400)
+  await here.dispose()
 })
 
 test("a passkey this server doesn't know isn't offered", async ({

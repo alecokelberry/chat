@@ -13,6 +13,7 @@ import { defineConfig, devices } from "@playwright/test"
 // it needs NVIDIA_API_KEY, AI_GATEWAY_URL and AI_GATEWAY_TOKEN exported in
 // the shell (README.md).
 const PORT = 3400
+export const BASE_URL = `http://localhost:${PORT}`
 export const E2E_SETUP_CODE = "e2e-setup-code"
 const ci = (process.env.CI ?? "") !== ""
 const smoke = process.env.NVIDIA_SMOKE === "1"
@@ -20,6 +21,9 @@ const smoke = process.env.NVIDIA_SMOKE === "1"
 export default defineConfig({
   testDir: "./e2e",
   forbidOnly: ci,
+  // Each worker signs in as its own Dev (e2e/session.ts), so any test can
+  // run beside any other, and shards split by test, not by file.
+  fullyParallel: true,
   // In CI a failed test runs once more to record a trace, and a test that
   // passes only on that retry still fails the run: a flake gets fixed,
   // not hidden. The github reporter puts failures on the PR's lines. CI
@@ -31,12 +35,12 @@ export default defineConfig({
   // Ends a stuck run in time to write its report, inside the CI job's
   // 15 minutes (Playwright's CI docs: always set one).
   globalTimeout: ci ? 12 * 60_000 : 0,
-  use: { baseURL: `http://localhost:${PORT}`, trace: "on-first-retry" },
+  use: { baseURL: BASE_URL, trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   ...(smoke ? { grep: /@nvidia/ } : { grepInvert: /@nvidia/ }),
   webServer: {
     command: `rm -rf .wrangler/state dist/server/.dev.vars && wrangler d1 migrations apply chat --local && wrangler d1 execute chat --local --file e2e/seed.sql && vite preview --host localhost --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}/sign-in`,
+    url: `${BASE_URL}/sign-in`,
     reuseExistingServer: false,
     env: {
       CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",

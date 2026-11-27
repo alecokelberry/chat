@@ -11,6 +11,8 @@ import { expect, send, signInAsDev, test } from "./session"
 // any machine. Each budget sits just above today's size, so a heavy import
 // (all of Shiki loaded eagerly, say) fails here. Raising one is a choice:
 // put the reason in the commit. Run with BUNDLE_REPORT=1 to print sizes.
+// Work the app defers to idle time (src/lib/idle.ts preloads the chat
+// screen and the highlighter) never fires here, since it isn't first load.
 
 const KB = 1024
 
@@ -40,6 +42,9 @@ async function firstLoadBytes(
     baseURL,
   })
   try {
+    await context.addInitScript(() => {
+      window.requestIdleCallback = () => 0
+    })
     const page = await context.newPage()
     const sizes: Promise<number>[] = []
     page.on("response", (response: Response) => {

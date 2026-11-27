@@ -30,7 +30,8 @@ test.describe("on a computer", () => {
     ).toHaveAttribute("aria-selected", "true")
     const account = settings(page).getByRole("tabpanel", { name: "Account" })
     await expect(account).toContainText("Dev")
-    await expect(account).toContainText("dev@chat.test")
+    // Each test worker signs in as its own Dev (dev+N@chat.test).
+    await expect(account).toContainText(/dev(\+\d+)?@chat\.test/)
 
     await page.keyboard.press("Escape")
     await expect(settings(page)).toBeHidden()

@@ -47,8 +47,9 @@ import { isImagePart } from "@/lib/chat/attachments"
 
 /** How long NVIDIA may send nothing before a reply ends. NVIDIA's first
  *  word normally comes within a second (docs/nvidia.md); the mock's limit
- *  is short so a test sees it run out. */
-const SILENCE_LIMIT_MS = env.MOCK_MODEL === "1" ? 3_000 : 30_000
+ *  is short so a test sees it run out quickly, yet above the mock's
+ *  longest gap (600ms in a burst) with room for a busy CI runner. */
+const SILENCE_LIMIT_MS = env.MOCK_MODEL === "1" ? 1_500 : 30_000
 
 function model(id: string) {
   return wrapLanguageModel({

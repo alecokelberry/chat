@@ -34,6 +34,7 @@ import { Code } from "@/components/chat/code-block"
 import { Table } from "@/components/chat/table-actions"
 import { prepareMarkdown } from "@/lib/chat/markdown"
 import { useSmoothText } from "@/lib/chat/smooth-text"
+import { whenIdle } from "@/lib/idle"
 import { cn } from "@/lib/utils"
 
 const plugins = {
@@ -43,6 +44,23 @@ const plugins = {
   math,
 }
 const components = { code: Code, table: Table }
+
+// The highlighter (Shiki, its engine and both themes) starts while idle,
+// so the first code block of a session doesn't start it mid-reply;
+// TypeScript's grammar comes along, the most common one. In the iOS
+// Simulator, with the cache off, it took the first markdown reply's worst
+// frame from 44 ms to 32 ms.
+if (!import.meta.env.SSR)
+  whenIdle(() =>
+    plugins.code.highlight(
+      {
+        code: "",
+        language: "typescript",
+        themes: plugins.code.getThemes(),
+      },
+      () => {}
+    )
+  )
 const linkSafety = { enabled: false }
 
 export default function Reply({
