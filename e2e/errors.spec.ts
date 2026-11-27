@@ -34,6 +34,7 @@ for (const path of ["/nope", "/c/not-a-chat"]) {
     await expect(
       page.getByRole("heading", { name: "Not found." })
     ).toBeVisible()
+    await expect(page).toHaveTitle("Not found – Chat")
     await expect(page.getByRole("navigation", { name: "Chats" })).toBeVisible()
     await page.getByRole("main").getByRole("link", { name: "New Chat" }).click()
     await expect(greeting(page)).toBeVisible()

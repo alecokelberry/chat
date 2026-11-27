@@ -10,7 +10,9 @@
 // last line. A tap doesn't change it (the caret shows where you are): only
 // keyboard focus rings it (the keyboard variant, focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
-import { useEffect, useState } from "react"
+// `focusOnMount` puts the caret in it as it mounts: a new chat's first send
+// moves to its own page, and focus goes on into that page's composer.
+import { useEffect, useRef, useState } from "react"
 import { ArrowUpIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -25,12 +27,14 @@ import type { ModelKey } from "@/lib/ai/models"
 import { takeReloadDraft } from "@/lib/reload-for-status-bar"
 
 export function Composer({
+  focusOnMount = false,
   busy = false,
   model,
   onModelChange,
   onSend,
   onStop,
 }: {
+  focusOnMount?: boolean
   busy?: boolean
   model: ModelKey
   onModelChange: (model: ModelKey) => void
@@ -46,6 +50,12 @@ export function Composer({
     if (draft !== "") setText(draft)
   }, [])
   const message = text.trim()
+  const field = useRef<HTMLTextAreaElement>(null)
+  // Read once: it's about the moment this composer appears.
+  const focusAtMount = useRef(focusOnMount)
+  useEffect(() => {
+    if (focusAtMount.current) field.current?.focus()
+  }, [])
 
   function send() {
     if (message === "" || busy) return
@@ -63,6 +73,7 @@ export function Composer({
       }}
     >
       <Textarea
+        ref={field}
         aria-label="Message"
         placeholder="Ask anything…"
         rows={1}

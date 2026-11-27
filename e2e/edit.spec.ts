@@ -25,7 +25,7 @@ async function edit(page: Page, index: number) {
     .getByRole("toolbar", { name: "Question actions" })
     .nth(index)
   await questions(page).nth(index).hover()
-  await actions.getByRole("button", { name: "Edit" }).click()
+  await actions.getByRole("button", { name: "Edit message" }).click()
   await expect(field(page)).toBeFocused()
 }
 
@@ -79,7 +79,7 @@ test("Escape, Cancel and an unchanged question leave the chat as it was", async 
     page
       .getByRole("toolbar", { name: "Question actions" })
       .nth(1)
-      .getByRole("button", { name: "Edit" })
+      .getByRole("button", { name: "Edit message" })
   ).toBeFocused()
 
   await edit(page, 1)
@@ -105,9 +105,11 @@ test("Edit waits while a reply streams", async ({ page }) => {
   await signInAsDev(page)
   await send(page, "Hello")
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
-  await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled()
+  await expect(
+    page.getByRole("button", { name: "Edit message" })
+  ).toBeDisabled()
   await expect(replies(page)).toContainText("Done.")
-  await expect(page.getByRole("button", { name: "Edit" })).toBeEnabled()
+  await expect(page.getByRole("button", { name: "Edit message" })).toBeEnabled()
 })
 
 test("an open edit waits for a reply another tab started", async ({
@@ -147,7 +149,7 @@ test("an agent can edit a question, and sending it needs a person", async ({
     const { agent } = window
     const opened = await agent.act({
       steps: [
-        { ref: "Edit", action: "press", args: [] },
+        { ref: "Edit message", action: "press", args: [] },
         { ref: "Edit question", action: "setValue", args: ["From an agent"] },
       ],
     })

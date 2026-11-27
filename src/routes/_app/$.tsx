@@ -6,7 +6,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { NotFoundPage } from "@/components/error-page"
+import { pageTitle } from "@/lib/utils"
 
 export const Route = createFileRoute("/_app/$")({
+  head: () => ({ meta: [{ title: pageTitle("Not found") }] }),
   component: NotFoundPage,
 })

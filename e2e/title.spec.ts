@@ -28,6 +28,28 @@ test("a chat shows its title once it has one, after a reload too", async ({
   await expect(title).toHaveText(TITLE)
 })
 
+// The tab's title (each route's head()) follows the shown one: "New chat"
+// until the model names the chat, then its name, then a rename.
+test("the tab is titled after the page, and follows the chat's title", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await expect(page).toHaveTitle("New chat – Chat")
+  await send(page, "Title my tab")
+  await expect(page).toHaveURL(/\/c\//)
+  await expect(page).toHaveTitle("New chat – Chat")
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(TITLE)
+  await expect(page).toHaveTitle(`${TITLE} – Chat`)
+
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await page.getByRole("menuitem", { name: "Rename" }).click()
+  await page.getByRole("textbox", { name: "Chat title" }).fill("My tab")
+  await page.keyboard.press("Enter")
+  await expect(page).toHaveTitle("My tab – Chat")
+  await page.reload()
+  await expect(page).toHaveTitle("My tab – Chat")
+})
+
 for (const width of [390, 1440]) {
   test(`worst-case titles stay on one line, clear of the buttons, at ${width}`, async ({
     page,

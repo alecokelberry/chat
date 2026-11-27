@@ -7,9 +7,9 @@
 // shows them at once and saves them; Delete offers Undo first.
 //
 // RenameField is the title being renamed, in a row or the header's pill:
-// it opens focused with the title selected; Enter, ✓ or leaving saves,
-// Escape or ✕ cancels, and focus goes back to the … that opened it. A
-// blank or unchanged title saves nothing.
+// it opens focused with the title selected; Enter (Done on a phone's
+// keyboard), ✓ or leaving saves, Escape or ✕ cancels, and focus goes back
+// to the … that opened it. A blank or unchanged title saves nothing.
 import { useEffect, useRef, type RefObject } from "react"
 import { Link } from "@tanstack/react-router"
 import {
@@ -137,13 +137,15 @@ export function RenameField({
         ref={field}
         aria-label="Chat title"
         dir="auto"
+        enterKeyHint="done"
         defaultValue={chat.title ?? ""}
         maxLength={TITLE_MAX}
         onBlur={(event) => finish(event.currentTarget.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") finish(event.currentTarget.value)
           if (event.key === "Escape") {
-            // Not on to the drawer or the page around it.
+            // Not on to the page around it (the drawer's own Escape is
+            // canceled in chat-sidebar.tsx).
             event.stopPropagation()
             finish(null)
           }

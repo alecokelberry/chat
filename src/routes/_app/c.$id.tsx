@@ -13,6 +13,11 @@
 // An edited question is sent in the old one's place, with the picker's
 // model: the SDK drops it and everything after it, here and in the agent,
 // and the reply is asked again.
+// A new chat's composer takes focus as it opens: the first send came from
+// the new-chat page's composer (Enter, or Send, which Safari doesn't focus),
+// so typing can go on.
+// The tab is titled after the chat, from the list the layout loaded, so it
+// follows a rename or the model naming it once the list loads again.
 // A reload (or a second tab) while a reply streams picks it up where it is:
 // useAgentChat asks the agent to resume, and the agent replays the chunks
 // it has kept, then streams the rest. Once the chat has a title (from the
@@ -46,6 +51,7 @@ import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
+import { pageTitle } from "@/lib/utils"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
@@ -61,6 +67,21 @@ const sentWith = (model: ModelKey) => ({
 
 export const Route = createFileRoute("/_app/c/$id")({
   ssr: "data-only",
+  loader: async ({ params, parentMatchPromise }) => {
+    const { loaderData: chats } = await parentMatchPromise
+    return {
+      title: chats?.find((chat) => chat.id === params.id)?.title ?? null,
+    }
+  },
+  head: ({ params, loaderData }) => ({
+    meta: [
+      {
+        title: CHAT_ID.test(params.id)
+          ? pageTitle(loaderData?.title ?? "New chat")
+          : pageTitle("Not found"),
+      },
+    ],
+  }),
   component: ChatScreen,
 })
 
@@ -197,6 +218,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
           the thread's text; 16px in on a computer. */}
       <div className="mx-auto w-full max-w-composer px-2 pb-2 sm:px-0">
         <Composer
+          focusOnMount={isNew}
           busy={busy}
           model={model}
           onModelChange={setModel}

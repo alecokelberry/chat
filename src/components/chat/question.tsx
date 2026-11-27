@@ -103,13 +103,13 @@ export function Question({
         >
           <MessageAction
             ref={editButton}
-            label="Edit"
+            label="Edit message"
             onClick={() => setEditing(true)}
             disabled={busy}
           >
             <PencilIcon aria-hidden />
           </MessageAction>
-          <CopyAction text={text} />
+          <CopyAction text={text} label="Copy message" />
         </MessageToolbar>
       )}
     </div>
