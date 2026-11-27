@@ -14,7 +14,7 @@
 // always on touch screens, which have no hover; the title makes room for
 // it. While a chat is renamed, SidebarRowEdit takes the row's place.
 import * as React from "react"
-import { PanelLeftIcon } from "lucide-react"
+import { PanelLeftIcon, SearchIcon } from "lucide-react"
 import {
   Drawer,
   DrawerBackdrop,
@@ -72,16 +72,19 @@ function useNewChatShortcut(onNewChat: () => void) {
 }
 
 /** The column's top row: its collapse button, Grok's panel glyph, 12px
- *  in. ⌘B (Ctrl+B elsewhere) presses it while `shortcut` is on. */
+ *  in, then `children` (Search), which the rail has no room for. ⌘B
+ *  (Ctrl+B elsewhere) presses it while `shortcut` is on. */
 function SidebarToggle({
   collapsed,
   shortcut,
   onToggle,
+  children,
 }: {
   collapsed: boolean
   shortcut: boolean
   /** `fromKeyboard`: the shortcut pressed it, so nothing animates. */
   onToggle: (fromKeyboard: boolean) => void
+  children?: React.ReactNode
 }) {
   useShortcut(shortcut ? TOGGLE_SHORTCUT : null, () => onToggle(true), {
     description: "Collapse or expand the sidebar",
@@ -109,9 +112,58 @@ function SidebarToggle({
           <TooltipShortcut className="text-muted-foreground" />
         </TooltipContent>
       </Tooltip>
+      <div className="ms-1 flex group-data-collapsed/sidebar:hidden">
+        {children}
+      </div>
       {/* The app's mark, at the column's end; the rail has no room. */}
       <BrandMark className="ms-auto me-1 size-icon group-data-collapsed/sidebar:hidden" />
     </div>
+  )
+}
+
+/** Search's icon, a 32px circle like the toggle's, that opens Search
+ *  (`onOpen`). Its tooltip names `shortcut`, unless `tooltip` is off (a
+ *  finger has no hover). None of them is the dialog's own trigger: ui-sdk
+ *  names a dialog after its trigger and can't pick one of three, and the
+ *  dialog itself loads only once Search is about to open, so each opens it
+ *  through its controller, which returns focus to it all the same. */
+function SidebarSearchTrigger({
+  shortcut,
+  tooltip = true,
+  onIntent,
+  onOpen,
+}: {
+  shortcut: string
+  tooltip?: boolean
+  /** The pointer or focus arrived: Search may open next. */
+  onIntent?: () => void
+  onOpen: () => void
+}) {
+  return (
+    <Tooltip disabled={!tooltip} shortcut={shortcut}>
+      <TooltipTrigger
+        render={
+          <Button
+            data-slot="sidebar-search"
+            variant="ghost"
+            size="circle"
+            aria-label="Search"
+            aria-haspopup="dialog"
+            className="rounded-lg text-sidebar-icon"
+            onPointerEnter={onIntent}
+            onPointerDown={onIntent}
+            onFocus={onIntent}
+            onClick={onOpen}
+          />
+        }
+      >
+        <SearchIcon aria-hidden className="size-icon" />
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        Search
+        <TooltipShortcut className="text-muted-foreground" />
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -324,6 +376,7 @@ export {
   SidebarRow,
   SidebarRowAction,
   SidebarRowEdit,
+  SidebarSearchTrigger,
   SidebarToggle,
   NEW_CHAT_SHORTCUT,
   useNewChatShortcut,

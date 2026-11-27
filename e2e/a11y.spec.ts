@@ -5,10 +5,11 @@ import { expect, greeting, send, signInAsDev, test } from "./session"
 
 // An accessibility scan (axe-core) of the main screens, in light and dark
 // at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
-// model picker, the chat list's drawer (at 390), a row's menu, and the
-// account menu open. It fails on serious or critical WCAG 2.2 AA
-// problems, and says which rule and which elements. A new screen joins
-// the list in `screens` when it lands (DESIGN.md › Access).
+// model picker, the chat list's drawer (at 390), a row's menu, the
+// account menu open, and Search open with a query. It fails on serious or
+// critical WCAG 2.2 AA problems, and says which rule and which elements.
+// A new screen joins the list in `screens` when it lands (DESIGN.md ›
+// Access).
 
 const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
@@ -81,6 +82,15 @@ for (const colorScheme of ["light", "dark"] as const) {
 
         await list.getByRole("button", { name: "Dev", exact: true }).click()
         await expect(page.getByRole("menu")).toBeVisible()
+        await scan(page)
+      })
+
+      test("Search", async ({ page }) => {
+        await signInAsDev(page)
+        await page.keyboard.press("ControlOrMeta+k")
+        const field = page.getByRole("combobox", { name: "Search chats" })
+        await field.fill("seeded")
+        await expect(page.getByRole("option").first()).toBeVisible()
         await scan(page)
       })
     })
