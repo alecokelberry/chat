@@ -39,6 +39,8 @@ export function ChatMenuContent({
   onPin,
   deletedFocus = () => document.getElementById("main"),
   container,
+  className,
+  alignOffset,
 }: {
   chat: ChatRef
   onRename: () => void
@@ -49,6 +51,9 @@ export function ChatMenuContent({
   deletedFocus?: () => HTMLElement | null
   /** Where the menu renders, if not in place: Search's, outside its list. */
   container?: Element | null
+  className?: string
+  /** How far past the trigger's end the menu's end sits. */
+  alignOffset?: number
 }) {
   const list = useChatList()
   // Delete takes the …  away with its row (or header), so focus goes to
@@ -57,7 +62,9 @@ export function ChatMenuContent({
   return (
     <MenuContent
       align="end"
+      alignOffset={alignOffset}
       side="bottom"
+      className={className}
       finalFocus={() => (deleting.current ? deletedFocus() : null)}
       container={container}
     >
