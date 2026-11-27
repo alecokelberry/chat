@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test"
 import {
   expect,
   hydrated,
+  pickModel,
   replies,
   send,
   signInAsDev,
@@ -16,8 +17,9 @@ import {
 // filters its sections; Account shows who's signed in and signs out;
 // Appearance flips the theme and wraps replies' long code lines;
 // Customize's response style reaches the model (the mock names it) and is
-// saved on the account. On a
-// phone the sections come first, and a tap slides to one, with Back.
+// saved on the account; Usage counts each reply's tokens toward its
+// model, all time. On a phone the sections come first, and a tap slides
+// to one, with Back.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
 const settings = (page: Page) => page.getByRole("dialog", { name: "Settings" })
@@ -68,6 +70,9 @@ test.describe("on a computer", () => {
     await search.fill("wrap")
     await expect(sections(page).getByRole("tab")).toHaveText(["Appearance"])
 
+    await search.fill("tokens")
+    await expect(sections(page).getByRole("tab")).toHaveText(["Usage"])
+
     await search.fill("zanzibarite")
     await expect(sections(page).getByRole("tab")).toHaveCount(0)
     await expect(settings(page)).toContainText("No settings found")
@@ -79,6 +84,7 @@ test.describe("on a computer", () => {
       "Account",
       "Appearance",
       "Customize",
+      "Usage",
     ])
   })
 
@@ -242,6 +248,44 @@ test.describe("on a computer", () => {
     // Back to Default, which the other tests start from.
     await choose("default")
     await expect(style).toHaveText("Default")
+  })
+
+  test("Usage counts a reply's tokens toward its model", async ({ page }) => {
+    await signInAsDev(page)
+    // Other tests on this worker chat as its Dev too, so this checks the
+    // count grows, not what it is.
+    const tokensOf = async (name: string) => {
+      await openSettings(page)
+      await sections(page).getByRole("tab", { name: "Usage" }).click()
+      const usage = settings(page).getByRole("tabpanel", { name: "Usage" })
+      await expect(usage.locator('[aria-busy="false"]')).toBeVisible()
+      const row = usage
+        .getByRole("list", { name: "Tokens by model" })
+        .getByRole("listitem")
+        .filter({ hasText: name })
+      const text = (await row.count()) === 0 ? "0" : await row.innerText()
+      await page.keyboard.press("Escape")
+      await expect(settings(page)).toBeHidden()
+      return Number(
+        /([\d,]+) tokens?$/.exec(text)?.[1]?.replaceAll(",", "") ?? 0
+      )
+    }
+    const before = await tokensOf("Nano Omni")
+
+    await pickModel(page, "Nano Omni")
+    await send(page, unique("Count my tokens"))
+    await expect(replies(page).last()).toContainText("Done.")
+
+    await expect(async () => {
+      expect(await tokensOf("Nano Omni")).toBeGreaterThan(before)
+    }).toPass()
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Usage" }).click()
+    await expect(
+      settings(page).getByRole("img", {
+        name: /^Tokens by model: .*Nano Omni \d+%/,
+      })
+    ).toBeVisible()
   })
 
   test.describe(() => {

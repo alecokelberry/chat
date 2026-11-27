@@ -121,6 +121,12 @@
   --color-sidebar-icon: var(--sidebar-icon);
   --color-ink-secondary: var(--ink-secondary);
   --color-sidebar-rail: var(--sidebar-rail);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-ink: var(--chart-ink);
 
   /* Shape. */
   --radius-sm: 4px;
@@ -243,6 +249,16 @@
   --tooltip-shadow:
     inset 0 0 0 0.5px var(--sidebar-border), 0 1px 2px 0 rgb(0 0 0 / 0.07),
     0 2px 4px -2px rgb(0 0 0 / 0.05);
+  /* Chart series, in a fixed order (Settings › Usage gives each model
+     its own): the dataviz reference palette's first five, checked with
+     its validator against the dialog's surface in each theme. Text on a
+     fill is near-black in both (4.8:1 or better on every one). */
+  --chart-1: #257de0;
+  --chart-2: #f47230;
+  --chart-3: #00b894;
+  --chart-4: #f2a600;
+  --chart-5: #ee7fac;
+  --chart-ink: #0a0a0a;
   /* What ui-sdk's sheets (menus on phones) dim the page to. */
   --sheet-backdrop: var(--overlay);
   color-scheme: light;
@@ -287,6 +303,11 @@
     --raised-row-shadow:
       0 0 0 1px hsl(0 0% 100% / 8.6%), 0 12px 32px 0 rgb(0 0 0 / 0.25); /* Grok's, measured on its iPhone web app */
     --dialog-shadow: 0 16px 48px 0 rgb(0 0 0 / 0.5);
+    --chart-1: #338ced;
+    --chart-2: #e76624;
+    --chart-3: #00a888;
+    --chart-4: #d28e05;
+    --chart-5: #e24d8b;
     --tooltip-shadow:
       inset 0 0 0 0.5px var(--sidebar-border), 0 1px 2px 0 rgb(0 0 0 / 0.3),
       0 2px 5px -2px rgb(0 0 0 / 0.25);

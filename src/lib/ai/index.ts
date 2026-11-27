@@ -82,7 +82,10 @@ function baseModel(id: string) {
 export async function streamReply(
   messages: UIMessage[],
   abortSignal: AbortSignal | undefined,
-  customize: Customize
+  customize: Customize,
+  /** Gets the reply's tokens once it ends, or what its finished steps
+   *  used if it's stopped. A failed reply reports nothing. */
+  onUsage: (usage: ReplyTokens) => void
 ) {
   const chosen = lastModel(messages)
   return streamText({
@@ -108,6 +111,8 @@ export async function streamReply(
     // replyError logs a failure; the default would also log the request,
     // which holds the whole chat.
     onError: () => undefined,
+    onEnd: ({ totalUsage }) => onUsage(tokensOf([totalUsage])),
+    onAbort: ({ steps }) => onUsage(tokensOf(steps.map((step) => step.usage))),
     // NVIDIA's default cap cuts long answers short; thinking models also
     // spend this budget on thinking (docs/nvidia.md).
     maxOutputTokens: 16_384,
@@ -131,6 +136,25 @@ function imagesFor(message: UIMessage, seesImages: boolean): UIMessage {
       return [{ type: "text", text: `[image: ${part.filename ?? "image"}]` }]
     }),
   }
+}
+
+/** A reply's tokens in and out. */
+export type ReplyTokens = { inputTokens: number; outputTokens: number }
+
+/** The sum of the AI SDK's counts, a missing count as none. */
+function tokensOf(
+  usages: {
+    inputTokens: number | undefined
+    outputTokens: number | undefined
+  }[]
+): ReplyTokens {
+  let inputTokens = 0
+  let outputTokens = 0
+  for (const usage of usages) {
+    inputTokens += usage.inputTokens ?? 0
+    outputTokens += usage.outputTokens ?? 0
+  }
+  return { inputTokens, outputTokens }
 }
 
 /** The tools a reply may still call: each until it has been called its
