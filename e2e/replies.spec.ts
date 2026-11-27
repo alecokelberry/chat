@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto"
 import type { Locator, Page } from "@playwright/test"
 
 import { BURSTS } from "@/lib/ai/mock"
@@ -9,7 +8,7 @@ import {
   thoughtFor,
 } from "@/lib/chat/reply-metadata"
 
-import { expect, pickModel, send, signInAsDev, test } from "./session"
+import { expect, pickModel, send, signInAsDev, test, unique } from "./session"
 
 // What you can do with a reply (src/components/chat/reply-actions.tsx), and
 // what happens when NVIDIA is busy (src/lib/ai), on the mock model. A
@@ -21,9 +20,6 @@ import { expect, pickModel, send, signInAsDev, test } from "./session"
 // The mock's plain reply: no markdown in it, so the clipboard's text is
 // what the screen shows.
 const REPLY = /^This is the mock model talking, as .+\. Done\.$/
-
-/** A message nobody has sent before, so the mock's count starts fresh. */
-const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
 
 test("Copy puts the reply's markdown on the clipboard and says so", async ({
   page,

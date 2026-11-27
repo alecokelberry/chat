@@ -18,7 +18,8 @@ export type ReplyMetadata = {
   thought?: number
 }
 
-const field = (metadata: unknown, key: string): unknown =>
+/** A field of a saved object, unchecked: messages are data. */
+export const field = (metadata: unknown, key: string): unknown =>
   typeof metadata === "object" && metadata !== null && key in metadata
     ? Reflect.get(metadata, key)
     : undefined

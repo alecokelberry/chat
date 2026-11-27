@@ -47,26 +47,21 @@ export const LIGHTNING = LIGHTNING_MODEL satisfies { key: "lightning" }
 
 export const DEFAULT_MODEL: ModelKey = DEFAULT.key
 
-/** The model a message's metadata names, or Super for anything else:
- *  metadata comes from the browser, so it's checked, never trusted. */
-function modelOf(metadata: unknown): Model {
-  const key =
-    typeof metadata === "object" && metadata !== null && "model" in metadata
-      ? metadata.model
-      : undefined
-  return MODELS.find((model) => model.key === key) ?? DEFAULT
+type Messages = readonly { role: string; metadata?: unknown }[]
+
+/** A field of the last question's metadata, unchecked: metadata comes
+ *  from the browser, so each reader below checks its own. */
+function lastAsked(messages: Messages, key: "model" | "timeZone"): unknown {
+  const metadata = messages.findLast((m) => m.role === "user")?.metadata
+  return typeof metadata === "object" && metadata !== null && key in metadata
+    ? Reflect.get(metadata, key)
+    : undefined
 }
 
 /** The time zone the last question was sent from, if it names a real
- *  one (the browser's, unchecked until here), else UTC. */
-export function lastTimeZone(
-  messages: readonly { role: string; metadata?: unknown }[]
-): string {
-  const metadata = messages.findLast((m) => m.role === "user")?.metadata
-  const zone =
-    typeof metadata === "object" && metadata !== null && "timeZone" in metadata
-      ? metadata.timeZone
-      : undefined
+ *  one, else UTC. */
+export function lastTimeZone(messages: Messages): string {
+  const zone = lastAsked(messages, "timeZone")
   if (typeof zone !== "string" || zone.length > 64) return "UTC"
   try {
     return new Intl.DateTimeFormat("en-US", {
@@ -77,9 +72,9 @@ export function lastTimeZone(
   }
 }
 
-/** The model a chat goes on with: the one its last message was sent with. */
-export function lastModel(
-  messages: readonly { role: string; metadata?: unknown }[]
-): Model {
-  return modelOf(messages.findLast((m) => m.role === "user")?.metadata)
+/** The model a chat goes on with: the one its last message was sent
+ *  with, or Super for anything else. */
+export function lastModel(messages: Messages): Model {
+  const key = lastAsked(messages, "model")
+  return MODELS.find((model) => model.key === key) ?? DEFAULT
 }

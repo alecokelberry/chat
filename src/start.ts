@@ -4,9 +4,13 @@
 import { createMiddleware, createStart } from "@tanstack/react-start"
 
 /** No sniffing types, no framing (clickjacking), and no referrer sent to
- *  other sites. HSTS isn't needed: browsers force HTTPS on all of .dev. */
+ *  other sites. Images only from the app itself: a reply's markdown can
+ *  hold an image, and a model steered by a search result could point one
+ *  at another site with the chat in its address, which the browser would
+ *  load unasked. HSTS isn't needed: browsers force HTTPS on all of .dev. */
 export const SECURITY_HEADERS = {
-  "Content-Security-Policy": "frame-ancestors 'none'",
+  "Content-Security-Policy":
+    "frame-ancestors 'none'; img-src 'self' data: blob:",
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "same-origin",
