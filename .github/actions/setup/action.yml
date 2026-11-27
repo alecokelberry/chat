@@ -1,0 +1,24 @@
+# What every verify job starts with (.github/workflows/verify.yml), after
+# checkout: pnpm, the Node in .nvmrc with pnpm's store cached, the locked
+# install, and, for the jobs that need it, Playwright's Chromium. The
+# browser isn't cached: Playwright's docs say restoring it takes about as
+# long as downloading it, and its Linux libraries can't be cached at all.
+name: setup
+description: pnpm, Node, the install and optionally Playwright's Chromium
+inputs:
+  browser:
+    description: Also install Playwright's Chromium and its Linux libraries
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - shell: bash
+      run: pnpm install --frozen-lockfile
+    - if: inputs.browser == 'true'
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium

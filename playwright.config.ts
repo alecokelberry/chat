@@ -22,10 +22,15 @@ export default defineConfig({
   forbidOnly: ci,
   // In CI a failed test runs once more to record a trace, and a test that
   // passes only on that retry still fails the run: a flake gets fixed,
-  // not hidden. The github reporter puts failures on the PR's lines.
+  // not hidden. The github reporter puts failures on the PR's lines. CI
+  // runs the tests in shards (.github/workflows/verify.yml): each writes a
+  // blob report, and the report job merges them into one HTML report.
   retries: ci ? 1 : 0,
   failOnFlakyTests: ci,
-  reporter: ci ? [["github"], ["list"], ["html", { open: "never" }]] : "list",
+  reporter: ci ? [["github"], ["list"], ["blob"]] : "list",
+  // Ends a stuck run in time to write its report, inside the CI job's
+  // 15 minutes (Playwright's CI docs: always set one).
+  globalTimeout: ci ? 12 * 60_000 : 0,
   use: { baseURL: `http://localhost:${PORT}`, trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   ...(smoke ? { grep: /@nvidia/ } : { grepInvert: /@nvidia/ }),

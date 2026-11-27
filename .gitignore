@@ -8,6 +8,7 @@ dist
 .DS_Store
 test-results
 playwright-report
+blob-report
 .tanstack
 worker-configuration.d.ts
 # Linked from node_modules on install, so it matches the installed version
