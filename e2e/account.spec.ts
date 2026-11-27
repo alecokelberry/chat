@@ -356,13 +356,22 @@ test.describe("on a phone", () => {
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
   })
 
-  test("in the Home Screen app, Theme in the drawer reloads once it closes", async ({
+  test("in the Home Screen app, Theme in the drawer reloads at once, still open", async ({
     page,
   }) => {
-    // The reload that recolors the bar waits until nothing is open over
-    // the page, and keeps the draft.
+    // The reload that recolors the bar happens on the tap, and the new
+    // page comes back with the drawer and menu open and the draft kept.
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "standalone", { value: true })
+      // When the page shows again after the reload, to tell the reopened
+      // drawer and menu apart from the 1.5 s cap.
+      const watch = () => {
+        const root = document.querySelector("html")
+        if (root !== null && !root.hasAttribute("data-restoring"))
+          return void Object.assign(window, { shownAt: performance.now() })
+        requestAnimationFrame(watch)
+      }
+      watch()
       addEventListener("pagereveal", (event) => {
         Object.assign(window, { crossfaded: event.viewTransition !== null })
       })
@@ -387,24 +396,26 @@ test.describe("on a phone", () => {
     const box = await theme.boundingBox()
     if (box === null) throw new Error("Theme has no box")
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-color-scheme",
-      "dark"
-    )
-    await page.waitForTimeout(1000)
-    expect(loads).toHaveLength(0)
-
-    await page.keyboard.press("Escape")
-    await expect(menu(page)).toBeHidden()
-    await page.waitForTimeout(600)
-    expect(loads).toHaveLength(0)
-    await page.keyboard.press("Escape")
     await expect.poll(() => loads.length).toBe(1)
     expect(page.url()).toBe(url)
+
+    // The new page: dark from the server, with what was open open again,
+    // and shown once it is.
     await expect(page.locator("html")).toHaveAttribute(
       "data-color-scheme",
       "dark"
     )
+    // The server wrote the dark color into the page iOS reads it from.
+    const html = await (await page.request.get(url)).text()
+    expect(html).toContain('content="#1e1d1d"')
+    expect(html).not.toContain('content="#f9f8f7"')
+    await expect(drawer).toBeVisible()
+    await expect(menu(page)).toBeVisible()
+    await expect(page.locator("html")).not.toHaveAttribute("data-restoring")
+    expect(
+      await page.evaluate(() => ("shownAt" in window ? window.shownAt : 0))
+    ).toBeLessThan(1200)
+    await expect(page.locator("body")).toHaveCSS("visibility", "visible")
     await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
       "half a thought"
     )
@@ -421,8 +432,25 @@ test.describe("on a phone", () => {
     expect(
       await page.evaluate(() => "crossfaded" in window && window.crossfaded)
     ).toBe(false)
+
+    // Theme again, from the reopened menu: back to light, once more.
+    await menu(page).getByRole("menuitem", { name: "Theme" }).click()
+    await expect.poll(() => loads.length).toBe(2)
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "light"
+    )
+    await expect(drawer).toBeVisible()
     await page.waitForTimeout(1000)
-    expect(loads).toHaveLength(1)
+    expect(loads).toHaveLength(2)
+
+    // Closing them afterwards is an ordinary close, with no reload.
+    await page.keyboard.press("Escape")
+    await expect(menu(page)).toBeHidden()
+    await page.keyboard.press("Escape")
+    await expect(drawer).toBeHidden()
+    await page.waitForTimeout(600)
+    expect(loads).toHaveLength(2)
   })
 
   // A temporary readout for the status bar bug (status-bar-debug.tsx).

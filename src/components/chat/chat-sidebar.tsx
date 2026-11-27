@@ -77,6 +77,7 @@ import {
 } from "@/components/ui/tooltip"
 import { groupChats } from "@/lib/chat/groups"
 import { usePhone } from "@/lib/phone"
+import { keptListScroll, restored, wasOpen } from "@/lib/reload-for-status-bar"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
 import type { ChatSummary } from "@/lib/chat/store"
 
@@ -114,6 +115,10 @@ let movedRow: { id: string; until: number } | null = null
 /** More rows than the tallest phone shows: what the drawer opens with. */
 const FIRST_SCREEN = 40
 
+/** A spring that settles in a frame: the drawer reopening after the
+ *  status bar's reload is already where it was, so it doesn't slide. */
+const IN_PLACE = { response: 0.001, dampingRatio: 1 }
+
 export function ChatSidebar({
   account,
   collapsed: startCollapsed,
@@ -139,6 +144,15 @@ export function ChatSidebar({
   useEffect(() => {
     if (takeEarlyTap()) trigger.current?.click()
   }, [])
+  // Open before the status bar's reload: open again, in place
+  // (src/lib/reload-for-status-bar.ts).
+  const [reopening, setReopening] = useState(false)
+  useEffect(() => {
+    if (phone !== true || !wasOpen("drawer")) return
+    // oxlint-disable-next-line react-hooks-js/set-state-in-effect -- sessionStorage is read only in the browser, once the screen's width is known
+    setReopening(true)
+    setOpen(true)
+  }, [phone])
   const [collapsed, setCollapsed] = useState(startCollapsed)
   const [instant, setInstant] = useState(false)
   function toggle(fromKeyboard: boolean) {
@@ -190,7 +204,13 @@ export function ChatSidebar({
               details.cancel()
             else setOpen(next)
           }}
-          onOpenChangeComplete={setOpened}
+          onOpenChangeComplete={(next) => {
+            setOpened(next)
+            if (!next || !reopening) return
+            setReopening(false)
+            restored("drawer")
+          }}
+          physics={reopening ? IN_PLACE : undefined}
           themeColor
         >
           <header className="box-content flex h-header shrink-0 items-center px-3 pt-safe md:hidden">
@@ -219,11 +239,17 @@ export function ChatSidebar({
               </SidebarHeader>
               <ChatList
                 chats={chats}
-                limit={opened ? undefined : FIRST_SCREEN}
+                // Reopening in place has no slide to keep smooth.
+                limit={opened || reopening ? undefined : FIRST_SCREEN}
+                restoreScroll={reopening}
                 onPick={close}
               />
               <SidebarFooter>
-                <AccountMenu account={account} onOpenChat={close} />
+                <AccountMenu
+                  account={account}
+                  onOpenChat={close}
+                  reopen={reopening && wasOpen("menu")}
+                />
               </SidebarFooter>
             </SidebarDrawerContent>
           )}
@@ -269,12 +295,16 @@ function NewChatLink({
 function ChatList({
   chats,
   limit,
+  restoreScroll = false,
   onPick,
 }: {
   chats: ChatSummary[]
   /** Only the first this many (pins, then the newest), while the drawer
    *  slides. */
   limit?: number
+  /** Scroll back to where the list was before the status bar's reload,
+   *  once its rows are in. */
+  restoreScroll?: boolean
   onPick?: () => void
 }) {
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -288,8 +318,18 @@ function ChatList({
   const shown = useDeferredValue(listed, NO_CHATS)
   const groups = useMemo(() => groupChats(shown, Date.now()), [shown])
   const stopRenaming = useCallback(() => setRenaming(null), [])
+  const list = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const top = keptListScroll()
+    if (!restoreScroll || top === undefined) return
+    if (shown !== listed) return
+    // An empty list has nothing to scroll; the page shows all the same.
+    if (list.current && listed.length > 0) list.current.scrollTop = top
+    restored("list")
+  }, [restoreScroll, shown, listed])
   return (
     <ScrollArea
+      ref={list}
       aria-label="Chat list"
       fade
       className="-mt-list-overlap flex-1 fade-size-long group-data-collapsed/sidebar:hidden"

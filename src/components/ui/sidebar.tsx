@@ -207,8 +207,10 @@ function SidebarDrawerContent({
   return (
     <>
       <DrawerBackdrop className="fixed inset-0 z-40 bg-overlay" />
+      {/* Not a data-slot: ui-sdk sets the content's own (drawer-content).
+          The status bar's reload finds the drawer by this. */}
       <DrawerContent
-        data-slot="sidebar"
+        data-sidebar-drawer
         className={cn(
           "flex h-full w-sidebar flex-col bg-sidebar pt-safe pb-safe text-sidebar-foreground shadow-dialog outline-hidden",
           className
