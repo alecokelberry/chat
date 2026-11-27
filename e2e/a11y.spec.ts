@@ -97,7 +97,8 @@ for (const colorScheme of ["light", "dark"] as const) {
         const row = page.locator('[data-slot="command-row"]').first()
         await row.hover()
         await row.locator("button").click()
-        await expect(page.getByRole("menu")).toBeVisible()
+        // Settled, not mid-fade, so contrast is measured at full ink.
+        await expect(page.getByRole("menu")).toHaveCSS("opacity", "1")
         await scan(page)
       })
     })
