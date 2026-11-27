@@ -9,12 +9,14 @@ import { AuthError, AuthPage, PasskeyButton } from "@/components/auth-page"
 import { Button } from "@/components/ui/button"
 import { authClient } from "@/lib/auth/client"
 import { getSession, getSignIn } from "@/lib/auth/session"
+import { pageTitle } from "@/lib/utils"
 
 export const Route = createFileRoute("/sign-in")({
   beforeLoad: async () => {
     if ((await getSession()) !== null) throw redirect({ to: "/" })
   },
   loader: () => getSignIn(),
+  head: () => ({ meta: [{ title: pageTitle("Sign in") }] }),
   component: SignIn,
 })
 

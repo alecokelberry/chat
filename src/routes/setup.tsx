@@ -6,8 +6,12 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { AuthError, AuthPage, PasskeyButton } from "@/components/auth-page"
 import { authClient } from "@/lib/auth/client"
+import { pageTitle } from "@/lib/utils"
 
-export const Route = createFileRoute("/setup")({ component: Setup })
+export const Route = createFileRoute("/setup")({
+  head: () => ({ meta: [{ title: pageTitle("Set up") }] }),
+  component: Setup,
+})
 
 function Setup() {
   const [error, setError] = useState<string | null>(null)

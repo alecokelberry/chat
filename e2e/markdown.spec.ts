@@ -160,7 +160,7 @@ test("code copies and folds, and a table copies and saves", async ({
   await expect(reply).toContainText("Done.", { timeout: 15_000 })
   await expect(reply.getByRole("button", { name: "Show more" })).toHaveCount(0)
   const codeActions = reply.getByRole("toolbar", { name: "Code actions" })
-  await codeActions.getByRole("button", { name: "Copy" }).click()
+  await codeActions.getByRole("button", { name: "Copy code" }).click()
   await expect(
     codeActions.getByRole("button", { name: "Copied" })
   ).toBeVisible()

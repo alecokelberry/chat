@@ -19,6 +19,7 @@ test("signed out, Chat sends you to sign in", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Sign in with passkey" })
   ).toBeVisible()
+  await expect(page).toHaveTitle("Sign in – Chat")
 })
 
 test.describe(() => {

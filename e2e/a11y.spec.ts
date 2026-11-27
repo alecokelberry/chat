@@ -4,8 +4,9 @@ import type { Page } from "@playwright/test"
 import { expect, greeting, send, signInAsDev, test } from "./session"
 
 // An accessibility scan (axe-core) of the main screens, in light and dark
-// at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, and
-// the account menu open. It fails on serious or critical WCAG 2.2 AA
+// at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
+// model picker, the chat list's drawer (at 390), a row's menu, and the
+// account menu open. It fails on serious or critical WCAG 2.2 AA
 // problems, and says which rule and which elements. A new screen joins
 // the list in `screens` when it lands (DESIGN.md › Access).
 
@@ -41,7 +42,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         await scan(page)
       })
 
-      test("a new chat, a markdown reply, and the account menu", async ({
+      test("a new chat, a markdown reply, and the chat's menus", async ({
         page,
       }) => {
         await signInAsDev(page)
@@ -54,13 +55,30 @@ for (const colorScheme of ["light", "dark"] as const) {
         ).toContainText("Done.", { timeout: 15_000 })
         await scan(page)
 
-        // A phone hides the column: its drawer holds the account row.
+        await page.getByRole("combobox", { name: "Model" }).click()
+        await expect(page.getByRole("listbox")).toBeVisible()
+        await scan(page)
+        await page.keyboard.press("Escape")
+        await expect(page.getByRole("listbox")).toBeHidden()
+
+        // A phone hides the column: its drawer holds the list.
         let list = page.getByRole("navigation", { name: "Chats" })
         if (viewport.width < 600) {
           await page.getByRole("button", { name: "Open sidebar" }).click()
           list = page.getByRole("dialog", { name: "Chats" })
           await expect(list).toBeVisible()
+          await scan(page)
         }
+        const row = list
+          .getByRole("listitem")
+          .filter({ has: page.locator("a[aria-current=page]") })
+        await row.hover()
+        await row.getByRole("button", { name: /^Actions for / }).click()
+        await expect(page.getByRole("menu")).toBeVisible()
+        await scan(page)
+        await page.keyboard.press("Escape")
+        await expect(page.getByRole("menu")).toBeHidden()
+
         await list.getByRole("button", { name: "Dev", exact: true }).click()
         await expect(page.getByRole("menu")).toBeVisible()
         await scan(page)
