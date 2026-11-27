@@ -117,4 +117,27 @@ test.describe("on a phone", () => {
       `as ${NANO_OMNI} with thinking off.`
     )
   })
+
+  // iOS 26 can report a visual viewport that ends short of the screen with
+  // no keyboard up (after the keyboard goes, or above a Home Screen app's
+  // home indicator). ui-sdk counted that as a keyboard and floated the
+  // sheet mid-screen; it sits on the bottom edge whatever the viewport says.
+  test("the sheet sits on the screen's bottom edge", async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(VisualViewport.prototype, "height", {
+        get: () => innerHeight - 230,
+      })
+    })
+    await signInAsDev(page)
+    await picker(page).tap()
+    const sheet = page.locator('[data-slot="select-content"]')
+    await expect
+      .poll(() =>
+        sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
+      )
+      .toBe("1")
+    await expect
+      .poll(() => sheet.evaluate((el) => el.getBoundingClientRect().bottom))
+      .toBe(844)
+  })
 })

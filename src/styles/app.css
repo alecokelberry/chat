@@ -435,13 +435,16 @@
   contain-intrinsic-size: auto 10rem;
 }
 
-/* A phone sheet's fill carried 6rem past its bottom edge, behind it, so
-   the sheet always reaches the screen's bottom: an iPhone home-screen app
-   on iOS 26 can report a viewport that ends above the home indicator, and
-   ui-sdk then lifts the sheet off the edge as if for a keyboard. Off the
-   screen, where nothing lifts it. */
-@utility sheet-bleed {
-  box-shadow: 0 6rem 0 var(--color-popover);
+/* A Menu or Select sheet sits on the screen's bottom edge. ui-sdk lifts a
+   sheet by the part of the page the visual viewport leaves out (its
+   --keyboard-inset), counting it even with no keyboard. iOS 26 can report
+   a visual viewport that ends short after the keyboard goes, and in a Home
+   Screen app above the home indicator, which floated the model picker
+   mid-screen. These sheets hold no text field, so nothing they show ever
+   needs a keyboard's room. */
+[data-slot="menu-viewport"],
+[data-slot="select-viewport"] {
+  --keyboard-inset: 0px !important;
 }
 
 /* A phone sheet's bottom padding: 12px, or the home indicator's height on

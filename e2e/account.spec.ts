@@ -7,45 +7,22 @@ import {
   signInAsDev,
   test,
 } from "./session"
+import { statusBar, watchStatusBar } from "./status-bar"
 
 // The account row and its menu (src/components/chat/account-menu.tsx) and
 // the theme it switches (src/components/ui/preferences.tsx): the name and
 // email, Theme flipping light and dark with the status bar following and
 // no flash on a reload (the status bar's color included), Sign out landing
-// on /sign-in, and on a phone a sheet that opens at once and reaches the
-// screen's bottom.
+// on /sign-in, and on a phone a sheet that opens at once, with iOS's status
+// bar (as e2e/status-bar.ts models it) following a Theme picked inside the
+// drawer.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
 const accountRow = (page: Page) =>
   sidebar(page).getByRole("button", { name: "Dev", exact: true })
 const menu = (page: Page) => page.getByRole("menu")
-
-declare global {
-  interface Window {
-    nudges?: { open: boolean; taps: string }[]
-  }
-}
-
-/** Notes each status bar nudge as it's added: whether it's in the top
- *  layer, and whether it lets taps through. */
-async function recordNudges(page: Page) {
-  await page.addInitScript(() => {
-    window.nudges = []
-    new MutationObserver((records) => {
-      for (const record of records)
-        for (const node of record.addedNodes) {
-          if (!(node instanceof HTMLElement)) continue
-          if (node.dataset.slot !== "status-bar-nudge") continue
-          requestAnimationFrame(() =>
-            window.nudges?.push({
-              open: node.matches(":popover-open"),
-              taps: getComputedStyle(node).pointerEvents,
-            })
-          )
-        }
-    }).observe(document, { childList: true, subtree: true })
-  })
-}
+const LIGHT = "rgb(249, 248, 247)"
+const DARK = "rgb(30, 29, 29)"
 
 test.describe("on a computer", () => {
   test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "light" })
@@ -58,8 +35,8 @@ test.describe("on a computer", () => {
     await expect(menu(page)).toContainText("Dev")
     await expect(menu(page)).toContainText("dev@chat.test")
 
-    // iOS repaints the status bar from a theme-color that arrives, so
-    // Theme swaps the tags for fresh ones rather than editing them.
+    // Theme swaps the tags for fresh ones rather than editing them, which
+    // the drawer would undo when it closes.
     const firstTag = await page
       .locator('meta[name="theme-color"]')
       .first()
@@ -214,8 +191,9 @@ test.describe("on a phone", () => {
     page,
   }) => {
     await recordStartTimes(page)
-    await recordNudges(page)
+    await watchStatusBar(page)
     await signInAsDev(page)
+    await expect.poll(() => statusBar(page)).toBe(LIGHT)
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     const drawer = page.getByRole("dialog", { name: "Chats" })
     await expect(drawer.locator("svg.lucide-message-circle")).toBeVisible()
@@ -246,18 +224,25 @@ test.describe("on a phone", () => {
     await expect(theme).toHaveAttribute("data-highlighted")
     await expect(theme).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
 
-    // iOS repaints the status bar only when a layer appears, so the change
-    // briefly shows an empty one in the top layer, then takes it away,
-    // leaving the menu and the drawer open.
-    await expect
-      .poll(() => page.evaluate(() => window.nudges))
-      .toContainEqual({ open: true, taps: "none" })
+    // iOS 26 colors the bar from the top edge, and with the drawer over it
+    // keeps the color it had: the strip has it take the new one.
+    await expect.poll(() => statusBar(page)).toBe(DARK)
     await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
     await expect(menu(page)).toBeVisible()
     await expect(drawer).toBeVisible()
+    expect(await statusBar(page)).toBe(DARK)
 
-    // The sheet's fill carries on past its bottom edge, so it reaches the
-    // screen's bottom even when iOS reports a viewport that ends short.
-    await expect(menu(page)).toHaveCSS("box-shadow", /0px 96px 0px 0px$/)
+    // Closing both keeps it; D back to light, with nothing open, too.
+    await page.keyboard.press("Escape")
+    await expect(menu(page)).toBeHidden()
+    await page.keyboard.press("Escape")
+    await expect(drawer).toBeHidden()
+    expect(await statusBar(page)).toBe(DARK)
+    await page.keyboard.press("d")
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "light"
+    )
+    await expect.poll(() => statusBar(page)).toBe(LIGHT)
   })
 })

@@ -74,7 +74,7 @@ Every control is a ui-sdk part, so keyboards, screen readers and agents all see 
 
 - **Names:** every control has one, from its label part or `aria-label` on an icon-only one. Labels differ where they sit, so a row's menu is "Actions for <chat title>", not "Actions".
 - **State:** style from `data-slot` and state attributes, and animate popups with `data-starting-style` and `data-ending-style` from `--transform-origin`. An async action returns its Promise, so the part shows `data-pending` itself.
-- **Phones:** Menu, Select, Popover and Dialog take `presentation="auto"`, a sheet on a phone. A sheet moves only by ui-sdk's own translate: no fade, zoom, shadow or blur of ours animates while it slides (the archived Chat's sheets felt laggy on an iPhone). The one shadow is still: `sheet-bleed` carries the sheet's fill past its bottom edge, and moves with it on the compositor. The phone sidebar is a Drawer from `start`.
+- **Phones:** Menu, Select, Popover and Dialog take `presentation="auto"`, a sheet on a phone. A sheet moves only by ui-sdk's own translate: no fade, zoom, shadow or blur of ours animates while it slides (the archived Chat's sheets felt laggy on an iPhone). Menu and Select sheets sit on the screen's bottom edge, never lifted for a keyboard (they hold no text field). The phone sidebar is a Drawer from `start`.
 - **Agents:** a destructive or sending action carries `data-agent-confirm="<what it does>"`; private text carries `data-agent-hidden`. In dev, `window.agent.snapshot()` lists every control and `window.agent.act()` drives it: use it to check a screen.
 - **Global parts** arrive with their first use: `Preferences` with `createColorScheme` for the theme (replacing the fixed `data-color-scheme`), `OverlayHost` for toasts (`ui/toast.tsx`: always dark, 356px at the bottom right, at the top on a phone, no close button) and later `confirm()`, `ScrollArea` under the thread's `MessageScroller` (`role="log"`), which opens at your last message rather than sticking to the end.
 
@@ -98,8 +98,8 @@ What Alec picked and why. New work starts here.
 
 ## Phones
 
-- iOS blurs the top edge unless a full-width, solid, sticky box covers it: a page's `main` is `sticky top-0 bg-background`, or, in the signed-in app, the shell around it (`chat-sidebar.tsx`).
-- Installed, the app paints under the notch and home indicator (`viewport-fit=cover`): a full-screen page pads with `safe-area` instead of `p-4`, and `theme-color` gives the status bar the page's `background`.
+- iOS blurs the top edge unless a full-width, solid, sticky box covers it: a page's `main` is `sticky top-0 bg-background`, or, in the signed-in app, the shell around it (`chat-sidebar.tsx`). iOS 26 colors the status bar from that box, not `theme-color`, and samples it again only when a fixed or sticky element comes or goes, so a theme change shows a brief strip it re-reads (`ui/preferences.tsx`); `e2e/status-bar.ts` models the rules.
+- Installed, the app paints under the notch and home indicator (`viewport-fit=cover`): a full-screen page pads with `safe-area` instead of `p-4`, and `theme-color` gives other browsers' bars the page's `background`.
 - Text fields are at least 16px on touch screens, so iOS never zooms on focus.
 - Heights against the viewport are `svh` or `dvh`, never `vh`, which jumps when the iPhone keyboard opens.
 - Hover never changes anything on touch. Every `:hover` sits under `@media (hover: hover)` (Tailwind's `hover:` already does; hand-written CSS must too). iOS treats a tap that changes the look on hover as a hover and drops the click, so it takes two taps.
