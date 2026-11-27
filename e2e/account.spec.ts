@@ -5,6 +5,7 @@ import {
   expectNoHeldStart,
   hydrated,
   recordStartTimes,
+  settled,
   signInAsDev,
   test,
 } from "./session"
@@ -163,7 +164,7 @@ test.describe("on a computer", () => {
     // The next launch starts dark too: theme-color is what it reads first.
     const statusBarTag = page.locator('meta[name="theme-color"]')
     await expect(statusBarTag.first()).toHaveAttribute("content", DARK_HEX)
-    await page.waitForTimeout(500)
+    await settled(page)
     expect(loads).toHaveLength(0)
   })
 
@@ -233,7 +234,7 @@ test.describe("on a computer", () => {
           )
         })
     )
-    await page.waitForTimeout(300)
+    await settled(page)
     expect(await toggle.evaluate((el) => getComputedStyle(el).color)).toBe(
       atOnce
     )
