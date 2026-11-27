@@ -38,13 +38,20 @@ function FileInputDropOverlay({
   )
 }
 
+/** `align="end"` puts the tiles at the end, as a sent question's are;
+ *  the first tile's auto margin gives way once they overflow, so all of
+ *  them still scroll into view. */
 function FileInputList({
   className,
+  align = "start",
   ...props
-}: React.ComponentProps<typeof FileInputListPrimitive>) {
+}: React.ComponentProps<typeof FileInputListPrimitive> & {
+  align?: "start" | "end"
+}) {
   return (
     <FileInputListPrimitive
       className={cn(
+        align === "end" && "*:first:ms-auto",
         "flex scroll-fade-x scrollbar-none gap-2 overflow-x-auto overscroll-x-contain px-1 pt-2 pb-1 outline-hidden contain-inline-size",
         className
       )}
