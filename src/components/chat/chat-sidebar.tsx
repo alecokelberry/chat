@@ -175,7 +175,11 @@ export function ChatSidebar({
           </header>
           {phone === true && (
             <SidebarDrawerContent title="Chats">
-              <div className="flex h-sidebar-header shrink-0 items-center px-3">
+              {/* Three taps on the mark show the status bar readout. */}
+              <div
+                data-debug-taps
+                className="flex h-sidebar-header shrink-0 items-center px-3"
+              >
                 <BrandMark className="size-5" />
               </div>
               <SidebarHeader>
