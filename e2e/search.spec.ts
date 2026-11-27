@@ -302,7 +302,7 @@ test.describe("on a touch phone", () => {
     isMobile: true,
   })
 
-  test("the header's icon opens a sheet, and so does the drawer's", async ({
+  test("the header's icon opens a sheet, and so does the drawer's, over it", async ({
     page,
   }) => {
     await signInAsDev(page)
@@ -323,13 +323,25 @@ test.describe("on a touch phone", () => {
     ).toBeHidden()
     await page.keyboard.press("Escape")
 
+    // From the drawer, Search opens over it: closing Search goes back to
+    // the drawer, and picking a chat closes both.
     await page.getByRole("button", { name: "Open sidebar" }).tap()
-    await page
-      .getByRole("dialog", { name: "Chats" })
-      .getByRole("button", { name: "Search" })
-      .tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    const drawerSearch = drawer.getByRole("button", { name: "Search" })
+    await drawerSearch.tap()
     await expect(dialog(page)).toBeVisible()
-    await expect(page.getByRole("dialog", { name: "Chats" })).toHaveCount(0)
+    await expect(drawer).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(drawer).toBeVisible()
+
+    await drawerSearch.tap()
+    await tapInSheet(page.locator('[data-slot="dialog-content"]'), field(page))
+    await field(page).fill("seeded pinned")
+    await dialog(page).getByRole("option", { name: "Seeded pinned" }).tap()
+    await expect(page).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000005$/)
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(drawer).toHaveCount(0)
   })
 })
 

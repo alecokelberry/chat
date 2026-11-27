@@ -204,11 +204,7 @@ export function ChatSidebar({
             <SidebarDrawerContent title="Chats">
               <div className="flex h-sidebar-header shrink-0 items-center justify-between px-3">
                 <BrandMark className="size-icon" />
-                <SearchButton
-                  controller={search}
-                  tooltip={false}
-                  onClick={close}
-                />
+                <SearchButton controller={search} tooltip={false} />
               </div>
               <SidebarHeader className="relative z-10">
                 <NewChatLink onClick={close} tooltip={false} />
@@ -226,7 +222,7 @@ export function ChatSidebar({
         </SidebarDrawer>
         {children}
       </div>
-      <SearchDialog controller={search} />
+      <SearchDialog controller={search} onPick={close} />
     </div>
   )
 }

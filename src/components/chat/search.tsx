@@ -5,7 +5,8 @@
 // the one dialog through its controller. It's ui-sdk's Command in a Dialog
 // (the Command docs' palette): a dialog on a computer, a sheet on a touch
 // phone. ⌘K again closes it, and it opens empty each time (its content
-// unmounts when closed).
+// unmounts when closed). From the phone's drawer it opens over the drawer:
+// closing it goes back to the drawer, and picking a chat closes both.
 //
 // Only the controller, the icons and ⌘K are in the first load: the dialog
 // and its list load when Search is about to open (the pointer over an
@@ -74,7 +75,14 @@ export function SearchButton({
 }
 
 /** The dialog itself, and ⌘K to open and close it. */
-export function SearchDialog({ controller }: { controller: DialogController }) {
+export function SearchDialog({
+  controller,
+  onPick,
+}: {
+  controller: DialogController
+  /** A chat was picked from it. */
+  onPick?: () => void
+}) {
   const content = useRef<HTMLDivElement>(null)
   useDialogShortcut(controller, SEARCH_SHORTCUT, content, "Search", () =>
     openSearch(controller)
@@ -86,7 +94,11 @@ export function SearchDialog({ controller }: { controller: DialogController }) {
   )
   return (
     loaded !== undefined && (
-      <loaded.SearchPanel controller={controller} content={content} />
+      <loaded.SearchPanel
+        controller={controller}
+        content={content}
+        onPick={onPick}
+      />
     )
   )
 }
