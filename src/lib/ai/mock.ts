@@ -145,7 +145,7 @@ const replyTo = (
     ? LONG_CODE_REPLY
     : message.includes("markdown")
       ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${sawImages(images, told)}${backwards(message)}${REPLY}`
+      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -320,7 +320,8 @@ type ToolPart = Extract<
 >["content"][number]
 
 /** The last question, and the searches and reads made for it so far: how
- *  many of each, and whether one failed. */
+ *  many of each, and whether one failed. `images` and `told` count across
+ *  the whole chat, since every image goes along with every send. */
 function askedOf(prompt: Prompt) {
   const at = prompt.findLastIndex((m) => m.role === "user")
   const parts = prompt
@@ -362,7 +363,7 @@ const imagesIn = (message: Prompt[number] | undefined) =>
 /** What the reply says the chat sent it, besides words: "Saw 2 images. "
  *  for the images in it, and "Told of 1 image. " for each "[image: name]"
  *  a model that can't see got in an image's place. */
-function sawImages(images: number, told: number) {
+function imagesNote(images: number, told: number) {
   const count = (n: number) => `${n} image${n === 1 ? "" : "s"}`
   return (
     (images === 0 ? "" : `Saw ${count(images)}. `) +

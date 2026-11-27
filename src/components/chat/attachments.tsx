@@ -131,6 +131,8 @@ export function AttachmentsInput({
 }) {
   return (
     <FileInput
+      // A labelled group: aria-label alone isn't allowed on a plain div.
+      role="group"
       aria-label="Attachments"
       multiple
       accept={ACCEPT}
@@ -241,24 +243,36 @@ function Thumbnail({ url }: { url: string }) {
 }
 
 /** Under the composer when its images would go to a model that can't see
- *  them: Send waits, and one tap switches to Super. The model never
- *  changes on its own. */
+ *  them (`blind`): Send waits, and one tap switches to `to`, a model that
+ *  can. The model never changes on its own. The status region is always
+ *  on the page and empty until then, since screen readers often skip a
+ *  live region that arrives already filled; the line people see is
+ *  hidden from them, so it isn't read twice. */
 export function CantSeeImages({
+  blind,
   model,
+  to,
   onSwitch,
 }: {
+  blind: boolean
   model: string
+  to: string
   onSwitch: () => void
 }) {
+  const line = `${model} can't see images`
   return (
-    <p
-      role="status"
-      className="flex items-center justify-center gap-2 pt-2 text-sm text-muted-foreground"
-    >
-      {`${model} can't see images`}
-      <Button variant="outline" size="sm" onClick={onSwitch}>
-        Switch to Super
-      </Button>
-    </p>
+    <>
+      <p role="status" className="sr-only">
+        {blind ? line : ""}
+      </p>
+      {blind && (
+        <p className="flex items-center justify-center gap-2 pt-2 text-sm text-muted-foreground">
+          <span aria-hidden>{line}</span>
+          <Button variant="outline" size="sm" onClick={onSwitch}>
+            {`Switch to ${to}`}
+          </Button>
+        </p>
+      )}
+    </>
   )
 }

@@ -8,9 +8,10 @@
 // in, 29px corners, the + (attachments.tsx) at the start, then the text,
 // the model and a 32px Send at the end; longer text grows the row and they
 // stay on its last line. Attached files sit as tiles above the row, inside
-// the pill; a question can be only files, and Send waits until each is
-// ready, and while the model can't see them (attachments.tsx). A tap doesn't change it (the caret shows where you are): only
-// keyboard focus rings it (the keyboard variant, focus-modality.tsx).
+// the pill; a question can be only files. Send waits until each is ready,
+// and while the model can't see them (attachments.tsx). A tap doesn't
+// ring the pill (the caret shows where you are): only keyboard focus does
+// (the keyboard variant, focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
@@ -130,12 +131,12 @@ export function Composer({
           )}
         </div>
       </form>
-      {blind && (
-        <CantSeeImages
-          model={chosen.name}
-          onSwitch={() => onModelChange(DEFAULT_MODEL)}
-        />
-      )}
+      <CantSeeImages
+        blind={blind}
+        model={chosen.name}
+        to={modelOf(DEFAULT_MODEL).name}
+        onSwitch={() => onModelChange(DEFAULT_MODEL)}
+      />
     </AttachmentsInput>
   )
 }

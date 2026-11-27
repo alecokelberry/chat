@@ -166,22 +166,52 @@ test("a model that can't see images holds Send, and one tap switches", async ({
   await pick(page, [SMALL])
   await expect(tiles(page)).toHaveCount(1)
   const send = page.getByRole("button", { name: "Send" })
-  await expect(page.getByText("Ultra can't see images")).toBeVisible()
+  await expect(
+    page.getByRole("status").filter({ hasText: "Ultra can't see images" })
+  ).toHaveCount(1)
   await expect(send).toBeDisabled()
 
-  await page.getByRole("button", { name: "Switch to Super" }).click()
+  // Taking the image out also lets it send, on the model chosen.
+  await pickModel(page, "Lightning")
+  await expect(
+    page.getByRole("status").filter({ hasText: "Lightning can't see images" })
+  ).toHaveCount(1)
+  await expect(send).toBeDisabled()
+  await page.getByRole("button", { name: "Remove small.jpg" }).click()
+  await page.getByRole("textbox", { name: "Message" }).fill("Just words")
+  await expect(send).toBeEnabled()
+  await expect(page.getByRole("combobox", { name: "Model" })).toContainText(
+    "Lightning"
+  )
+
+  // An agent finds Switch to Super by name, and the image goes to Super.
+  await pickModel(page, "Ultra")
+  await pick(page, [SMALL])
+  await expect(
+    page.getByRole("status").filter({ hasText: "Ultra can't see images" })
+  ).toHaveCount(1)
+  const switched = await page.evaluate(async () => {
+    const { agent } = window
+    const found = await agent.query({ text: "Switch to Super" })
+    const ref =
+      "error" in found
+        ? ""
+        : (found.find((entry) => entry.label === "Switch to Super")?.ref ?? "")
+    const done = await agent.act({
+      steps: [{ ref, action: "press", args: [] }],
+    })
+    return done.ok
+  })
+  expect(switched).toBe(true)
   await expect(page.getByRole("combobox", { name: "Model" })).toContainText(
     "Super"
   )
   await expect(page.getByText("can't see images")).toHaveCount(0)
   await expect(send).toBeEnabled()
-
-  // Taking the image out also lets it send, on the model chosen.
-  await pickModel(page, "Lightning")
-  await expect(send).toBeDisabled()
-  await page.getByRole("button", { name: "Remove small.jpg" }).click()
-  await page.getByRole("textbox", { name: "Message" }).fill("Just words")
-  await expect(send).toBeEnabled()
+  await send.click()
+  await expect(replies(page)).toHaveText([/Saw 1 image\..*Done\.$/], {
+    timeout: 15_000,
+  })
 })
 
 test("a chat with images goes on with Ultra, told what each image was", async ({
