@@ -93,14 +93,24 @@ test("a long code line scrolls inside its block on a phone", async ({
   await highlighted(reply)
 
   const body = reply.locator('[data-streamdown="code-block-body"]')
-  const sizes = await body.evaluate((el) => ({
-    scroll: el.scrollWidth,
-    client: el.clientWidth,
-    page: document.documentElement.scrollWidth,
-    viewport: window.innerWidth,
-  }))
-  expect(sizes.scroll).toBeGreaterThan(sizes.client)
-  expect(sizes.page).toBeLessThanOrEqual(sizes.viewport)
+  const sizes = () =>
+    body.evaluate((el) => ({
+      scroll: el.scrollWidth,
+      client: el.clientWidth,
+      page: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }))
+  // The block lays out a moment after the reply ends (the highlighter loads
+  // while idle), and measures 0 wide until then.
+  await expect.poll(async () => (await sizes()).client).toBeGreaterThan(0)
+  await expect
+    .poll(async () => {
+      const { scroll, client } = await sizes()
+      return scroll > client
+    })
+    .toBe(true)
+  const { page: wide, viewport } = await sizes()
+  expect(wide).toBeLessThanOrEqual(viewport)
 })
 
 test("the Worker carries no markdown renderer", () => {
