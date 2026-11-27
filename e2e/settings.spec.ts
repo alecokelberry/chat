@@ -1,10 +1,11 @@
 import type { Page } from "@playwright/test"
 
-import { expect, signInAsDev, tapInSheet, test } from "./session"
+import { expect, send, signInAsDev, tapInSheet, test } from "./session"
 
 // Settings (src/components/chat/settings.tsx): the gear at the end of the
 // account row and the menu's Settings both open it at Account; search
-// filters its sections; Account shows who's signed in and signs out. On a
+// filters its sections; Account shows who's signed in and signs out;
+// Appearance flips the theme and wraps replies' long code lines. On a
 // phone the sections come first, and a tap slides to one, with Back.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
@@ -56,6 +57,8 @@ test.describe("on a computer", () => {
     })
     await search.fill("sign")
     await expect(sections(page).getByRole("tab")).toHaveText(["Account"])
+    await search.fill("wrap")
+    await expect(sections(page).getByRole("tab")).toHaveText(["Appearance"])
 
     await search.fill("zanzibarite")
     await expect(sections(page).getByRole("tab")).toHaveCount(0)
@@ -64,7 +67,10 @@ test.describe("on a computer", () => {
     await settings(page).getByRole("button", { name: "Clear search" }).click()
     await expect(search).toHaveValue("")
     await expect(search).toBeFocused()
-    await expect(sections(page).getByRole("tab")).toHaveText(["Account"])
+    await expect(sections(page).getByRole("tab")).toHaveText([
+      "Account",
+      "Appearance",
+    ])
   })
 
   test("Sign Out in Account signs out", async ({ page }) => {
@@ -72,6 +78,35 @@ test.describe("on a computer", () => {
     await sidebar(page).getByRole("button", { name: "Settings" }).click()
     await settings(page).getByRole("button", { name: "Sign Out" }).click()
     await expect(page).toHaveURL(/\/sign-in$/)
+  })
+
+  test("Appearance flips the theme and wraps long code lines", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await send(page, "Show me some markdown")
+    const code = page.locator('[data-streamdown="code-block-body"] pre').first()
+    await expect(code).toHaveCSS("white-space", "pre")
+
+    await sidebar(page).getByRole("button", { name: "Settings" }).click()
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    const html = page.locator("html")
+    const scheme = await html.getAttribute("data-color-scheme")
+    await settings(page).getByRole("button", { name: "Dark theme" }).click()
+    await expect(html).not.toHaveAttribute("data-color-scheme", scheme ?? "")
+
+    const wrap = settings(page).getByRole("switch", {
+      name: "Wrap long code blocks",
+    })
+    await expect(wrap).not.toBeChecked()
+    // Its name works it too: the row is a Field.
+    await settings(page).getByText("Wrap long code blocks").click()
+    await expect(wrap).toBeChecked()
+    await expect(html).toHaveAttribute("data-code-wrap", "wrap")
+    await expect(code).toHaveCSS("white-space", "pre-wrap")
+
+    await page.reload()
+    await expect(html).toHaveAttribute("data-code-wrap", "wrap")
   })
 
   test("the rail has no gear", async ({ page }) => {

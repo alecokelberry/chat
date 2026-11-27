@@ -1,7 +1,8 @@
 // Saved choices: ui-sdk's Preferences, kept in this browser's localStorage
-// and put on <html> as a data attribute. For now, the one choice is the
-// color scheme (data-color-scheme: system, light or dark), which app.css's
-// dark variant follows; the account menu's Theme flips it. <AppPreferences>
+// and put on <html> as data attributes: the color scheme
+// (data-color-scheme: system, light or dark), which app.css's dark variant
+// follows and the account menu's Theme flips, and whether replies' code
+// wraps (data-code-wrap: scroll or wrap), from Settings. <AppPreferences>
 // sits at the top of <body>; on the server it renders an inline script
 // that sets the attributes before the first paint, so CSS that selects
 // them is right from the start, with nothing to flash.
@@ -17,8 +18,13 @@
 // THEME_COLOR_SCRIPT sets it before the first paint for a choice saved
 // before the cookie was.
 import * as React from "react"
-// oxlint-disable-next-line no-restricted-imports -- preferences and storage have no entry of their own
-import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
+/* oxlint-disable no-restricted-imports -- preferences and storage have no entry of their own */
+import {
+  createColorScheme,
+  createLocalStorage,
+  createPreference,
+} from "@ui-sdk/core"
+/* oxlint-enable no-restricted-imports */
 import { Preferences, usePreference } from "@ui-sdk/react/preferences"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 
@@ -67,9 +73,30 @@ function snapColors() {
   )
 }
 
+/** Whether a reply's long code lines wrap or scroll sideways (Settings ›
+ *  Appearance), on <html> as data-code-wrap, which src/styles/prose.css
+ *  follows. Saved in this browser, as the theme is, and set before the
+ *  first paint the same way. */
+const codeWrap = createPreference({
+  values: ["scroll", "wrap"],
+  defaultValue: "scroll",
+  attribute: "data-code-wrap",
+  storage: createLocalStorage("code-wrap"),
+  global: true,
+})
+
+/** Whether code wraps, and how to change it. */
+function useCodeWrap() {
+  const { value } = usePreference(codeWrap)
+  return [
+    value === "wrap",
+    (wrap: boolean) => codeWrap.set(wrap ? "wrap" : "scroll"),
+  ] as const
+}
+
 function AppPreferences({ children }: { children: React.ReactNode }) {
   return (
-    <Preferences preferences={[colorScheme]}>
+    <Preferences preferences={[colorScheme, codeWrap]}>
       <StatusBarColor />
       {children}
     </Preferences>
@@ -252,6 +279,7 @@ function useThemeShortcut() {
 export {
   AppPreferences,
   THEME_COLOR_SCRIPT,
+  useCodeWrap,
   useIsDark,
   useThemeShortcut,
   useToggleTheme,

@@ -16,6 +16,7 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react"
+import { Field, FieldDescription, FieldLabel } from "@ui-sdk/react/field"
 import { InputClear, InputGroup } from "@ui-sdk/react/input"
 import {
   Tabs,
@@ -234,8 +235,45 @@ function SettingsRow({
   )
 }
 
+/** A row holding one control that its name and description label (a
+ *  Switch): ui-sdk's Field, so the two are tied to the control for screen
+ *  readers and agents, and a press on the name works the control. */
+function SettingsField({
+  name,
+  description,
+  className,
+  children,
+  ...props
+}: Omit<React.ComponentProps<typeof Field>, "name" | "children"> & {
+  children: React.ReactNode
+  name: React.ReactNode
+  description?: React.ReactNode
+}) {
+  return (
+    <Field
+      data-slot="settings-row"
+      className={cn(
+        "flex min-h-16 items-center gap-3 px-4 py-3 not-first:border-t not-first:border-border",
+        className
+      )}
+      {...props}
+    >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <FieldLabel className="text-base text-foreground">{name}</FieldLabel>
+        {description !== undefined && (
+          <FieldDescription className="text-sm text-muted-foreground">
+            {description}
+          </FieldDescription>
+        )}
+      </div>
+      {children}
+    </Field>
+  )
+}
+
 export {
   SettingsCard,
+  SettingsField,
   SettingsLayout,
   SettingsNav,
   SettingsNavEmpty,
