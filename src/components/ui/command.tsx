@@ -1,11 +1,13 @@
 // Command: ui-sdk's command list (a search field over an always-shown
 // listbox: typing filters and ranks, arrow keys move the highlight, Enter
 // runs or follows it, focus stays in the field) with the sidebar's look.
-// The field is a 56px row with a muted search glyph, 15px (16px on touch
-// screens, so iOS never zooms), over a hairline; groups are labelled like
-// the sidebar's (12px medium muted); rows are 40px with 12px corners in
-// secondary ink, washed and full ink while highlighted, the search's
-// matched letters in medium full ink. The list scrolls on its own,
+// The field is a 56px row, 15px (16px on touch screens, so iOS never
+// zooms), with an optional hint at its end (Grok's "Next section Tab"),
+// over a hairline; groups are labelled like the sidebar's (12px medium
+// muted); rows are 40px with 12px corners in secondary ink, an 18px icon
+// 10px before the label and CommandItemEnd (a time, keycaps) at the end,
+// washed and full ink while highlighted, the search's matched letters in
+// medium full ink. The list scrolls on its own,
 // without chaining to the page. A long flat list renders only the rows in
 // view (CommandWindow, ui-sdk's virtualized Command): ui-sdk still ranks
 // and arrows through every item, mounted or not, and useCommandWindow
@@ -32,7 +34,6 @@ import {
   type ReactNode,
 } from "react"
 import type * as React from "react"
-import { SearchIcon } from "lucide-react"
 import { useAsyncOptions } from "@ui-sdk/react/async-options"
 import {
   Command,
@@ -58,28 +59,27 @@ import {
 import { MenuTrigger } from "@/components/ui/menu"
 import { cn } from "@/lib/utils"
 
-/** The search field, led by its glyph. `hidden`: kept in the page, out
- *  of sight, while CommandFieldEdit stands in for it. */
+/** The search field, Grok's: no glyph, its text 16px in, and `hint` at
+ *  its end (like "Next section Tab"). `hidden`: kept in the page, out of
+ *  sight, while CommandFieldEdit stands in for it. */
 function CommandInput({
   className,
   hidden = false,
   caretHidden = false,
+  hint,
   ...props
 }: React.ComponentProps<typeof CommandInputPrimitive> & {
   hidden?: boolean
   /** No caret yet: while a sheet slides in, iOS draws it where the field
    *  was, so it jumps; show it once the sheet has settled. */
   caretHidden?: boolean
+  hint?: ReactNode
 }) {
   return (
     <div
       hidden={hidden}
       className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4"
     >
-      <SearchIcon
-        aria-hidden
-        className="size-icon shrink-0 text-muted-foreground"
-      />
       <CommandInputPrimitive
         className={cn(
           "min-w-0 flex-1 bg-transparent field-text text-foreground outline-hidden placeholder:text-muted-foreground",
@@ -88,6 +88,14 @@ function CommandInput({
         )}
         {...props}
       />
+      {hint !== undefined && (
+        <span
+          aria-hidden
+          className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground select-none pointer-coarse:hidden"
+        >
+          {hint}
+        </span>
+      )}
     </div>
   )
 }
@@ -141,7 +149,22 @@ function CommandItem({
   return (
     <CommandItemPrimitive
       className={cn(
-        "flex h-10 shrink-0 items-center rounded-item px-3 text-base text-ink-secondary outline-hidden select-none has-data-[slot=command-item-lines]:h-auto highlighted:bg-accent highlighted:text-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate",
+        "flex h-10 shrink-0 items-center gap-2.5 rounded-item px-3 text-base text-ink-secondary outline-hidden select-none has-data-[slot=command-item-lines]:h-auto highlighted:bg-accent highlighted:text-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>svg]:size-4.5 [&>svg]:shrink-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+/** What sits at a row's end, after its label: a relative time in muted
+ *  14px, or keycaps. */
+function CommandItemEnd({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      data-slot="command-item-end"
+      className={cn(
+        "ms-3 flex-none! text-sm text-muted-foreground tabular-nums",
         className
       )}
       {...props}
@@ -209,14 +232,19 @@ function CommandItemLines({
 
 /** Command's fuzzy filter by label, except for the items in `kept`,
  *  results a server already matched: those stay whatever was typed,
- *  after every fuzzy match, in `kept`'s order. */
-function fuzzyThen(kept: readonly string[]): SearchFilter<string> {
+ *  after every fuzzy match, in `kept`'s order. The items in `first`
+ *  (Search's actions) rank above every other match while they match. */
+function fuzzyThen(
+  kept: readonly string[],
+  first: ReadonlySet<string> = new Set()
+): SearchFilter<string> {
   const at = new Map(kept.map((value, index) => [value, index]))
   return (item, query) => {
     const index = at.get(item.value)
-    return index === undefined
-      ? fuzzyScore(item.label, query)
-      : KEPT * (1 - index / (kept.length + 1))
+    if (index !== undefined) return KEPT * (1 - index / (kept.length + 1))
+    const score = fuzzyScore(item.label, query)
+    // fuzzyScore is at most 1.
+    return first.has(item.value) && score > 0 ? 1 + score : score
   }
 }
 
@@ -354,7 +382,7 @@ function CommandRowAction({
 }
 
 /** In the search field's row, in its place (CommandInput `hidden`):
- *  `icon` where the search glyph was, then another field, like Search's
+ *  `icon` at its start, then another field, like Search's
  *  rename, with its ✕ ✓. */
 function CommandFieldEdit({
   icon,
@@ -425,6 +453,7 @@ function CommandEmpty({
   )
 }
 
+export { createCommandController } from "@ui-sdk/react/command"
 export {
   Command,
   CommandEmpty,
@@ -432,6 +461,7 @@ export {
   CommandGroupLabel,
   CommandInput,
   CommandItem,
+  CommandItemEnd,
   CommandItemText,
   CommandItemLines,
   CommandList,

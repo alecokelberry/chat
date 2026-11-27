@@ -61,9 +61,12 @@ test("⌘K opens Search, typing narrows by title, and Enter opens the chat", asy
   await page.keyboard.press("ControlOrMeta+k")
   await expect(field(page)).toBeFocused()
   await expect(field(page)).toHaveValue("")
-  // Nothing typed: the chats, in the sidebar's groups.
+  // Nothing typed: the actions, New Chat highlighted, then the chats.
   await expect(
-    dialog(page).getByRole("group", { name: "Pinned" })
+    dialog(page).getByRole("option", { name: "New Chat", exact: true })
+  ).toHaveAttribute("aria-selected", "true")
+  await expect(
+    dialog(page).getByRole("group", { name: "Chats" })
   ).toContainText("Seeded pinned")
 
   // Fuzzy: the letters in order, across words.
@@ -75,6 +78,55 @@ test("⌘K opens Search, typing narrows by title, and Enter opens the chat", asy
 
   await page.keyboard.press("Enter")
   await expect(page).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
+  await expect(dialog(page)).toHaveCount(0)
+})
+
+// Grok's palette: actions first, with their keys, then chats with how
+// long ago; Tab jumps to the next section, Shift+Tab back; typing ranks a
+// matching action first, and Enter runs it.
+test("actions come first, Tab moves between sections, and New Chat runs", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await page
+    .getByRole("navigation", { name: "Chats" })
+    .getByRole("link", { name: "Seeded pinned" })
+    .click()
+  await expect(page).toHaveURL(/\/c\//)
+  await page.keyboard.press("ControlOrMeta+k")
+  const newChat = dialog(page).getByRole("option", {
+    name: "New Chat",
+    exact: true,
+  })
+  await expect(newChat).toHaveAttribute("aria-selected", "true")
+  await expect(newChat.locator("kbd")).toHaveText([/^(⌘|Ctrl)$/, "J"])
+  await expect(field(page)).toHaveAttribute(
+    "placeholder",
+    "Search or type an action"
+  )
+  const chats = dialog(page).getByRole("group", { name: "Chats" })
+  await expect(chats.getByRole("option").first()).toHaveText(
+    /\d+(m|h|d|w|mo|y)$|now$/
+  )
+
+  await page.keyboard.press("Tab")
+  await expect(field(page)).toBeFocused()
+  await expect(chats.getByRole("option").first()).toHaveAttribute(
+    "aria-selected",
+    "true"
+  )
+  await page.keyboard.press("Tab")
+  await expect(newChat).toHaveAttribute("aria-selected", "true")
+  await page.keyboard.press("Shift+Tab")
+  await expect(chats.getByRole("option").first()).toHaveAttribute(
+    "aria-selected",
+    "true"
+  )
+
+  await field(page).fill("new ch")
+  await expect(dialog(page).getByRole("option").first()).toHaveText(/^New Chat/)
+  await page.keyboard.press("Enter")
+  await expect(page).toHaveURL(/\/$/)
   await expect(dialog(page)).toHaveCount(0)
 })
 
@@ -397,8 +449,8 @@ test("an agent can search and open a chat", async ({ page }) => {
     await refOf("Search")
   )
   // The list's code loads as Search opens.
-  await expect.poll(() => refOf("Search chats")).not.toBe("")
-  const search = await refOf("Search chats")
+  await expect.poll(() => refOf("Search chats and actions")).not.toBe("")
+  const search = await refOf("Search chats and actions")
   const searched = await page.evaluate(
     (ref) =>
       window.agent.act({
