@@ -16,7 +16,8 @@
 // Every model can search the web (src/lib/ai/search.ts) and decides when
 // to: a reply runs in steps, each a model call, and a step that searches
 // is followed by one that reads the results. After SEARCH_LIMIT searches
-// the tool is no longer offered, so the next step answers. The
+// the tool is no longer offered, so the next step answers, and the tool
+// itself refuses any past the limit (a step can make several at once). The
 // instructions give today's date and time in the owner's time zone (the
 // question's metadata, checked), so "today" and "latest" mean the right
 // thing, and say to cite nothing inline: the chat lists the sources under
@@ -36,7 +37,7 @@ import {
 
 import { mockModel } from "@/lib/ai/mock"
 import { lastModel, lastTimeZone, LIGHTNING } from "@/lib/ai/models"
-import { SEARCH_LIMIT, SearchFailedError, webSearch } from "@/lib/ai/search"
+import { SEARCH_LIMIT, SearchError, webSearch } from "@/lib/ai/search"
 import { failWhenSilent, SilentModelError } from "@/lib/ai/silence"
 
 /** How long NVIDIA may send nothing before a reply ends. NVIDIA's first
@@ -75,7 +76,7 @@ export async function streamReply(
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages)),
     messages: await convertToModelMessages(messages),
-    tools: { webSearch },
+    tools: { webSearch: webSearch() },
     // Each search is a step and the answer one more.
     stopWhen: isStepCount(SEARCH_LIMIT + 1),
     prepareStep: ({ steps }) =>
@@ -113,10 +114,10 @@ function instructions(now: Date, timeZone: string) {
 }
 
 /** What the chat shows when a reply fails. The status and message go to
- *  the log, never the request (it holds the chat). A failed search passes
- *  through here too, already logged, and the reply goes on. */
+ *  the log, never the request (it holds the chat). A failed or refused
+ *  search passes through here too, already logged, and the reply goes on. */
 export function replyError(error: unknown): string {
-  if (error instanceof SearchFailedError) return error.message
+  if (error instanceof SearchError) return error.message
   const cause = RetryError.isInstance(error) ? error.lastError : error
   const status = APICallError.isInstance(cause) ? cause.statusCode : undefined
   console.error(

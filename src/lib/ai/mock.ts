@@ -24,15 +24,21 @@
 //
 // A message that mentions "search" makes it call the webSearch tool first
 // (src/lib/ai/search.ts), with the message as the query, and answer once
-// the results are in; "(search N)" asks for N searches in a row, so a test
-// sees the reply's cap stop it. Under MOCK_MODEL the tool itself answers
+// the results are in; "(search N)" asks for N searches in a row, and with
+// "(at once)" all N in one step, so a test sees the reply's cap stop them. Under MOCK_MODEL the tool itself answers
 // with mockSearch's canned results after a second and a half, so a test
 // sees the step run and can Stop it; a query with "(search down)" fails,
 // as Keenable does when it's down.
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 
-import type { SearchResult } from "@/lib/ai/search"
+/** A search result, the shape search.ts hands the model. */
+type SearchResult = {
+  title: string
+  url: string
+  site: string
+  snippet: string
+}
 
 type LanguageModelV4StreamPart =
   Awaited<
@@ -279,18 +285,22 @@ const afterSearch = ({ searched, searchFailed }: ReturnType<typeof askedOf>) =>
       ? SEARCH_FAILED_REPLY
       : SEARCHED_REPLY
 
-/** One step that only calls webSearch. */
+/** One step that only calls webSearch: once, or, for a message with
+ *  "(at once)", all the searches it asks for together. */
 const searchCall = (query: string, n: number) =>
   simulateReadableStream<LanguageModelV4StreamPart>({
     initialDelayInMs: 300,
     chunkDelayInMs: 0,
     chunks: [
-      {
-        type: "tool-call",
-        toolCallId: `search-${n}`,
-        toolName: "webSearch",
-        input: JSON.stringify({ query }),
-      },
+      ...Array.from(
+        { length: query.includes("(at once)") ? searchesWanted(query) : 1 },
+        (_, i) => ({
+          type: "tool-call" as const,
+          toolCallId: `search-${n}-${i}`,
+          toolName: "webSearch",
+          input: JSON.stringify({ query }),
+        })
+      ),
       {
         type: "finish",
         finishReason: { unified: "tool-calls", raw: undefined },

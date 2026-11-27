@@ -3,21 +3,20 @@
 // the reply like any part. A chat's messages are data, so each field is
 // checked, and a result's address is kept only if it's http(s): it
 // becomes a link.
+import { field } from "@/lib/chat/reply-metadata"
+
 export type Source = { title: string; url: string; site: string }
 
 export type Search = {
   query: string
   /** Still waiting for its results. */
   running: boolean
+  /** Its results came back (perhaps none). */
+  found: boolean
   /** Why it failed, if it did. */
   error: string | undefined
   results: Source[]
 }
-
-const field = (value: unknown, key: string): unknown =>
-  typeof value === "object" && value !== null && key in value
-    ? Reflect.get(value, key)
-    : undefined
 
 const text = (value: unknown) => (typeof value === "string" ? value : "")
 
@@ -50,6 +49,7 @@ export function searchesOf(message: { parts: readonly unknown[] }): Search[] {
       {
         query: text(field(field(part, "input"), "query")),
         running: state === "input-streaming" || state === "input-available",
+        found: state === "output-available",
         error:
           state === "output-error"
             ? text(field(part, "errorText")).slice(0, 200) ||
@@ -75,7 +75,9 @@ export function searchedLabel(searches: Search[], running: boolean) {
   if (running) return "Searching the web…"
   const sites = sourcesOf(searches).length
   if (sites > 0) return `Searched · ${sites} ${sites === 1 ? "site" : "sites"}`
-  return searches.some((search) => search.error !== undefined)
-    ? "Couldn't search the web"
+  if (searches.some((search) => search.error !== undefined))
+    return "Couldn't search the web"
+  return searches.some((search) => search.found)
+    ? "Searched · nothing found"
     : "Search stopped"
 }
