@@ -12,6 +12,8 @@ export const cn = createCn({
         "sidebar-rail",
         "sidebar-header",
         "list-overlap",
+        "draft",
+        "draft-inline",
         "header",
         "header-content",
       ],

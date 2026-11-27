@@ -245,7 +245,7 @@ function SidebarRowAction({
     <MenuTrigger
       data-slot="sidebar-row-action"
       className={cn(
-        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:bg-sidebar-accent data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden pointer-fine:hover:bg-sidebar-accent [&>svg]:size-3.5 [&>svg]:shrink-0",
+        "absolute end-1.5 top-2 flex size-6 items-center justify-center rounded-md text-sidebar-icon opacity-0 ring-sidebar-ring outline-hidden select-none no-touch-callout group-focus-within/item:opacity-100 group-hover/item:opacity-100 after:absolute after:-inset-2 hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 data-open:bg-sidebar-accent data-open:text-sidebar-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden pointer-fine:hover:bg-sidebar-accent [&>svg]:size-3.5 [&>svg]:shrink-0",
         className
       )}
       {...props}
@@ -269,7 +269,7 @@ function SidebarRowEdit({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const sidebarRowVariants = cva(
-  "flex h-10 w-full press items-center rounded-item py-1.5 text-base font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden focus-visible:ring-2",
+  "flex h-10 w-full press items-center rounded-item py-1.5 text-base font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden select-none no-touch-callout focus-visible:ring-2",
   {
     variants: {
       variant: {

@@ -84,6 +84,37 @@ test.describe("on a phone", () => {
     await page.keyboard.press("ArrowLeft")
     expect(await ringOf(page)).toBe("none")
   })
+
+  test("a long draft leaves the thread in view above the keyboard", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await send(page, "Hello")
+    await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+      "Done."
+    )
+    // About what an iPhone shows with its keyboard up.
+    await page.setViewportSize({ width: 393, height: 500 })
+    await page
+      .getByRole("textbox", { name: "Message" })
+      .fill(Array.from({ length: 40 }, (_, i) => `line ${i}`).join("\n"))
+    const log = await page.getByRole("log", { name: "Messages" }).boundingBox()
+    expect(log?.height).toBeGreaterThan(150)
+  })
+
+  test("a long press on a chat row doesn't select its title", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const row = page.getByRole("link", { name: "Seeded pinned" })
+    await expect(row).toBeVisible()
+    // iOS's callout (-webkit-touch-callout) is set beside it; Chromium
+    // doesn't compute it, so only the selection is checked here.
+    expect(await row.evaluate((el) => getComputedStyle(el).userSelect)).toBe(
+      "none"
+    )
+  })
 })
 
 test("keyboard focus rings the composer", async ({ page }) => {

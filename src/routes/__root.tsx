@@ -2,7 +2,8 @@
 // color scheme (AppPreferences, which puts it on <html> before the first
 // paint, so <html> expects its attribute to change). The
 // page tracks whether focus came from the keyboard (FocusModality), shows
-// a press the moment a finger lands (PressFeedback), and holds the one
+// a press the moment a finger lands (PressFeedback), follows the visible
+// viewport above the iPhone keyboard (Viewport), and holds the one
 // toast area (Toasts). The
 // head also makes it installable: public/manifest.webmanifest names the app
 // and its icons, iOS reads the apple-touch-icon, and theme-color paints the
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/preferences"
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
+import { Viewport } from "@/components/ui/viewport"
 import { savedTheme } from "@/lib/theme"
 
 import appCss from "@/styles/app.css?url"
@@ -83,6 +85,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <AppPreferences>{children}</AppPreferences>
         <FocusModality />
         <PressFeedback />
+        <Viewport />
         <Toasts />
         <Scripts />
       </body>
