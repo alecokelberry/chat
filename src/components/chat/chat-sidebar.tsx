@@ -291,6 +291,8 @@ function ChatList({
   const stopRenaming = useCallback(() => setRenaming(null), [])
   return (
     <ScrollArea
+      // A role, so its name is allowed (axe: aria-prohibited-attr).
+      role="group"
       aria-label="Chat list"
       fade
       className="-mt-list-overlap flex-1 fade-size-long group-data-collapsed/sidebar:hidden"
