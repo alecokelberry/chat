@@ -5,8 +5,9 @@
 // zooms in from the trigger (popup-motion), 4px away. Rows are 32px with
 // 12px corners and a muted check on the chosen one. On a phone it's a
 // sheet from the bottom instead (presentation "auto"), with 48px rows and
-// padding clear of the home indicator. The sheet moves only by ui-sdk's
-// own translate: no fade, zoom, blur or shadow of ours runs while it
+// padding clear of the home indicator, its fill carried on below its
+// edge (sheet-bleed, a still shadow that moves with it). The sheet moves only by ui-sdk's
+// own translate: no fade, zoom, blur or shadow of ours animates while it
 // slides, so it stays on the compositor. As a popover it's `fixed` from
 // the first frame, since popups render in place and Safari painted one
 // inside the composer's row for a few frames.
@@ -63,7 +64,7 @@ function SelectContent({
       className={cn(
         "overflow-x-hidden overflow-y-auto overscroll-contain border border-border-strong bg-popover p-2 text-popover-foreground outline-hidden",
         "data-[presentation=popover]:fixed data-[presentation=popover]:max-h-(--available-height) data-[presentation=popover]:w-60 data-[presentation=popover]:popup-motion data-[presentation=popover]:rounded-overlay data-[presentation=popover]:shadow-popover",
-        "data-[presentation=sheet]:w-full data-[presentation=sheet]:rounded-t-overlay data-[presentation=sheet]:border-b-0 data-[presentation=sheet]:pt-3 data-[presentation=sheet]:safe-area-bottom",
+        "data-[presentation=sheet]:w-full data-[presentation=sheet]:rounded-t-overlay data-[presentation=sheet]:border-b-0 data-[presentation=sheet]:pt-3 data-[presentation=sheet]:safe-area-bottom data-[presentation=sheet]:sheet-bleed",
         className
       )}
       {...props}
