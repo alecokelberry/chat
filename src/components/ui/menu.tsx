@@ -6,7 +6,8 @@
 // row dims, and a destructive one (Delete) is red. On a phone it's a
 // sheet from the bottom instead (presentation "auto", DESIGN.md ›
 // Phones), with 48px rows and padding clear of the home indicator, on the
-// screen's bottom edge (app.css), moved only by ui-sdk's own translate. As
+// screen's bottom edge, its fill carried on below it for a drag up past
+// its height (app.css), moved only by ui-sdk's own translate. As
 // a popover it's `fixed` from the first frame, since popups render in
 // place and Safari painted one inside its trigger's row for a few frames.
 import type * as React from "react"
@@ -39,7 +40,7 @@ function MenuContent({
       className={cn(
         "overflow-x-hidden overflow-y-auto overscroll-contain border border-border-strong bg-popover p-2 text-popover-foreground outline-hidden",
         "data-[presentation=popover]:fixed data-[presentation=popover]:max-h-(--available-height) data-[presentation=popover]:w-64 data-[presentation=popover]:popup-motion data-[presentation=popover]:rounded-overlay data-[presentation=popover]:shadow-popover",
-        "data-[presentation=sheet]:w-full data-[presentation=sheet]:rounded-t-overlay data-[presentation=sheet]:border-b-0 data-[presentation=sheet]:pt-3 data-[presentation=sheet]:safe-area-bottom",
+        "data-[presentation=sheet]:w-full data-[presentation=sheet]:rounded-t-overlay data-[presentation=sheet]:border-b-0 data-[presentation=sheet]:pt-3 data-[presentation=sheet]:safe-area-bottom data-[presentation=sheet]:sheet-bleed",
         className
       )}
       {...props}

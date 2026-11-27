@@ -122,7 +122,9 @@ test.describe("on a phone", () => {
   // no keyboard up (after the keyboard goes, or above a Home Screen app's
   // home indicator). ui-sdk counted that as a keyboard and floated the
   // sheet mid-screen; it sits on the bottom edge whatever the viewport says.
-  test("the sheet sits on the screen's bottom edge", async ({ page }) => {
+  test("the sheet sits on the screen's bottom edge, its fill below", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       Object.defineProperty(VisualViewport.prototype, "height", {
         get: () => innerHeight - 230,
@@ -139,5 +141,13 @@ test.describe("on a phone", () => {
     await expect
       .poll(() => sheet.evaluate((el) => el.getBoundingClientRect().bottom))
       .toBe(844)
+
+    // Its fill carries on 768px below, in steps no taller than the sheet,
+    // so iOS's bounce on a drag up never shows the page under it.
+    await expect(sheet).toHaveCSS("box-shadow", /0px 768px 0px 0px$/)
+    const height = await sheet.evaluate(
+      (el) => el.getBoundingClientRect().height
+    )
+    expect(height).toBeGreaterThan(96)
   })
 })

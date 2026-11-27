@@ -447,6 +447,26 @@
   --keyboard-inset: 0px !important;
 }
 
+/* A phone sheet's fill, carried 48rem past its bottom edge, so a drag up
+   past its open height shows more sheet, never the page. ui-sdk moves a
+   phone sheet with native scrolling, and iOS's own bounce can stretch it
+   hundreds of pixels; its docs cover the gap with an element below the
+   edge, but these sheets scroll their own rows, which would clip one. A
+   shadow isn't clipped and adds no scroll room: eight copies of the
+   sheet, 6rem apart, each starting inside the one above, so it holds for
+   any sheet taller than 6rem. Off the screen until then. */
+@utility sheet-bleed {
+  box-shadow:
+    0 6rem 0 var(--color-popover),
+    0 12rem 0 var(--color-popover),
+    0 18rem 0 var(--color-popover),
+    0 24rem 0 var(--color-popover),
+    0 30rem 0 var(--color-popover),
+    0 36rem 0 var(--color-popover),
+    0 42rem 0 var(--color-popover),
+    0 48rem 0 var(--color-popover);
+}
+
 /* A phone sheet's bottom padding: 12px, or the home indicator's height on
    a phone that has one. */
 @utility safe-area-bottom {
