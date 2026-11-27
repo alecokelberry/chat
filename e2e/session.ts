@@ -168,9 +168,18 @@ export async function pickModel(page: Page, name: string) {
   await expect(picker).toContainText(name)
 }
 
+/** Sends a message the way a person does: once the last reply is over. The
+ *  composer ignores Enter while a reply streams (Send is Stop then), and a
+ *  reply's last word shows before its stream has ended, so on a slow
+ *  runner a message typed right after "Done." was dropped, leaving the
+ *  text in the box. So it waits for Stop to go, and checks the box emptied,
+ *  which is what a sent message does. */
 export async function send(page: Page, text: string) {
-  await page.getByRole("textbox", { name: "Message" }).fill(text)
+  const message = page.getByRole("textbox", { name: "Message" })
+  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0)
+  await message.fill(text)
   await page.keyboard.press("Enter")
+  await expect(message).toHaveValue("")
 }
 
 declare global {
