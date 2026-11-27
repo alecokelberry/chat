@@ -167,6 +167,8 @@ function StatusBarDebug() {
       const now = document.documentElement.dataset.colorScheme ?? "?"
       if (now === last) return
       last = now
+      // A new theme shows: the next trial starts from its opposite again.
+      next.current = null
       changes.current = [
         ...changes.current.slice(-3),
         `${now} ${new Date().toLocaleTimeString()}`,
