@@ -3,7 +3,7 @@
 // the reply like any part. A chat's messages are data, so each field is
 // checked, and a result's address is kept only if it's http(s): it
 // becomes a link.
-import { field } from "@/lib/chat/reply-metadata"
+import { field } from "@/lib/field"
 
 export type Source = { title: string; url: string; site: string }
 
@@ -44,6 +44,8 @@ function resultsOf(output: unknown): Source[] {
 export function searchesOf(message: { parts: readonly unknown[] }): Search[] {
   return message.parts.flatMap((part) => {
     if (field(part, "type") !== "tool-webSearch") return []
+    // Past the cap, the model was told no: nothing was searched.
+    if (field(field(part, "output"), "refused") !== undefined) return []
     const state = field(part, "state")
     return [
       {

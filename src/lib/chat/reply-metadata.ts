@@ -5,6 +5,7 @@
 // or to Stop; with several steps, the time between them counts). Read back
 // field by field: a chat's messages are data.
 import { MODELS, type ModelKey } from "@/lib/ai/models"
+import { field } from "@/lib/field"
 
 export type ReplyMetadata = {
   model?: ModelKey
@@ -17,12 +18,6 @@ export type ReplyMetadata = {
   /** How long it thought, in ms. */
   thought?: number
 }
-
-/** A field of a saved object, unchecked: messages are data. */
-export const field = (metadata: unknown, key: string): unknown =>
-  typeof metadata === "object" && metadata !== null && key in metadata
-    ? Reflect.get(metadata, key)
-    : undefined
 
 const numberAt = (metadata: unknown, key: string) => {
   const value = field(metadata, key)
