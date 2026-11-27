@@ -17,10 +17,11 @@ export const cn = createCn({
         "header",
         "header-content",
         "dialog-top",
+        "dialog-list",
         "dialog-height",
       ],
       radius: ["item", "overlay", "composer"],
-      container: ["composer", "signin", "dialog"],
+      container: ["composer", "signin", "dialog", "dialog-wide"],
       ease: ["standard", "decelerate", "spring", "out-quint"],
     },
     classGroups: {
