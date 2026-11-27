@@ -3,8 +3,10 @@ import type { Page } from "@playwright/test"
 import {
   expect,
   pick,
+  pickModel,
   questions,
   replies,
+  send,
   sidebar,
   signInAsDev,
   test,
@@ -154,6 +156,51 @@ test("files the rules turn away never attach, and a toast says why", async ({
   ).toBeVisible()
   await expect(page.getByText("Can't read HEIC in this browser")).toBeVisible()
   await expect(tiles(page)).toHaveCount(3)
+})
+
+test("a model that can't see images holds Send, and one tap switches", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await pickModel(page, "Ultra")
+  await pick(page, [SMALL])
+  await expect(tiles(page)).toHaveCount(1)
+  const send = page.getByRole("button", { name: "Send" })
+  await expect(page.getByText("Ultra can't see images")).toBeVisible()
+  await expect(send).toBeDisabled()
+
+  await page.getByRole("button", { name: "Switch to Super" }).click()
+  await expect(page.getByRole("combobox", { name: "Model" })).toContainText(
+    "Super"
+  )
+  await expect(page.getByText("can't see images")).toHaveCount(0)
+  await expect(send).toBeEnabled()
+
+  // Taking the image out also lets it send, on the model chosen.
+  await pickModel(page, "Lightning")
+  await expect(send).toBeDisabled()
+  await page.getByRole("button", { name: "Remove small.jpg" }).click()
+  await page.getByRole("textbox", { name: "Message" }).fill("Just words")
+  await expect(send).toBeEnabled()
+})
+
+test("a chat with images goes on with Ultra, told what each image was", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await pick(page, [WIDE, SMALL])
+  await expect(tiles(page)).toHaveCount(2)
+  await page.getByRole("textbox", { name: "Message" }).fill(unique("Look"))
+  await page.keyboard.press("Enter")
+  await expect(replies(page)).toHaveText([/Saw 2 images\..*Done\.$/])
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
+
+  await pickModel(page, "Ultra")
+  await send(page, unique("And now?"))
+  await expect(replies(page).nth(1)).toHaveText(/Told of 2 images\..*Done\.$/, {
+    timeout: 15_000,
+  })
+  await expect(replies(page).nth(1)).not.toContainText("Saw")
 })
 
 // ui-sdk's agent bridge (window.agent, test builds): an agent finds

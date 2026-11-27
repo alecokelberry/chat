@@ -8,6 +8,8 @@
 // with ✕ to take it out; a file the rules turn away, or one that won't
 // decode, never joins, and a toast says why. A question shows its images
 // as a row of thumbnails above its bubble, and a tap opens one full size.
+// With images attached and a model that can't see them (Ultra, Lightning),
+// Send waits and a line under the composer offers "Switch to Super".
 import { useRef, useState } from "react"
 import type { FileUIPart } from "ai"
 import { ImageOffIcon, ImagePlusIcon, PlusIcon, XIcon } from "lucide-react"
@@ -235,5 +237,28 @@ function Thumbnail({ url }: { url: string }) {
     <ImageOffIcon aria-hidden />
   ) : (
     <img src={url} alt="" onError={() => setBroken(true)} />
+  )
+}
+
+/** Under the composer when its images would go to a model that can't see
+ *  them: Send waits, and one tap switches to Super. The model never
+ *  changes on its own. */
+export function CantSeeImages({
+  model,
+  onSwitch,
+}: {
+  model: string
+  onSwitch: () => void
+}) {
+  return (
+    <p
+      role="status"
+      className="flex items-center justify-center gap-2 pt-2 text-sm text-muted-foreground"
+    >
+      {`${model} can't see images`}
+      <Button variant="outline" size="sm" onClick={onSwitch}>
+        Switch to Super
+      </Button>
+    </p>
   )
 }
