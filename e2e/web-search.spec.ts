@@ -27,16 +27,21 @@ test("a question that says search shows the step, then its sources, kept on relo
   await expect(searched).toBeVisible()
   await expect(replies(page)).toHaveText(SEARCHED_REPLY)
 
-  const sources = page.getByRole("navigation", { name: "Sources" })
-  await expect(sources.getByRole("link")).toHaveCount(SEARCH_RESULTS.length)
-  const first = sources.getByRole("link", { name: "example.com" })
+  const sources = page.getByRole("button", { name: "5 sources" })
+  await sources.click()
+  const menu = page.getByRole("menu")
+  await expect(menu.getByRole("menuitem")).toHaveCount(SEARCH_RESULTS.length)
+  const first = menu.getByRole("menuitem", {
+    name: "Example Domain, example.com",
+  })
   await expect(first).toHaveAttribute("href", "https://example.com/")
   await expect(first).toHaveAttribute("target", "_blank")
   await expect(first).toHaveAttribute("rel", "noopener noreferrer")
+  await page.keyboard.press("Escape")
 
   await page.reload()
   await expect(searched).toHaveAttribute("aria-expanded", "false")
-  await expect(sources.getByRole("link")).toHaveCount(SEARCH_RESULTS.length)
+  await expect(sources).toBeVisible()
   await searched.click()
   await expect(searched).toHaveAttribute("aria-expanded", "true")
   const thread = page.getByRole("log", { name: "Messages" })
@@ -48,7 +53,7 @@ test("a simple question doesn't search", async ({ page }) => {
   await send(page, "Hello")
   await expect(replies(page)).toContainText("Done.")
   await expect(page.getByRole("button", { name: /^Search/ })).toHaveCount(0)
-  await expect(page.getByRole("navigation", { name: "Sources" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: /sources?$/ })).toHaveCount(0)
 })
 
 test("a failed search still gets a reply, saying it couldn't search", async ({
@@ -63,7 +68,7 @@ test("a failed search still gets a reply, saying it couldn't search", async ({
   await expect(
     page.getByText("The web search failed, so nothing was found.")
   ).toBeVisible()
-  await expect(page.getByRole("navigation", { name: "Sources" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: /sources?$/ })).toHaveCount(0)
 })
 
 test("Stop during a search stops it", async ({ page }) => {
@@ -94,7 +99,6 @@ test("a reply searches at most three times", async ({ page }) => {
   await expect(thread.getByText("Example Domain · example.com")).toHaveCount(3)
 })
 
-// A saved reply is data: its parts are whatever was stored.
 test("a reply searches at most three times, even all at once", async ({
   page,
 }) => {
@@ -104,11 +108,11 @@ test("a reply searches at most three times, even all at once", async ({
   await page.getByRole("button", { name: "Searched · 5 sites" }).click()
   const thread = page.getByRole("log", { name: "Messages" })
   await expect(thread.getByText("Example Domain · example.com")).toHaveCount(3)
-  await expect(
-    thread.getByText(/^That's the 3 searches this reply can make/)
-  ).toHaveCount(2)
+  // The refusals past the cap are the model's business, not shown.
+  await expect(thread.getByText(/searches this reply can make/)).toHaveCount(0)
 })
 
+// A saved reply is data: its parts are whatever was stored.
 const reply = (parts: unknown[]) => ({ parts })
 
 test("a saved search keeps only web links, and counts each site once", () => {
@@ -130,6 +134,17 @@ test("a saved search keeps only web links, and counts each site once", () => {
       },
     ])
   )
+  expect(
+    searchesOf(
+      reply([
+        {
+          type: "tool-webSearch",
+          state: "output-available",
+          output: { refused: "That's the 3 searches this reply can make." },
+        },
+      ])
+    )
+  ).toEqual([])
   expect(sourcesOf(searches)).toEqual([
     { title: "A", url: "https://a.example/1", site: "a.example" },
     { title: "b.example", url: "https://b.example/", site: "b.example" },
