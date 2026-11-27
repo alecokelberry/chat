@@ -156,6 +156,34 @@ export default defineConfig({
       },
     },
     {
+      // Unit tests (vitest.config.ts): Vitest's own mistakes. Plain tests
+      // come from vitest and properties are `it.prop` from
+      // @fast-check/vitest, which lint counts as a test block. Lint can't
+      // see `it.only.prop`, but Vitest fails a focused test in CI.
+      files: ["src/**/*.test.ts"],
+      plugins: ["vitest"],
+      rules: {
+        "vitest/expect-expect": [
+          "error",
+          {
+            assertFunctionNames: ["expect"],
+            additionalTestBlockFunctions: ["it.prop"],
+          },
+        ],
+        "vitest/no-focused-tests": "error",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-identical-title": "error",
+        "vitest/no-conditional-expect": "error",
+        "vitest/no-standalone-expect": [
+          "error",
+          { additionalTestBlockFunctions: ["it.prop"] },
+        ],
+        "vitest/valid-expect": "error",
+        "vitest/valid-title": "error",
+        "vitest/no-commented-out-tests": "error",
+      },
+    },
+    {
       files: ["e2e/session.ts"],
       rules: {
         "no-restricted-imports": [
