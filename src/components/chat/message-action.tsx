@@ -83,7 +83,7 @@ export function CopyAction({
           )
       }}
     >
-      <span className="grid *:col-start-1 *:row-start-1 *:transition-swap motion-reduce:*:transition-none">
+      <span className="grid *:col-start-1 *:row-start-1 *:transition-swap motion-reduce:*:transition-opacity">
         <CopyIcon aria-hidden className={cn(copied && "scale-50 opacity-0")} />
         <CheckIcon
           aria-hidden

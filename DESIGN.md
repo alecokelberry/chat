@@ -44,10 +44,14 @@ Motion is quick and functional.
 | A reply step opening (`transition-collapse`: its height, measured by ui-sdk's Collapsible)                  | `duration-pane` 200ms    | `ease-standard`   |
 | Phone sidebar (ui-sdk's Drawer: it follows the finger and settles on its own iOS spring)                    | spring                   | spring            |
 | Toasts (`toast-stack`: slide in from their edge, leave the way they're swiped)                              | `duration-toast` 500ms   | `ease-out-quint`  |
+| An icon swap, like Copy turning into a check (`transition-swap`: fade and scale)                            | `duration-base` 180ms    | `ease-standard`   |
+| The theme's sun and moon trading places (`transition-spin`)                                                 | `duration-spin` 300ms    | `ease-standard`   |
+| A chevron turning as its part opens                                                                         | `duration-fast` 120ms    | `ease-standard`   |
+| Jump to latest (fade, 95% zoom and a rise, like a menu)                                                     | `duration-menu` 120ms    | `ease-decelerate` |
 
 - Use transitions, not keyframes, so motion can be interrupted. The exception is a loop that shows work under way (the spinner, the "Thinking" shimmer, a streaming reply's caret breathing once a second), which nothing interrupts. Under reduced motion these loops hold still.
-- Animate only `transform`/`scale` and `opacity` on things that move. The exception is a Collapsible's height, the way ui-sdk animates it.
-- Keyboard-triggered actions (⌘K, send, switching chats) never animate.
+- Animate only `transform`/`scale` and `opacity` on things that move. The exceptions are a Collapsible's height, the way ui-sdk animates it, and the computer's sidebar width, which moves the chat beside it.
+- Keyboard-triggered actions (⌘K, send, switching chats, switching the theme) never animate: a theme change snaps every color at once (`ui/preferences.tsx`).
 - Touch feedback starts on pointerdown (`ui/press-feedback.tsx`, mounted once by the root; `active:` matches `data-pressing`) and lasts at least 90ms, so a quick tap on iOS always shows. A scroll taking over or a finger sliding 12px off the control lets it go.
 - Under reduced motion, movement and scale stop and fades stay (`press` scales only under `no-preference`; a toast fades where it sits).
 - Durations and curves are the tokens in the table; `ui/motion-tokens` lints the rest.

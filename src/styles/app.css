@@ -301,6 +301,12 @@
 }
 
 @layer base {
+  /* A theme change snaps (preferences.tsx). */
+  [data-theme-changing] *,
+  [data-theme-changing] *::before,
+  [data-theme-changing] *::after {
+    transition: none !important;
+  }
   * {
     @apply border-border outline-ring;
     scrollbar-width: thin;
@@ -699,8 +705,8 @@
   transition:
     translate var(--duration-toast) var(--ease-out-quint),
     scale var(--duration-toast) var(--ease-out-quint),
-    opacity var(--duration-toast),
-    height var(--duration-fast);
+    opacity var(--duration-toast) var(--ease-out-quint),
+    height var(--duration-fast) var(--ease-standard);
   user-select: none;
   &:not([data-front], [data-expanded]) {
     height: var(--toast-front-height);

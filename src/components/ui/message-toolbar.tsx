@@ -26,7 +26,7 @@ function MessageToolbar({
       data-reveal={reveal}
       data-align={align}
       className={cn(
-        "flex items-center gap-0.5 data-[align=end]:-me-0.5 data-[align=end]:self-end data-[align=start]:-ms-0.5 data-[reveal=hover]:opacity-0 data-[reveal=hover]:transition-opacity data-[reveal=hover]:duration-base data-[reveal=hover]:group-hover/message:opacity-100 data-[reveal=hover]:focus-within:opacity-100 motion-reduce:transition-none data-[reveal=hover]:pointer-coarse:opacity-100",
+        "flex items-center gap-0.5 data-[align=end]:-me-0.5 data-[align=end]:self-end data-[align=start]:-ms-0.5 data-[reveal=hover]:opacity-0 data-[reveal=hover]:transition-opacity data-[reveal=hover]:duration-fast data-[reveal=hover]:ease-standard data-[reveal=hover]:group-hover/message:opacity-100 data-[reveal=hover]:focus-within:opacity-100 data-[reveal=hover]:pointer-coarse:opacity-100",
         className
       )}
       {...props}

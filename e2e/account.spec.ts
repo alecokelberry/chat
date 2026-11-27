@@ -220,6 +220,33 @@ test.describe("on a computer", () => {
     await expect(html).toHaveAttribute("data-color-scheme", "light")
   })
 
+  test("D snaps every color at once, with no ease from the old theme", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const toggle = sidebar(page).getByRole("button", { name: "Sidebar" })
+    await expect(toggle).toBeVisible()
+    // Read the toggle's ink the moment <html> turns dark, before any
+    // transition could run: it must already be the new theme's.
+    const atOnce = await toggle.evaluate(
+      (el) =>
+        new Promise<string>((resolve) => {
+          new MutationObserver(() => {
+            resolve(getComputedStyle(el).color)
+          }).observe(document.documentElement, {
+            attributeFilter: ["data-color-scheme"],
+          })
+          document.body.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "d", bubbles: true })
+          )
+        })
+    )
+    await page.waitForTimeout(300)
+    expect(await toggle.evaluate((el) => getComputedStyle(el).color)).toBe(
+      atOnce
+    )
+  })
+
   test("Sign out lands on /sign-in", async ({ page }) => {
     await signInAsDev(page)
     await accountRow(page).click()
