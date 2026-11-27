@@ -77,7 +77,7 @@ export async function streamReply(
     instructions: instructions(new Date(), lastTimeZone(messages)),
     messages: await convertToModelMessages(messages),
     tools: { webSearch: webSearch() },
-    // Each search is a step and the answer one more.
+    // At most SEARCH_LIMIT steps that search, and one more to answer.
     stopWhen: isStepCount(SEARCH_LIMIT + 1),
     prepareStep: ({ steps }) =>
       steps.flatMap((step) => step.toolCalls).length >= SEARCH_LIMIT
@@ -114,8 +114,8 @@ function instructions(now: Date, timeZone: string) {
 }
 
 /** What the chat shows when a reply fails. The status and message go to
- *  the log, never the request (it holds the chat). A failed or refused
- *  search passes through here too, already logged, and the reply goes on. */
+ *  the log, never the request (it holds the chat). A failed search
+ *  passes through here too, already logged, and the reply goes on. */
 export function replyError(error: unknown): string {
   if (error instanceof SearchError) return error.message
   const cause = RetryError.isInstance(error) ? error.lastError : error

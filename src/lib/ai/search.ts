@@ -107,16 +107,10 @@ class KeenableError extends Error {
 /** Why a search found nothing, as the model and the chat read it. */
 export class SearchError extends Error {}
 
-/** The reason a failed search gives. */
-const failure = (cause: unknown) =>
-  new SearchError(
-    cause instanceof KeenableError && cause.status === 402
-      ? "This month's free web searches are used up."
-      : "The web search failed, so nothing was found."
-  )
-
 /** The webSearch tool for one reply: past SEARCH_LIMIT calls, even ones
- *  made at once in a single step, it refuses without asking Keenable. */
+ *  made at once in a single step, it refuses without asking Keenable. A
+ *  refusal is for the model only: the chat leaves it out
+ *  (src/lib/chat/searches.ts). */
 export const webSearch = () => {
   let left = SEARCH_LIMIT
   return tool({
@@ -131,12 +125,12 @@ export const webSearch = () => {
     }),
     execute: async ({ query }, { abortSignal }) => {
       if (left <= 0)
-        throw new SearchError(
-          `That's the ${SEARCH_LIMIT} searches this reply can make. Answer from what you have.`
-        )
+        return {
+          refused: `That's the ${SEARCH_LIMIT} searches this reply can make. Answer from what you have.`,
+        }
       left -= 1
       try {
-        const results =
+        const results: SearchResult[] =
           env.MOCK_MODEL === "1"
             ? await mockSearch(query, abortSignal)
             : await keenable(query, abortSignal)
@@ -147,7 +141,11 @@ export const webSearch = () => {
           "Search failed:",
           error instanceof Error ? error.message : String(error)
         )
-        throw failure(error)
+        throw new SearchError(
+          error instanceof KeenableError && error.status === 402
+            ? "This month's free web searches are used up."
+            : "The web search failed, so nothing was found."
+        )
       }
     },
   })
