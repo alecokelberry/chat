@@ -11,3 +11,8 @@ allowBuilds:
 # time, which WebKit keeps, so an iPhone shows nothing for a second.
 patchedDependencies:
   "@ui-sdk/core": patches/@ui-sdk__core.patch
+# drizzle-kit's old TS loader pins esbuild 0.18, which has a dev-server
+# advisory (GHSA-67mh-4wv8-2f99). 0.25 is the first fixed release and the
+# loader's API is unchanged. Dev-only: drizzle-kit never ships in the Worker.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
