@@ -45,22 +45,19 @@ const plugins = {
 }
 const components = { code: Code, table: Table }
 
-// The highlighter (Shiki, its engine and both themes) starts while idle,
-// so the first code block of a session doesn't start it mid-reply;
-// TypeScript's grammar comes along, the most common one. In the iOS
-// Simulator, with the cache off, it took the first markdown reply's worst
-// frame from 44 ms to 32 ms.
-if (!import.meta.env.SSR)
-  whenIdle(() =>
-    plugins.code.highlight(
-      {
-        code: "",
-        language: "typescript",
-        themes: plugins.code.getThemes(),
-      },
-      () => {}
-    )
-  )
+// Shiki (its module, engine and both themes) and TypeScript's highlighter,
+// the most common language, start while idle, so a first TypeScript block
+// doesn't build them mid-reply. Another language still builds its own
+// highlighter on first use (@streamdown/code keeps one per language), but
+// the shared downloads are done. In the iOS Simulator, with the cache off,
+// it took the first markdown reply's worst frame from 44 ms to 32 ms.
+whenIdle(() =>
+  plugins.code.highlight({
+    code: "",
+    language: "typescript",
+    themes: plugins.code.getThemes(),
+  })
+)
 const linkSafety = { enabled: false }
 
 export default function Reply({
