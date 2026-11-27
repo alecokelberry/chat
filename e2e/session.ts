@@ -217,11 +217,13 @@ type AgentBridge = {
   act: (plan: {
     steps: { ref: string; action: string; args: unknown[] }[]
   }) => Promise<{ ok: boolean; error?: { message: string } }>
-  query: (options: {
-    within?: string
-    text?: string
-  }) => Promise<
+  query: (options: { within?: string; text?: string }) => Promise<
     | { error: string }
-    | { ref: string; label?: string; items: { value: unknown }[] }[]
+    | {
+        ref: string
+        label?: string
+        offPage?: boolean
+        items: { value: unknown }[]
+      }[]
   >
 }
