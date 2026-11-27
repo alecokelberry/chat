@@ -12,10 +12,11 @@
 // it stays there until the text is cleared, so it doesn't jump back and
 // forth as it fits and stops fitting. Flex order moves the text without
 // moving it in the page, so the caret stays put. Attached files sit as
-// tiles above the text, inside the pill; a question can be only files. Send waits until each is ready,
-// and while the model can't see them (attachments.tsx). A tap doesn't
-// ring the pill (the caret shows where you are): only keyboard focus does
-// (the keyboard variant, focus-modality.tsx).
+// tiles above the text, inside the pill; a question can be only files.
+// Send waits until each is ready, and while the model can't see them
+// (attachments.tsx). A tap doesn't ring the pill (the caret shows where
+// you are): only keyboard focus does (the keyboard variant,
+// focus-modality.tsx).
 // Send and Stop are icons alone, named by their tooltips (type "label").
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
