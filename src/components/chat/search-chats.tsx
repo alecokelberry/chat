@@ -1,10 +1,14 @@
 // Search's dialog and list (search.tsx opens it; this loads apart so the
-// first load doesn't carry it). The list is ui-sdk's Command over the chat
-// list the layout already has (chat-list.tsx). With nothing typed it lists
-// the 50 most recent (pins, then the newest) in the sidebar's groups
-// (src/lib/chat/groups.ts); typing ranks every chat by title with
-// Command's fuzzy filter, best first, matched letters in bold, rendering
-// only the rows in view. From two letters, as typing pauses, chats whose
+// first load doesn't carry it): Grok's command palette, "Search or type an
+// action". The list is ui-sdk's Command over Chat's actions (New Chat, its
+// keys on the right) and the chat list the layout already has
+// (chat-list.tsx). With nothing typed it shows the actions, New Chat
+// highlighted, then under Chats the 50 most recently active, each with a
+// chat icon and how long ago on the right (1d, 2d). Tab moves the
+// highlight to the next section's first row, Shift+Tab back. Typing ranks
+// the actions and every chat by title with Command's fuzzy filter, a
+// matching action first, then the best titles, matched letters in bold,
+// rendering only the rows in view. From two letters, as typing pauses, chats whose
 // messages hold the words (src/lib/chat/message-index.ts) follow under
 // Messages, each with its matching line; title matches stay put while they
 // load, and a failure says so quietly under the list. Each open also has
@@ -32,7 +36,12 @@ import {
   type RefObject,
 } from "react"
 import type { UIMessage } from "ai"
-import { EllipsisIcon, PencilIcon } from "lucide-react"
+import {
+  EllipsisIcon,
+  MessageCircleIcon,
+  PencilIcon,
+  PlusIcon,
+} from "lucide-react"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
@@ -45,6 +54,7 @@ import {
   CommandGroupLabel,
   CommandInput,
   CommandItem,
+  CommandItemEnd,
   CommandItemLines,
   CommandItemText,
   CommandList,
@@ -55,6 +65,7 @@ import {
   CommandFieldEdit,
   CommandStatus,
   CommandWindow,
+  createCommandController,
   fuzzyScore,
   fuzzyThen,
   useAsyncOptions,
@@ -69,10 +80,14 @@ import {
   DialogTitle,
   type DialogController,
 } from "@/components/ui/dialog"
+import { Kbd, KbdKeys } from "@/components/ui/kbd"
 import { Menu } from "@/components/ui/menu"
-import { groupChats } from "@/lib/chat/groups"
+import { NEW_CHAT_SHORTCUT } from "@/components/ui/sidebar"
 import { findInMessages, indexOlderChats, QUERY_MAX } from "@/lib/chat/list"
+import { sortChats } from "@/lib/chat/groups"
 import { marksOf } from "@/lib/chat/match-marks"
+import { nextSection } from "@/lib/chat/next-section"
+import { relativeTime } from "@/lib/chat/relative-time"
 import type { ChatSummary } from "@/lib/chat/store"
 import { usePhone } from "@/lib/phone"
 
@@ -81,8 +96,35 @@ const toItem = (chat: ChatSummary): CommandDataItem => ({
   label: chat.title ?? "New chat",
 })
 
-/** The most chats listed while nothing is typed: pins, then the newest. */
+/** The most chats listed while nothing is typed: the most recently active. */
 const RECENT = 50
+
+/** What Search can do besides opening a chat, first in the list. Each
+ *  goes to `to`, as a link, and shows its keys. Open settings joins once
+ *  Settings lands. */
+const ACTIONS = [
+  {
+    value: "action:new-chat",
+    label: "New Chat",
+    to: "/",
+    shortcut: NEW_CHAT_SHORTCUT,
+    icon: PlusIcon,
+  },
+] as const
+
+type Action = (typeof ACTIONS)[number]
+
+const actionOf = (value: string): Action | undefined =>
+  ACTIONS.find((action) => action.value === value)
+
+const ACTION_VALUES: ReadonlySet<string> = new Set(
+  ACTIONS.map((action) => action.value)
+)
+
+const actionItems: CommandDataItem[] = ACTIONS.map(({ value, label }) => ({
+  value,
+  label,
+}))
 
 /** The dialog `controller` opens, `content` its panel, for ⌘K to close
  *  it from inside. */
@@ -271,15 +313,13 @@ function SearchChats({
   const { chats } = useChatList()
   const navigate = useNavigate()
   const field = useRef<HTMLInputElement>(null)
-  // The first recent chat opens highlighted, so Enter opens it and the
-  // preview has one to show at once.
-  const [first] = useState(() => {
-    const latest = groupChats(chats.slice(0, RECENT), Date.now())[0]
-    return latest?.chats[0]?.id ?? null
-  })
+  const [command] = useState(createCommandController)
+  // The rows' values, section by section, as last rendered: what Tab
+  // moves between.
+  const sections = useRef<string[][]>([])
   // Each row says when it's highlighted (Previewed): ui-sdk places some
   // highlights without onValueChange, like one on a match that arrives.
-  const [highlighted, setHighlighted] = useState<string | null>(first)
+  const [highlighted, setHighlighted] = useState<string | null>(null)
   // The dialog first renders its content before it's in the page, and
   // rows bound there never highlight once moved in (no highlight, hover or
   // Enter until typing), so the recent rows wait for the first commit.
@@ -301,12 +341,15 @@ function SearchChats({
     [chats, menus]
   )
   const groups = useMemo<CommandData>(
-    () =>
-      groupChats(chats.slice(0, RECENT), Date.now()).map((group) => ({
+    () => [
+      { type: "group", label: "Actions", items: actionItems },
+      {
         type: "group",
-        label: group.label,
-        items: group.chats.map(toItem),
-      })),
+        label: "Chats",
+        // Pins first, as in the sidebar, then the most recently active.
+        items: sortChats(chats, "updatedAt").slice(0, RECENT).map(toItem),
+      },
+    ],
     [chats]
   )
   // Typed: titles ranked in one list, as long as every chat, so only the
@@ -343,25 +386,41 @@ function SearchChats({
       return [{ value: WORDS + id, label, line: marksOf(snippet) }]
     })
   }, [chats, found.items, query])
-  const items = useMemo(() => [...chats.map(toItem), ...words], [chats, words])
+  const items = useMemo(
+    () => [...actionItems, ...chats.map(toItem), ...words],
+    [chats, words]
+  )
   const filter = useMemo(
-    () => fuzzyThen(words.map((item) => item.value)),
+    () =>
+      fuzzyThen(
+        words.map((item) => item.value),
+        ACTION_VALUES
+      ),
     [words]
   )
+  /** Tab: the next section's first row (Shift+Tab, the one before). */
+  const toSection = (step: 1 | -1) => {
+    const next = nextSection(sections.current, command.getValue(), step)
+    if (next !== undefined) command.setValue(next)
+  }
   return (
     <Command
       items={items}
       emptyItems={groups}
       filter={filter}
       status={found.status}
+      controller={command}
       autoHighlight
-      defaultValue={first}
+      defaultValue={ACTIONS[0].value}
       onAction={(value, { event }) => {
         // A click, a tap or Enter follows the result's link itself; a run
         // with neither (an agent's) goes there from here.
-        const id = chatIdOf(value)
-        if (!(event instanceof MouseEvent || event instanceof KeyboardEvent))
-          void navigate({ to: "/c/$id", params: { id } })
+        if (!(event instanceof MouseEvent || event instanceof KeyboardEvent)) {
+          const action = actionOf(value)
+          void (action === undefined
+            ? navigate({ to: "/c/$id", params: { id: chatIdOf(value) } })
+            : navigate({ to: action.to }))
+        }
         onPick?.()
         close()
       }}
@@ -387,13 +446,22 @@ function SearchChats({
         ref={field}
         caretHidden={!settled}
         hidden={renamed !== undefined}
-        aria-label="Search chats"
-        placeholder="Search chats…"
+        aria-label="Search chats and actions"
+        placeholder="Search or type an action"
+        hint={
+          <>
+            Next section <Kbd>Tab</Kbd>
+          </>
+        }
         onKeyDown={(event) => {
           // At once, not after clearing the text first.
           if (event.key === "Escape") {
             event.preventDefault()
             close()
+          }
+          if (event.key === "Tab" && !event.altKey && !event.metaKey) {
+            event.preventDefault()
+            toSection(event.shiftKey ? -1 : 1)
           }
         }}
       />
@@ -409,19 +477,44 @@ function SearchChats({
             </CommandEmpty>
             <CommandList ref={list}>
               {(state) => {
-                if (!typed)
+                if (!typed) {
+                  sections.current = state.items.map((entry) =>
+                    isGroup(entry)
+                      ? entry.items.filter(isCommand).map((item) => item.value)
+                      : []
+                  )
                   return mounted ? <Groups items={state.items} /> : null
+                }
                 const shown = state.items.filter(isCommand)
                 const titles = shown.filter(
                   (item) => !item.value.startsWith(WORDS)
                 )
                 const matches = shown.slice(titles.length)
+                const values = (list: CommandDataItem[]) =>
+                  list.map((item) => item.value)
+                sections.current = [
+                  values(
+                    titles.filter((item) => ACTION_VALUES.has(item.value))
+                  ),
+                  values(
+                    titles.filter((item) => !ACTION_VALUES.has(item.value))
+                  ),
+                  values(matches),
+                ]
                 return (
                   <>
                     <CommandWindow items={titles} view={view}>
-                      {(item, index) => (
-                        <Result item={item} index={index} query={query} />
-                      )}
+                      {(item, index) =>
+                        ACTION_VALUES.has(item.value) ? (
+                          <ActionResult
+                            item={item}
+                            index={index}
+                            query={query}
+                          />
+                        ) : (
+                          <Result item={item} index={index} query={query} />
+                        )
+                      }
                     </CommandWindow>
                     {matches.length > 0 && (
                       <CommandGroup>
@@ -463,18 +556,66 @@ function SearchChats({
 const isCommand = (entry: CommandData[number]): entry is CommandDataItem =>
   typeof entry !== "string" && !("type" in entry)
 
-/** The recent chats in their groups, while nothing is typed. */
+const isGroup = (
+  entry: CommandData[number]
+): entry is Extract<CommandData[number], { type: "group" }> =>
+  typeof entry !== "string" && "type" in entry && entry.type === "group"
+
+/** The actions, then the recent chats under Chats, while nothing is
+ *  typed. The actions' label is for screen readers: Grok shows none. */
 function Groups({ items }: { items: CommandData }) {
   let index = 0
   return items.map((entry) =>
-    typeof entry !== "string" && "type" in entry && entry.type === "group" ? (
+    isGroup(entry) ? (
       <CommandGroup key={entry.label}>
-        <CommandGroupLabel>{entry.label}</CommandGroupLabel>
-        {entry.items.filter(isCommand).map((item) => (
-          <Result key={item.value} item={item} index={index++} />
-        ))}
+        <CommandGroupLabel
+          className={entry.label === "Actions" ? "sr-only" : undefined}
+        >
+          {entry.label}
+        </CommandGroupLabel>
+        {entry.items
+          .filter(isCommand)
+          .map((item) =>
+            ACTION_VALUES.has(item.value) ? (
+              <ActionResult key={item.value} item={item} index={index++} />
+            ) : (
+              <Result key={item.value} item={item} index={index++} />
+            )
+          )}
       </CommandGroup>
     ) : null
+  )
+}
+
+/** An action: a link to where it goes, its icon, its label (matched
+ *  letters in bold while typed) and its keys on the right. */
+function ActionResult({
+  item,
+  index,
+  query,
+}: {
+  item: CommandDataItem
+  index?: number
+  query?: string
+}) {
+  const action = actionOf(item.value)
+  if (action === undefined) return null
+  const Icon = action.icon
+  return (
+    <CommandItem
+      value={item.value}
+      label={item.label}
+      index={index}
+      render={<Link to={action.to} />}
+    >
+      <Icon aria-hidden />
+      {query === undefined ? (
+        <CommandItemText />
+      ) : (
+        <CommandMatchText text={item.label} query={query} />
+      )}
+      <KbdKeys shortcut={action.shortcut} className="ms-3 flex-none!" />
+    </CommandItem>
   )
 }
 
@@ -489,6 +630,8 @@ function Result({
   index?: number
   query?: string
 }) {
+  const state = use(RowContext)
+  const updatedAt = state?.chats.get(item.value)?.updatedAt
   return (
     <ChatRow id={item.value}>
       <CommandItem
@@ -499,13 +642,19 @@ function Result({
           <Link to="/c/$id" params={{ id: item.value }} preload={false} />
         }
       >
-        {(state) => (
+        {(row) => (
           <>
-            {state.highlighted && <Previewed id={item.value} />}
+            {row.highlighted && <Previewed id={item.value} />}
+            <MessageCircleIcon aria-hidden />
             {query === undefined ? (
               <CommandItemText />
             ) : (
               <CommandMatchText text={item.label} query={query} />
+            )}
+            {updatedAt !== undefined && (
+              <CommandItemEnd>
+                {relativeTime(updatedAt, Date.now())}
+              </CommandItemEnd>
             )}
           </>
         )}
@@ -537,6 +686,7 @@ function WordsResult({
         {(state) => (
           <>
             {state.highlighted && <Previewed id={id} />}
+            <MessageCircleIcon aria-hidden />
             <CommandItemLines label={item.label} line={line} />
           </>
         )}

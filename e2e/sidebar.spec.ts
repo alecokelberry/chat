@@ -708,15 +708,17 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(last).toHaveAttribute("aria-current", "page")
 
-  // Search lists the recent 50 and ranks all 1,000 (only the rows in view
-  // render), so the oldest is a few letters away.
+  // Search lists New Chat and the recent 50, and ranks all 1,000 (only
+  // the rows in view render), so the oldest is a few letters away.
   await page.keyboard.press("ControlOrMeta+k")
   const search = page.getByRole("dialog", { name: "Search" })
-  await expect(search.getByRole("option")).toHaveCount(50)
+  await expect(search.getByRole("option")).toHaveCount(51)
   await page
     .getByRole("combobox", { name: "Search chats" })
     .fill("seeded chat 995")
-  await expect(search.getByRole("option").first()).toHaveText("Seeded chat 995")
+  await expect(search.getByRole("option").first()).toHaveText(
+    /^Seeded chat 995/
+  )
   expect(await search.getByRole("option").count()).toBeLessThan(60)
 
   // Dev's words (e2e/seed.sql) are never the owner's to find.

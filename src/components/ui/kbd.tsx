@@ -1,10 +1,13 @@
 // Kbd: a keycap, Grok's: a 20px square chip (wider for a word like Ctrl
 // or Tab) with 4px corners, 12px muted text on a faint tint of the
 // surface it sits on. KbdShortcut shows a hint ui-sdk formatted for the
-// platform ("⌘K", "Ctrl+K") as one keycap per key, 4px apart. ui-sdk has
+// platform ("⌘K", "Ctrl+K") as one keycap per key, 4px apart, and
+// KbdKeys does the same for keys like "mod+j" (ui-sdk's useShortcutHint,
+// which matches the server's render, then the platform). ui-sdk has
 // no keycap part, so this is the shadcn-style <kbd>; the hint's text and
 // the trigger's aria-keyshortcuts stay ui-sdk's.
 import type * as React from "react"
+import { useShortcutHint } from "@ui-sdk/react/shortcuts"
 
 import { shortcutKeys } from "@/components/ui/shortcut-keys"
 import { cn } from "@/lib/utils"
@@ -46,4 +49,17 @@ function KbdShortcut({
   )
 }
 
-export { KbdShortcut }
+/** `shortcut`'s keys, like "mod+j", as keycaps for this platform. */
+function KbdKeys({
+  shortcut,
+  className,
+}: {
+  shortcut: string
+  className?: string
+}) {
+  return (
+    <KbdShortcut hint={useShortcutHint(shortcut).text} className={className} />
+  )
+}
+
+export { Kbd, KbdKeys, KbdShortcut }
