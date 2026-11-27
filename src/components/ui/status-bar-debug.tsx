@@ -8,7 +8,7 @@
 import * as React from "react"
 
 const KEY = "debug-bar"
-const BUILD: string = import.meta.env.VITE_BUILD ?? "dev"
+const BUILD: string = import.meta.env.VITE_BUILD
 const LOADED_AT = new Date().toLocaleTimeString()
 
 function on() {
@@ -44,11 +44,12 @@ function topEdge() {
   const sheet = document.createElement("style")
   sheet.textContent = "* { pointer-events: auto !important }"
   document.head.appendChild(sheet)
-  const hit = document.elementFromPoint(
-    document.documentElement.clientWidth / 2,
-    4
-  )
-  sheet.remove()
+  let hit: Element | null
+  try {
+    hit = document.elementFromPoint(document.documentElement.clientWidth / 2, 4)
+  } finally {
+    sheet.remove()
+  }
   const chain: string[] = []
   for (let el = hit; el !== null; el = el.parentElement) {
     const style = getComputedStyle(el)
@@ -130,7 +131,7 @@ function StatusBarDebug() {
   React.useEffect(() => {
     if (!shown) return
     const update = () => setLines(read(loadedAs.current, changes.current))
-    const timer = setInterval(update, 500)
+    const timer = setInterval(update, 1000)
     return () => clearInterval(timer)
   }, [shown])
 
