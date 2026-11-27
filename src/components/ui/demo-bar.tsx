@@ -1,5 +1,5 @@
 // The dev-only bar for ?data= (src/lib/dev/worst-case.ts): fixed at the
-// bottom centre of the screen, it names the data on and flips between the
+// bottom centre of the screen, above the composer, it names the data on and flips between the
 // states in a ui-sdk SegmentedControl; ✕ goes back to the real data. Plain
 // on purpose: it's chrome, not part of the design under test, and sits
 // above the composer and the toasts. Only the signed-in layout renders it,
@@ -27,7 +27,7 @@ function DemoBar<T extends string>({
   return (
     <div
       data-slot="demo-bar"
-      className="fixed bottom-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border-strong bg-popover p-1 text-sm shadow-tooltip"
+      className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border-strong bg-popover p-1 text-sm shadow-tooltip"
     >
       <SegmentedControl
         aria-label="Preview data"

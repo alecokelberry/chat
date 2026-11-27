@@ -5,7 +5,8 @@
 // swap happens where each piece of data enters (the layout's chat list and
 // account, a chat's messages: src/routes/_app), so no component knows. A
 // production or Preview build compiles the whole thing away and ignores the
-// parameter. The values are ones a real chat could hold or the limits it
+// parameter. Fixture chats are not in the database, so a rename, pin or
+// delete on one fails with its usual error toast, as it should. The values are ones a real chat could hold or the limits it
 // enforces (TITLE_MAX), as break-ui's catalog suggests.
 import type { UIMessage } from "ai"
 

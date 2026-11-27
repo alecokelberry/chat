@@ -1,6 +1,13 @@
 import type { Page } from "@playwright/test"
 
-import { expect, questions, replies, signInAsDev, test } from "./session"
+import {
+  expect,
+  questions,
+  replies,
+  sidebar,
+  signInAsDev,
+  test,
+} from "./session"
 
 // ?data=worst, empty and one (src/lib/dev/worst-case.ts, in dev and this
 // test build, never live): the sidebar's chats and account, and a chat's
@@ -9,10 +16,10 @@ import { expect, questions, replies, signInAsDev, test } from "./session"
 // parameter stays on while navigating. At 390 nothing may push the page
 // wider than the screen.
 
-const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
 const bar = (page: Page) =>
   page.getByRole("radiogroup", { name: "Preview data" })
-const SEEDED_CHAT = "00000000-0000-4000-8000-000000000000"
+// The fixture chat with the 200-character title.
+const LONG_TITLE_CHAT = "00000000-0000-4000-a000-000000000002"
 
 test.describe("on a computer", () => {
   test.use({ viewport: { width: 1440, height: 900 } })
@@ -81,12 +88,22 @@ test.describe("on a phone", () => {
 
   test("worst-case data doesn't widen the page", async ({ page }) => {
     await signInAsDev(page)
-    await page.goto(`/c/${SEEDED_CHAT}?data=worst`)
+    await page.goto(`/c/${LONG_TITLE_CHAT}?data=worst`)
     await expect(replies(page).first()).toContainText("A very long reply")
     // The wide table and long code line scroll inside their own boxes.
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth
     )
     expect(overflow).toBeLessThanOrEqual(0)
+    // The title pill stays on one line, clear of the sidebar button and ⋯.
+    const pill = await page.locator('[data-slot="header-title"]').boundingBox()
+    expect(pill).not.toBeNull()
+    expect(pill?.x).toBeGreaterThanOrEqual(88 - 1)
+    expect((pill?.x ?? 0) + (pill?.width ?? 0)).toBeLessThanOrEqual(
+      390 - 88 + 1
+    )
+    await expect(
+      page.getByRole("button", { name: "Chat actions" })
+    ).toBeVisible()
   })
 })
