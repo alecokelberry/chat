@@ -676,6 +676,19 @@ test.describe("on a phone", () => {
     const sheet = page.locator('[data-slot="menu-content"]')
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
     await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
+    // The keyboard's Return reads Done.
+    await expect(titleField(page)).toHaveAttribute("enterkeyhint", "done")
+    // Escape cancels the rename, not the drawer, and focus goes back to
+    // the row's ….
+    const actions = row.getByRole("button", { name: /^Actions for / })
+    await page.keyboard.press("Escape")
+    await expect(titleField(page)).toBeHidden()
+    await expect(drawer).toBeVisible()
+    await expect(actions).toBeFocused()
+    await expect(row.getByRole("link")).toHaveText(TITLE)
+
+    await actions.tap()
+    await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
     // A long, non-Latin title stays one row inside the drawer.
     const name = unique(
       "名前を変えたとても長いチャットのタイトルがここに続きます"

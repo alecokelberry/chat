@@ -6,7 +6,8 @@
 // yet shows "New chat"), and the account row at the bottom
 // (account-menu.tsx). Each row has its own … menu (chat-actions.tsx), so
 // each is a menu an agent can find by the row's name, and Rename edits
-// that row's title in place.
+// that row's title in place (Escape there cancels it, leaving the drawer
+// open).
 //
 // The list scrolls up behind New Chat (it starts --spacing-list-overlap under the button and
 // fades over its top 56px, scroll-fade-y), so rows dim softly under the button's
@@ -169,7 +170,16 @@ export function ChatSidebar({
       <div className="relative flex min-w-0 flex-1 flex-col">
         <SidebarDrawer
           open={open && phone === true}
-          onOpenChange={setOpen}
+          onOpenChange={(next, details) => {
+            // Escape in a row's rename field cancels the rename
+            // (chat-actions.tsx), not the drawer.
+            if (
+              details.reason === "escape-key" &&
+              details.event?.target instanceof HTMLInputElement
+            )
+              details.cancel()
+            else setOpen(next)
+          }}
           onOpenChangeComplete={setOpened}
           themeColor
         >
