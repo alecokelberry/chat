@@ -8,11 +8,11 @@
 // near-black that reads on every fill. A narrower block prints nothing;
 // its legend row carries the share beside its name instead, so no number
 // is shown twice and none is lost. Forced colors (Windows High Contrast)
-// strips every fill, so each block and dot also gets a border. Colors are the chart
-// tokens in src/styles/app.css, by the part's fixed slot, never by its rank. The
-// bar is one image to screen readers, named with every part; the legend
-// repeats it as text. No hover layer: every number is already in the
-// legend right under the bar, and a phone has no hover.
+// strips every fill, so each block and dot also gets a border. Colors are
+// the chart tokens in src/styles/app.css, by the part's fixed slot, never
+// by its rank. The bar is one image to screen readers, named with every
+// part; the legend repeats it as text. No hover layer: every number is
+// already in the legend right under the bar, and a phone has no hover.
 import type * as React from "react"
 
 import { cn } from "@/lib/utils"
