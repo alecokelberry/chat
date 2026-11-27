@@ -19,7 +19,8 @@
 // fades out under it, on a computer, and in the header row beside the
 // sidebar button on a phone. At the header's end, the chat's … holds the
 // same actions as its sidebar row (chat-actions.tsx); Rename there edits
-// the title in the pill.
+// the title in the pill. In dev, ?data= shows made-up messages instead
+// (src/lib/dev/worst-case.ts).
 import { memo, Suspense, useEffect, useRef, useState } from "react"
 import {
   createFileRoute,
@@ -42,6 +43,7 @@ import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { CHAT_ID } from "@/lib/chat/id"
+import { previewMessages } from "@/lib/dev/worst-case"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
@@ -116,6 +118,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
   const router = useRouter()
+  const { data } = Route.useSearch()
   const agent = useAgent({
     agent: "ChatAgent",
     basePath: `api/chats/${id}`,
@@ -163,7 +166,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   return (
     <>
       <Thread
-        messages={messages}
+        messages={previewMessages(messages, data)}
         busy={busy}
         stopped={stopped}
         error={

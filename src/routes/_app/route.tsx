@@ -5,16 +5,39 @@
 // may have been named since), and at once when the open chat's agent says
 // it changed (src/routes/_app/c.$id.tsx). ChatListProvider shares it with
 // the sidebar and the chat's header, and shows a rename or pin at once.
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+// In dev, ?data=worst|empty|one swaps the chats and the account for made-up
+// extremes (src/lib/dev/worst-case.ts), kept on every page by the search
+// middleware, with a bar at the bottom to flip between them or leave.
+import { useMemo } from "react"
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  retainSearchParams,
+  useNavigate,
+} from "@tanstack/react-router"
 
 import { ChatListProvider } from "@/components/chat/chat-list"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
+import { DemoBar } from "@/components/ui/demo-bar"
 import { SkipLink } from "@/components/ui/skip-link"
 import { getSession } from "@/lib/auth/session"
 import { getChats } from "@/lib/chat/list"
+import {
+  DATA_STATES,
+  type DataState,
+  parseDataState,
+  previewAccount,
+  previewChats,
+  previewEnabled,
+} from "@/lib/dev/worst-case"
 import { isSidebarCollapsed } from "@/lib/sidebar"
 
 export const Route = createFileRoute("/_app")({
+  validateSearch: (search: Record<string, unknown>): { data?: DataState } => ({
+    data: parseDataState(search.data),
+  }),
+  search: { middlewares: [retainSearchParams(["data"])] },
   beforeLoad: async () => {
     const user = await getSession()
     if (user === null) throw redirect({ to: "/sign-in" })
@@ -25,14 +48,30 @@ export const Route = createFileRoute("/_app")({
 })
 
 function AppLayout() {
-  const chats = Route.useLoaderData()
+  const loaded = Route.useLoaderData()
   const { user, sidebarCollapsed } = Route.useRouteContext()
+  const { data } = Route.useSearch()
+  const navigate = useNavigate()
+  const chats = useMemo(() => previewChats(loaded, data), [loaded, data])
+  const setData = (state: typeof data) =>
+    void navigate({ to: ".", search: (prev) => ({ ...prev, data: state }) })
   return (
     <ChatListProvider chats={chats}>
       <SkipLink />
-      <ChatSidebar account={user} collapsed={sidebarCollapsed}>
+      <ChatSidebar
+        account={previewAccount(user, data)}
+        collapsed={sidebarCollapsed}
+      >
         <Outlet />
       </ChatSidebar>
+      {previewEnabled && data !== undefined && (
+        <DemoBar
+          states={DATA_STATES}
+          value={data}
+          onChange={setData}
+          onClose={() => setData(undefined)}
+        />
+      )}
     </ChatListProvider>
   )
 }
