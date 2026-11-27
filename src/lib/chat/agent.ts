@@ -75,6 +75,19 @@ export class ChatAgent extends AIChatAgent<Env> {
     await this.schedule(0, "wipe")
   }
 
+  /** Replaces everything the chat holds with `messages`, stopping any
+   *  reply still streaming, and shows them in its open tabs: the feature
+   *  tour (src/lib/chat/tour.ts), loaded or refreshed. Clearing first, as
+   *  the SDK's docs say to for history changed outside the chat, means a
+   *  refresh drops whatever was asked since. An RPC method, for the Worker
+   *  (src/lib/chat/list.ts), once it has written the chat's row. */
+  async replaceMessages(messages: UIMessage[]) {
+    this.resetTurnState()
+    await this.sessions.session().clearMessages()
+    await this.persistMessages(messages)
+    this.broadcast(CHATS_CHANGED)
+  }
+
   /** What deleteChat's schedule runs. */
   async wipe() {
     await this.destroy()

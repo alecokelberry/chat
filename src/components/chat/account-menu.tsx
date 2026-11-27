@@ -3,10 +3,11 @@
 // name (in the computer's rail, the avatar alone, named in a tooltip). It
 // opens a menu above it (a sheet on a phone): the name and email, then
 // Theme, which flips light and dark and stays open so its sun and moon
-// spin, then Sign out, which lands on /sign-in. Agents ask before signing out
+// spin, Feature tour, which adds the pinned demo chat (src/lib/chat/tour.ts)
+// or refreshes it, and opens it, then Sign out, which lands on /sign-in. Agents ask before signing out
 // (data-agent-confirm).
-import { useNavigate } from "@tanstack/react-router"
-import { LogOutIcon } from "lucide-react"
+import { useNavigate, useRouter } from "@tanstack/react-router"
+import { CompassIcon, LogOutIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -21,12 +22,14 @@ import {
 import { useToggleTheme } from "@/components/ui/preferences"
 import { SidebarRow } from "@/components/ui/sidebar"
 import { ThemeIcon } from "@/components/ui/theme-icon"
+import { toast } from "@/components/ui/toast"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth/client"
+import { addTour } from "@/lib/chat/list"
 
 export type Account = { name: string; email: string }
 
@@ -43,17 +46,32 @@ function initialsOf(name: string) {
 export function AccountMenu({
   account,
   tooltip = false,
+  onOpenChat,
 }: {
   account: Account
   /** Named in a tooltip, for the rail, where the name is hidden. */
   tooltip?: boolean
+  /** Feature tour opened its chat: the phone's drawer closes, as it does
+   *  for a row. */
+  onOpenChat?: () => void
 }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const toggleTheme = useToggleTheme()
   async function signOut() {
     const { error } = await authClient.signOut()
     if (error) throw new Error(error.message ?? "Couldn't sign out")
     await navigate({ to: "/sign-in" })
+  }
+  async function openTour() {
+    try {
+      const id = await addTour()
+      await router.invalidate()
+      await navigate({ to: "/c/$id", params: { id } })
+      onOpenChat?.()
+    } catch {
+      toast.error("Couldn't add the feature tour")
+    }
   }
   return (
     <Menu>
@@ -88,6 +106,10 @@ export function AccountMenu({
         <MenuItem closeOnSelect={false} onSelect={toggleTheme}>
           <ThemeIcon />
           Theme
+        </MenuItem>
+        <MenuItem onSelect={openTour}>
+          <CompassIcon aria-hidden />
+          Feature tour
         </MenuItem>
         <MenuSeparator />
         <MenuItem
