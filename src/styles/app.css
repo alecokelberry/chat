@@ -300,6 +300,14 @@
   --sidebar-icon: var(--muted-foreground); /* row glyphs, header buttons */
 }
 
+/* The status bar's reload crossfades (src/lib/reload-for-status-bar.ts);
+   every other page change skips it. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring;
