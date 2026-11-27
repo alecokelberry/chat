@@ -190,6 +190,9 @@ export default defineConfig({
               },
               {
                 name: "@ui-sdk/core",
+                // bindViewport has no entry of its own (ui-sdk core docs ›
+                // Follow the Viewport import it from the root).
+                allowImportNames: ["bindViewport"],
                 message: "Import from its own entry, like @ui-sdk/core/agent.",
               },
             ],

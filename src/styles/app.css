@@ -168,9 +168,16 @@
   --spacing-header-content: calc(var(--header-height) + 1.5rem);
   /* A draft grows to 400px (320px editing in place) but never past about a
      third of what's visible, so the thread stays in view above the iPhone
-     keyboard. */
-  --spacing-draft: min(25rem, 35svh);
-  --spacing-draft-inline: min(20rem, 35svh);
+     keyboard: the visual viewport's height (ui/viewport.tsx) shrinks for
+     it, where svh doesn't. */
+  --spacing-draft: min(
+    25rem,
+    calc(var(--visual-viewport-height, 100svh) * 0.35)
+  );
+  --spacing-draft-inline: min(
+    20rem,
+    calc(var(--visual-viewport-height, 100svh) * 0.35)
+  );
   --container-composer: 764px; /* Grok's composer; the thread's column too */
   --container-signin: 384px;
 }
