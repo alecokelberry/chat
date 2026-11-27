@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ModelPicker } from "@/components/chat/model-picker"
 import type { ModelKey } from "@/lib/ai/models"
+import { takeReloadDraft } from "@/lib/reload-for-status-bar"
 
 export function Composer({
   focusOnMount = false,
@@ -41,6 +42,13 @@ export function Composer({
   onStop?: () => Promise<void> | void
 }) {
   const [text, setText] = useState("")
+  // A draft kept across the status bar's reload comes back after
+  // hydration, so the server's empty composer still matches.
+  useEffect(() => {
+    const draft = takeReloadDraft()
+    // oxlint-disable-next-line react-hooks-js/set-state-in-effect -- sessionStorage is read only in the browser, after hydration
+    if (draft !== "") setText(draft)
+  }, [])
   const message = text.trim()
   const field = useRef<HTMLTextAreaElement>(null)
   // Read once: it's about the moment this composer appears.
@@ -57,6 +65,7 @@ export function Composer({
 
   return (
     <form
+      data-busy={busy || undefined}
       className="flex items-end gap-1 rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
       onSubmit={(event) => {
         event.preventDefault()

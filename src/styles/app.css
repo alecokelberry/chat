@@ -180,6 +180,9 @@
   );
   --container-composer: 764px; /* Grok's composer; the thread's column too */
   --container-signin: 384px;
+  --container-dialog: 640px; /* Search's dialog */
+  --spacing-dialog-top: 12dvh; /* a dialog's top, so its height changes downward */
+  --spacing-dialog-height: 76dvh; /* the tallest a dialog gets */
 }
 
 :root {
@@ -471,6 +474,16 @@
   grid-template-rows:
     minmax(max(--spacing(4), env(safe-area-inset-top)), 1fr) auto
     minmax(max(--spacing(4), env(safe-area-inset-bottom)), 1fr);
+}
+
+/* A phone sheet with a text field (Search): nearly the height the page
+   shows, above the keyboard (ui-sdk sets --visual-viewport-height on the
+   sheet's viewport and lifts the sheet by the keyboard's height), clear
+   of the notch by 1rem. */
+@utility sheet-tall {
+  height: calc(
+    var(--visual-viewport-height, 100dvh) - env(safe-area-inset-top) - 1rem
+  );
 }
 
 /* A phone sheet's bottom padding: 12px, or the home indicator's height on

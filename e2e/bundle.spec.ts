@@ -17,7 +17,7 @@ const KB = 1024
 // Today's sizes, rounded up by about 5%.
 const budgets = {
   "sign-in": 240,
-  "a new chat": 300,
+  "a new chat": 315,
   "a saved chat": 720,
 }
 

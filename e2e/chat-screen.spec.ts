@@ -150,7 +150,9 @@ test("a saved chat opens at the last message, with a jump to the latest", async 
   await signInAsDev(page)
   await send(page, "Hello")
   const reply = page.getByRole("article", { name: "Reply" })
-  await expect(reply).toContainText("Done.")
+  // The reply is revealed at a reading pace, which a busy runner stretches
+  // past the default 5 s, as the markdown reply below allows for too.
+  await expect(reply).toContainText("Done.", { timeout: 15_000 })
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
   // The markdown reply is longer than the screen.
   await send(page, "Now some markdown")

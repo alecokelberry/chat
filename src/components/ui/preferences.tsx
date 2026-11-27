@@ -9,7 +9,8 @@
 // on an iPhone draws the bar itself, in the theme-color the page loads
 // with, and never looks again: so the choice is copied into a cookie
 // (src/lib/theme.ts) for the server to write the right color into the
-// HTML, and a change there reloads the page. Safari on iOS 26 ignores
+// HTML, and a change there reloads the page once nothing is open over
+// it (src/lib/reload-for-status-bar.ts). Safari on iOS 26 ignores
 // theme-color and colors the bar from the fixed or sticky element at the
 // top edge (here, the shell's solid background), looking again only when
 // such an element comes or goes, so a change briefly shows a strip it
@@ -23,6 +24,7 @@ import { Preferences, usePreference } from "@ui-sdk/react/preferences"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 
 import { StatusBarDebug } from "@/components/ui/status-bar-debug"
+import { reloadForStatusBar } from "@/lib/reload-for-status-bar"
 import { saveTheme, themeCookie } from "@/lib/theme"
 
 /** The status bar's color, light and dark: the page's --background in
@@ -102,9 +104,9 @@ function StatusBarColor() {
     if (picked.current === value) return
     picked.current = value
     // The Home Screen app reads the color again only on a load, so a new
-    // pick reloads (it's saved by now). A system flip under System waits
-    // for the next launch rather than drop a draft or a streaming reply.
-    if (isHomeScreenApp()) location.reload()
+    // pick reloads (it's saved by now), smoothly and once the page is
+    // settled. A system flip under System waits for the next launch.
+    if (isHomeScreenApp()) reloadForStatusBar()
   }, [value])
   // Only when the colors change: at launch the bar is already right.
   const shown = React.useRef<"light" | "dark" | null>(null)
