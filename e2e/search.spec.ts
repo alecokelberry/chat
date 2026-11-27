@@ -106,21 +106,21 @@ test("the search icon opens it, and a click on a chat goes there", async ({
   await expect(dialog(page)).toHaveCount(0)
 })
 
-// The rail has no room beside its toggle, so Search sits under New Chat:
+// The rail has no room beside its toggle, so Search sits above New Chat:
 // one Search there, named, with its tooltip beside it, and it opens.
-test("the collapsed rail has one Search, under New Chat", async ({ page }) => {
+test("the collapsed rail has one Search, above New Chat", async ({ page }) => {
   await signInAsDev(page)
   const nav = page.getByRole("navigation", { name: "Chats" })
   await nav.getByRole("button", { name: "Sidebar" }).click()
   const search = nav.getByRole("button", { name: "Search" })
   await expect(search).toHaveCount(1)
   const newChat = nav.getByRole("link", { name: "New Chat" })
-  const [below, above] = await Promise.all([
+  const [above, below] = await Promise.all([
     search.boundingBox(),
     newChat.boundingBox(),
   ])
   if (below === null || above === null) throw new Error("No boxes")
-  expect(below.y).toBeGreaterThan(above.y + above.height)
+  expect(below.y).toBeGreaterThanOrEqual(above.y + above.height)
   await search.hover()
   const tip = page.getByRole("tooltip")
   await expect(tip).toContainText("Search")

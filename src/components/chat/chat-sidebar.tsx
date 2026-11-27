@@ -169,13 +169,13 @@ export function ChatSidebar({
         >
           <SearchButton controller={search} />
         </SidebarToggle>
+        {/* The rail has no room beside its toggle, so Search sits under it,
+            above New Chat, level with the toggle. */}
+        <div className="mb-1 hidden ps-3 group-data-collapsed/sidebar:flex">
+          <SearchButton controller={search} tooltipSide="right" />
+        </div>
         <div className="relative z-10 px-2.5">
           <NewChatLink />
-        </div>
-        {/* The rail has no room beside its toggle, so Search sits under
-            New Chat there, level with the toggle. */}
-        <div className="mt-1 hidden ps-3 group-data-collapsed/sidebar:flex">
-          <SearchButton controller={search} tooltipSide="right" />
         </div>
         {phone === false && <ChatList chats={chats} />}
         <SidebarFooter>
