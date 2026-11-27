@@ -5,7 +5,15 @@
 // mark; the choice is kept in this browser. It sits mid-screen, clear of
 // the top edge, so it never becomes what iOS samples. Remove it once the
 // bar is fixed.
+// Its trials each flip one live input to the other theme's color, with
+// no reload and no theme change, so a look at the bar shows whether iOS
+// follows it live: the theme-color tags edited in place, one tag with no
+// media query in place of the pair, or the page's own background. They
+// stay until a reload.
 import * as React from "react"
+
+import { Button } from "@/components/ui/button"
+import { THEME_COLOR } from "@/lib/theme"
 
 const KEY = "debug-bar"
 const BUILD: string = import.meta.env.VITE_BUILD
@@ -64,11 +72,47 @@ function topEdge() {
   return chain
 }
 
+type Trial = "tags" | "one" | "page"
+
+const TRIALS: { trial: Trial; label: string }[] = [
+  { trial: "tags", label: "Edit tags" },
+  { trial: "one", label: "One tag" },
+  { trial: "page", label: "Page color" },
+]
+
+/** Flips one input to `scheme`'s color. */
+function tryInput(trial: Trial, scheme: "light" | "dark") {
+  const color = THEME_COLOR[scheme]
+  const tags = document.querySelectorAll<HTMLMetaElement>(
+    'meta[name="theme-color"]'
+  )
+  if (trial === "tags") for (const tag of tags) tag.content = color
+  if (trial === "one") {
+    const one = document.createElement("meta")
+    one.name = "theme-color"
+    one.content = color
+    for (const tag of tags) tag.remove()
+    document.head.appendChild(one)
+  }
+  if (trial === "page") {
+    document.documentElement.style.backgroundColor = color
+    document.body.style.backgroundColor = color
+  }
+}
+
+/** The iOS and Safari versions, from the user agent. */
+function versions() {
+  const ua = navigator.userAgent
+  const os = /OS (\d+[_\d]*)/.exec(ua)?.[1]?.replaceAll("_", ".") ?? "?"
+  const safari = /Version\/([\d.]+)/.exec(ua)?.[1] ?? "?"
+  return `iOS ${os} · Safari ${safari}`
+}
+
 function themeCookie() {
   return /(?:^|; )theme=(\w+)/.exec(document.cookie)?.[1] ?? "none"
 }
 
-function read(loadedAs: string, changes: string[]) {
+function read(loadedAs: string, changes: string[], tried: string[]) {
   const html = document.documentElement
   const metas = [
     ...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
@@ -84,6 +128,7 @@ function read(loadedAs: string, changes: string[]) {
   probe.remove()
   return [
     `build ${BUILD} · loaded ${LOADED_AT} as ${loadedAs}`,
+    versions(),
     `standalone ${matchMedia("(display-mode: standalone)").matches ? "yes" : "no"} · phone ${matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}`,
     `theme ${html.dataset.colorScheme ?? "?"} · cookie ${themeCookie()} · html ${getComputedStyle(html).backgroundColor} · body ${getComputedStyle(document.body).backgroundColor}`,
     ...metas.map((m) => `meta ${m}`),
@@ -91,6 +136,7 @@ function read(loadedAs: string, changes: string[]) {
     "top edge:",
     ...topEdge().map((line) => `  ${line}`),
     `theme changes: ${changes.join(", ") || "none"}`,
+    `trials: ${tried.join(", ") || "none"}`,
   ]
 }
 
@@ -108,6 +154,8 @@ function StatusBarDebug() {
   const [lines, setLines] = React.useState<string[]>([])
   const loadedAs = React.useRef("")
   const changes = React.useRef<string[]>([])
+  const tried = React.useRef<string[]>([])
+  const next = React.useRef<"light" | "dark" | null>(null)
 
   React.useEffect(() => {
     const param = new URLSearchParams(location.search).get("debug")
@@ -119,6 +167,8 @@ function StatusBarDebug() {
       const now = document.documentElement.dataset.colorScheme ?? "?"
       if (now === last) return
       last = now
+      // A new theme shows: the next trial starts from its opposite again.
+      next.current = null
       changes.current = [
         ...changes.current.slice(-3),
         `${now} ${new Date().toLocaleTimeString()}`,
@@ -134,19 +184,53 @@ function StatusBarDebug() {
 
   React.useEffect(() => {
     if (!shown) return
-    const update = () => setLines(read(loadedAs.current, changes.current))
+    const update = () =>
+      setLines(read(loadedAs.current, changes.current, tried.current))
+    update()
     const timer = setInterval(update, 1000)
     return () => clearInterval(timer)
   }, [shown])
 
+  const run = (trial: Trial) => {
+    // Each tap flips to the other color, starting from the one not showing.
+    next.current ??= getComputedStyle(
+      document.documentElement
+    ).colorScheme.includes("dark")
+      ? "light"
+      : "dark"
+    const scheme = next.current
+    tryInput(trial, scheme)
+    next.current = scheme === "dark" ? "light" : "dark"
+    tried.current = [
+      ...tried.current.slice(-3),
+      `tried ${trial} ${scheme} ${new Date().toLocaleTimeString()}`,
+    ]
+    setLines(read(loadedAs.current, changes.current, tried.current))
+  }
+
   if (!shown) return null
   return (
-    <pre
+    <div
       data-slot="status-bar-debug"
-      className="pointer-events-none fixed inset-x-2 top-1/3 z-50 overflow-hidden rounded-lg bg-black p-2 font-mono text-xs/tight whitespace-pre-wrap text-white"
+      className="pointer-events-none fixed inset-x-2 top-1/3 z-50 overflow-hidden rounded-lg bg-black p-2 text-white"
     >
-      {lines.join("\n")}
-    </pre>
+      <pre className="font-mono text-xs/tight whitespace-pre-wrap">
+        {lines.join("\n")}
+      </pre>
+      <div className="pointer-events-auto mt-2 flex flex-wrap gap-2">
+        {TRIALS.map(({ trial, label }) => (
+          <Button
+            key={trial}
+            variant="outline"
+            size="sm"
+            className="border-white/40 text-white"
+            onClick={() => run(trial)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+    </div>
   )
 }
 

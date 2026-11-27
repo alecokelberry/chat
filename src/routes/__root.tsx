@@ -24,16 +24,12 @@ import {
 } from "@tanstack/react-router"
 
 import { FocusModality } from "@/components/ui/focus-modality"
-import {
-  AppPreferences,
-  THEME_COLOR,
-  THEME_COLOR_SCRIPT,
-} from "@/components/ui/preferences"
+import { AppPreferences, THEME_COLOR_SCRIPT } from "@/components/ui/preferences"
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
 import { Viewport } from "@/components/ui/viewport"
 import { RESTORE_SCRIPT } from "@/lib/reload-for-status-bar"
-import { savedTheme } from "@/lib/theme"
+import { savedTheme, THEME_COLOR } from "@/lib/theme"
 
 import appCss from "@/styles/app.css?url"
 

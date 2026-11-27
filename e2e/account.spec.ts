@@ -23,6 +23,8 @@ const accountRow = (page: Page) =>
 const menu = (page: Page) => page.getByRole("menu")
 const LIGHT = "rgb(249, 248, 247)"
 const DARK = "rgb(30, 29, 29)"
+const LIGHT_HEX = "#f9f8f7"
+const DARK_HEX = "#1e1d1d"
 
 test.describe("on a computer", () => {
   test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "light" })
@@ -472,5 +474,48 @@ test.describe("on a phone", () => {
       .locator("[data-debug-taps]")
     for (let i = 0; i < 3; i++) await mark.tap()
     await expect(readout).toContainText("theme system")
+  })
+
+  // Each trial flips one live input iOS might color the bar from, without
+  // a reload, so Alec can watch which (if any) moves the bar.
+  test("the readout's trials flip one input each, with no reload", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await page.goto("/?debug=bar")
+    const readout = page.locator('[data-slot="status-bar-debug"]')
+    const colors = () =>
+      page.evaluate(() =>
+        [
+          ...document.querySelectorAll<HTMLMetaElement>(
+            'meta[name="theme-color"]'
+          ),
+        ].map((m) => `${m.content}|${m.media}`)
+      )
+    const before = await colors()
+    const loaded = await page.evaluate(() => performance.timeOrigin)
+
+    // In place: same tags, new content.
+    const tag = await page.evaluateHandle(() =>
+      document.querySelector('meta[name="theme-color"]')
+    )
+    await readout.getByRole("button", { name: "Edit tags" }).tap()
+    expect(await tag.evaluate((m) => m?.isConnected)).toBe(true)
+    expect(await colors()).toEqual(
+      before.map((c) => c.replace(LIGHT_HEX, DARK_HEX))
+    )
+    await expect(readout).toContainText("tried tags dark")
+
+    // One tag with no media query in place of the pair.
+    await readout.getByRole("button", { name: "One tag" }).tap()
+    expect(await colors()).toEqual([`${LIGHT_HEX}|`])
+    await expect(readout).toContainText("tried one light")
+
+    // The page's own background.
+    await readout.getByRole("button", { name: "Page color" }).tap()
+    await expect(page.locator("html")).toHaveCSS("background-color", DARK)
+    await expect(readout).toContainText("tried page dark")
+
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(loaded)
   })
 })
