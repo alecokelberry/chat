@@ -166,6 +166,11 @@
   --spacing-list-overlap: 20px; /* the chat list's start under New Chat: its negative margin and its top padding */
   --spacing-header: var(--header-height);
   --spacing-header-content: calc(var(--header-height) + 1.5rem);
+  /* A draft grows to 400px (320px editing in place) but never past about a
+     third of what's visible, so the thread stays in view above the iPhone
+     keyboard. */
+  --spacing-draft: min(25rem, 35svh);
+  --spacing-draft-inline: min(20rem, 35svh);
   --container-composer: 764px; /* Grok's composer; the thread's column too */
   --container-signin: 384px;
 }
@@ -609,6 +614,11 @@
 
 /* Text fields: body size, but 16px on touch screens, so iOS never zooms in
    on focus (DESIGN.md › Phones). */
+/* No iOS link preview or callout on a long press: for controls that are
+   links underneath (sidebar rows), with select-none. */
+@utility no-touch-callout {
+  -webkit-touch-callout: none;
+}
 @utility field-text {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
