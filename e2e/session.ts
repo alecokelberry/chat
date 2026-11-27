@@ -86,24 +86,35 @@ export async function signInAsDev(page: Page) {
   )
 }
 
-/** Signs in as the owner (Alec) by adding a passkey on /setup, through a
- *  virtual authenticator. e2e/seed.sql gives the owner 1,000 chats. */
-export async function signInAsOwner(page: Page) {
+/** Adds a virtual authenticator to the page, standing in for Touch ID. */
+export async function addAuthenticator(page: Page) {
   const cdp = await page.context().newCDPSession(page)
   await cdp.send("WebAuthn.enable")
-  await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  })
+  const { authenticatorId } = await cdp.send(
+    "WebAuthn.addVirtualAuthenticator",
+    {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    }
+  )
+  return { cdp, authenticatorId }
+}
+
+/** Signs in as the owner (Alec) by adding a passkey on /setup, through a
+ *  virtual authenticator, which it returns. e2e/seed.sql gives the owner
+ *  1,000 chats. */
+export async function signInAsOwner(page: Page) {
+  const authenticator = await addAuthenticator(page)
   await page.goto(`/setup#${E2E_SETUP_CODE}`)
   await page.getByRole("button", { name: "Add a passkey" }).click()
   await expectSignedInAs(page, "Alec")
+  return authenticator
 }
 
 /** Records how far ahead of now each animation's start time is set: a
