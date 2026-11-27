@@ -126,26 +126,6 @@ test("a pinned chat sits under Pinned, at the top", async ({ page }) => {
   ).toHaveCount(1)
 })
 
-// A chat with a title keeps it: Lightning names only a chat without one,
-// so a rename sticks (the mock would name it TITLE). Lightning runs after
-// each reply, so a second reply gives the first one's naming time to land.
-test("a titled chat keeps its title after a reply", async ({ page }) => {
-  await signInAsDev(page)
-  await sidebar(page).getByRole("link", { name: "Seeded kept title" }).click()
-  const title = page.getByRole("heading", { level: 1 })
-  await expect(title).toHaveText("Seeded kept title")
-  const replies = page.getByRole("article", { name: "Reply" })
-  await send(page, "Don't rename me")
-  await expect(replies).toContainText("Done.")
-  await send(page, "Still don't")
-  await expect(replies.nth(1)).toContainText("Done.")
-  await page.reload()
-  await expect(title).toHaveText("Seeded kept title")
-  await expect(sidebar(page).locator("a[aria-current=page]")).toHaveText(
-    "Seeded kept title"
-  )
-})
-
 // The row menu (src/components/chat/chat-actions.tsx): each test starts
 // its own chat and renames it to a name of its own, since other tests make
 // chats called TITLE at the same time.
@@ -208,7 +188,8 @@ test("Rename in the row saves on Enter and ✓, cancels on Escape and ✕", asyn
   await sidebar(page).getByRole("button", { name: "Cancel" }).click()
   await expect(openRow(page).getByRole("link")).toHaveText(first)
 
-  // ✓ saves, and the name survives a reload and the next reply.
+  // ✓ saves, and the name survives a reload and the next reply: Lightning
+  // names only a chat without a title.
   const second = unique("Renamed again")
   await rowMenu(page).click()
   await menu(page).getByRole("menuitem", { name: "Rename" }).click()
@@ -693,7 +674,8 @@ test.describe("on a phone", () => {
     await expect(drawer).toBeHidden()
   })
 
-  // Touch has no hover: every row's … shows, its menu is a sheet, and
+  // Touch has no hover: every row's … shows, its menu is a sheet (the
+  // row's wash alone marks it, with no second square on the …), and
   // Rename edits the row without closing the drawer.
   test("a row's menu works in the drawer", async ({ page }) => {
     await startChat(page, "Rename from my phone")
@@ -705,6 +687,9 @@ test.describe("on a phone", () => {
     await row.getByRole("button", { name: /^Actions for / }).tap()
     const sheet = page.locator('[data-slot="menu-content"]')
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
+    const opener = row.getByRole("button", { name: /^Actions for / })
+    await expect(opener).toHaveAttribute("data-open")
+    await expect(opener).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
     // The keyboard's Return reads Done.
     await expect(titleField(page)).toHaveAttribute("enterkeyhint", "done")
