@@ -8,13 +8,14 @@
 // In dev, ?data=worst|empty|one swaps the chats and the account for made-up
 // extremes (src/lib/dev/worst-case.ts), kept on every page by the search
 // middleware, with a bar at the bottom to flip between them or leave.
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import {
   createFileRoute,
   Outlet,
   redirect,
   retainSearchParams,
   useNavigate,
+  useRouter,
 } from "@tanstack/react-router"
 
 import { ChatListProvider } from "@/components/chat/chat-list"
@@ -30,6 +31,7 @@ import {
   previewChats,
   previewEnabled,
 } from "@/lib/dev/worst-case"
+import { whenIdle } from "@/lib/idle"
 import { isSidebarCollapsed } from "@/lib/sidebar"
 
 export const Route = createFileRoute("/_app")({
@@ -51,6 +53,16 @@ function AppLayout() {
   const { user, sidebarCollapsed } = Route.useRouteContext()
   const { data } = Route.useSearch()
   const navigate = useNavigate()
+  // The chat screen's code (and, through it, a reply's renderer) loads
+  // while idle, so the first chat opened or started doesn't wait on it.
+  const router = useRouter()
+  useEffect(
+    () =>
+      whenIdle(
+        () => void router.loadRouteChunk(router.routesById["/_app/c/$id"])
+      ),
+    [router]
+  )
   const chats = useMemo(() => previewChats(loaded, data), [loaded, data])
   const setData = (state: typeof data) =>
     void navigate({ to: ".", search: (prev) => ({ ...prev, data: state }) })
