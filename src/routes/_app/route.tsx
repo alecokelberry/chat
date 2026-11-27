@@ -24,7 +24,6 @@ import { SkipLink } from "@/components/ui/skip-link"
 import { getSession } from "@/lib/auth/session"
 import { getChats } from "@/lib/chat/list"
 import {
-  DATA_STATES,
   type DataState,
   parseDataState,
   previewAccount,
@@ -66,7 +65,6 @@ function AppLayout() {
       </ChatSidebar>
       {previewEnabled && data !== undefined && (
         <DemoBar
-          states={DATA_STATES}
           value={data}
           onChange={setData}
           onClose={() => setData(undefined)}

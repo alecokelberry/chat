@@ -12,14 +12,12 @@ import type { UIMessage } from "ai"
 
 import type { Account } from "@/components/chat/account-menu"
 import type { ChatSummary } from "@/lib/chat/store"
+import { devBuild } from "@/lib/dev/dev-build"
 
 export const DATA_STATES = ["worst", "empty", "one"] as const
 export type DataState = (typeof DATA_STATES)[number]
 
-/** Dev and the e2e (`--mode test`) build; never live. A constant, so a
- *  production build drops everything it guards. */
-export const previewEnabled =
-  import.meta.env.DEV || import.meta.env.MODE === "test"
+export const previewEnabled = devBuild
 
 /** The state `?data=` names, or undefined: no value, an unknown one, or a
  *  build that ignores it. */
@@ -59,9 +57,9 @@ function fakeChats(count: number, now: number): ChatSummary[] {
 /** `chats`, or the fixture's. */
 export function previewChats(
   chats: ChatSummary[],
-  state: DataState | undefined,
-  now = Date.now()
+  state: DataState | undefined
 ): ChatSummary[] {
+  const now = Date.now()
   if (!previewEnabled || state === undefined) return chats
   if (state === "empty") return []
   if (state === "one")
@@ -130,9 +128,9 @@ const message = (
 /** `messages`, or the fixture's thread. */
 export function previewMessages(
   messages: UIMessage[],
-  state: DataState | undefined,
-  now = Date.now()
+  state: DataState | undefined
 ): UIMessage[] {
+  const now = Date.now()
   if (!previewEnabled || state === undefined) return messages
   const meta = { model: "super", started: now - 12_000, ms: 12_000 }
   if (state === "empty") return []

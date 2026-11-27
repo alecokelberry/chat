@@ -12,16 +12,15 @@ import {
 import { XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { DATA_STATES, type DataState } from "@/lib/dev/worst-case"
 
-function DemoBar<T extends string>({
-  states,
+function DemoBar({
   value,
   onChange,
   onClose,
 }: {
-  states: readonly T[]
-  value: T
-  onChange: (state: T) => void
+  value: DataState
+  onChange: (state: DataState) => void
   onClose: () => void
 }) {
   return (
@@ -33,13 +32,13 @@ function DemoBar<T extends string>({
         aria-label="Preview data"
         value={value}
         onValueChange={(next) => {
-          const state = states.find((s) => s === next)
+          const state = DATA_STATES.find((s) => s === next)
           if (state !== undefined) onChange(state)
         }}
         className="relative isolate flex items-center"
       >
         <SegmentedControlIndicator className="absolute top-(--segmented-control-indicator-top) left-(--segmented-control-indicator-left) -z-10 h-(--segmented-control-indicator-height) w-(--segmented-control-indicator-width) rounded-full bg-secondary-hover" />
-        {states.map((state) => (
+        {DATA_STATES.map((state) => (
           <SegmentedControlItem
             key={state}
             value={state}

@@ -5,9 +5,9 @@
 // app renders, since the bridge only sees components mounted after it.
 import { createAgent } from "@ui-sdk/react/agent"
 
-const bridged = import.meta.env.DEV || import.meta.env.MODE === "test"
+import { devBuild } from "@/lib/dev/dev-build"
 
-if (bridged && typeof window !== "undefined") {
+if (devBuild && typeof window !== "undefined") {
   // No allow: a step on data-agent-confirm fails and stays a person's.
   Object.assign(window, { agent: createAgent() })
 }
