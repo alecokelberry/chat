@@ -34,10 +34,6 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 844 })
     await signInAsOwner(page)
-    // A tap before React hydrates doesn't open the drawer.
-    await page.waitForFunction(
-      () => "agent" in window && window.agent.snapshot().length > 0
-    )
     for (const name of WORST) {
       if (width < 768)
         await page.getByRole("button", { name: "Open sidebar" }).click()
