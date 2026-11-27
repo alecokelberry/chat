@@ -6,6 +6,9 @@
 // only when a fixed or sticky element is added or removed, never when colors
 // change, and once the edge has a color a full-screen element, a dimming
 // backdrop or a side drawer keeps that color instead of taking its own.
+// Nothing new is taken while anything in the top layer shows (a popover or
+// a modal dialog, wherever it sits), and a strip in the top layer doesn't
+// count: measured in the Simulator's Home Screen app on iOS 27.2.
 // watchStatusBar installs that model; statusBar reads its answer.
 import type { Page } from "@playwright/test"
 
@@ -153,6 +156,15 @@ export async function watchStatusBar(page: Page) {
     let edge: { color: string; el: Element } | null = null
     let fixed = new Set<Element>()
 
+    /** Whether something in the top layer is drawn and visible. */
+    function topLayerShows() {
+      return [...document.querySelectorAll(":popover-open, dialog:modal")].some(
+        (el) =>
+          el.getClientRects().length > 0 &&
+          getComputedStyle(el).visibility === "visible"
+      )
+    }
+
     function sample() {
       const found = find()
       if (!found) {
@@ -192,7 +204,7 @@ export async function watchStatusBar(page: Page) {
       const changed =
         next.size !== fixed.size || [...next].some((el) => !fixed.has(el))
       fixed = next
-      if (changed) sample()
+      if (changed && !topLayerShows()) sample()
       requestAnimationFrame(tick)
     }
     addEventListener("DOMContentLoaded", () => requestAnimationFrame(tick))

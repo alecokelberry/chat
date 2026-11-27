@@ -12,7 +12,6 @@
 // place and Safari painted one inside its trigger's row for a few frames.
 import type * as React from "react"
 import {
-  createMenuController,
   Menu as MenuPrimitive,
   MenuContent as MenuContentPrimitive,
   MenuGroup,
@@ -94,7 +93,6 @@ function MenuGroupLabel({
 }
 
 export {
-  createMenuController,
   Menu,
   MenuContent,
   MenuGroup,

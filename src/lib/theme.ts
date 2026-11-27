@@ -1,8 +1,9 @@
 // The theme the account menu saved (light, dark or system), copied into a
 // cookie so the server writes the right theme-color into the page. iOS's
-// Home Screen app colors its status bar from the theme-color it finds when
-// a page loads and never looks again, so the tag has to be right in the
-// HTML itself: a script that fixes it afterwards is too late. The choice
+// Home Screen app colors its status bar at launch from the theme-color it
+// finds as the page loads, so the tag has to be right in the HTML itself:
+// a script that fixes it afterwards is too late. Later changes recolor the
+// bar live (src/components/ui/preferences.tsx). The choice
 // itself lives in localStorage (ui-sdk's Preferences); this only mirrors it.
 import { createIsomorphicFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"

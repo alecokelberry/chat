@@ -5,26 +5,23 @@
 // sits at the top of <body>; on the server it renders an inline script
 // that sets the attributes before the first paint, so CSS that selects
 // them is right from the start, with nothing to flash.
-// The status bar follows the choice too, three ways. The Home Screen app
-// on an iPhone draws the bar itself, in the theme-color the page loads
-// with, and never looks again: so the choice is copied into a cookie
-// (src/lib/theme.ts) for the server to write the right color into the
-// HTML, and a change there reloads the page once nothing is open over
-// it (src/lib/reload-for-status-bar.ts). Safari on iOS 26 ignores
-// theme-color and colors the bar from the fixed or sticky element at the
-// top edge (here, the shell's solid background), looking again only when
-// such an element comes or goes, so a change briefly shows a strip it
-// takes its color from (nudgeStatusBar). Other browsers read theme-color,
-// which StatusBarColor keeps in step; THEME_COLOR_SCRIPT sets it before
-// the first paint for a choice saved before the cookie was.
+// The status bar follows the choice too. On iOS 26 and later, Safari and
+// the Home Screen app both color it from the fixed or sticky element at
+// the top edge (here, the shell's solid background), looking again only
+// when such an element comes or goes, so a change shows a strip for one
+// frame that iOS takes the new color from (nudgeStatusBar): no reload.
+// Until then, at launch, the Home Screen app uses the theme-color the
+// page loads with, so the choice is copied into a cookie (src/lib/theme.ts)
+// for the server to write the right color into the HTML. Other browsers
+// read theme-color live, which StatusBarColor keeps in step;
+// THEME_COLOR_SCRIPT sets it before the first paint for a choice saved
+// before the cookie was.
 import * as React from "react"
 // oxlint-disable-next-line no-restricted-imports -- preferences and storage have no entry of their own
 import { createColorScheme, createLocalStorage } from "@ui-sdk/core"
 import { Preferences, usePreference } from "@ui-sdk/react/preferences"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 
-import { StatusBarDebug } from "@/components/ui/status-bar-debug"
-import { reloadForStatusBar } from "@/lib/reload-for-status-bar"
 import { saveTheme, THEME_COLOR, themeCookie } from "@/lib/theme"
 
 /** Where createLocalStorage keeps the choice: "system", "light" or "dark". */
@@ -74,7 +71,6 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
   return (
     <Preferences preferences={[colorScheme]}>
       <StatusBarColor />
-      <StatusBarDebug />
       {children}
     </Preferences>
   )
@@ -91,18 +87,10 @@ function AppPreferences({ children }: { children: React.ReactNode }) {
  *  which is real, so a guess is never saved or acted on. */
 function StatusBarColor() {
   const { value, resolved } = usePreference(colorScheme)
-  const picked = React.useRef<string | null>(null)
   React.useEffect(() => {
     if (value !== choiceShowing()) return
     saveTheme(value)
     pointMetasAt(value)
-    picked.current ??= value
-    if (picked.current === value) return
-    picked.current = value
-    // The Home Screen app reads the color again only on a load, so a new
-    // pick reloads (it's saved by now), smoothly and once the page is
-    // settled. A system flip under System waits for the next launch.
-    if (isHomeScreenApp()) reloadForStatusBar()
   }, [value])
   // Only when the colors change: at launch the bar is already right.
   const shown = React.useRef<"light" | "dark" | null>(null)
@@ -111,7 +99,6 @@ function StatusBarColor() {
     shown.current ??= showing
     if (resolved !== showing || shown.current === resolved) return
     shown.current = resolved
-    if (isHomeScreenApp()) return
     return nudgeStatusBar()
   }, [resolved])
   return null
@@ -145,41 +132,55 @@ function schemeShowing() {
   return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
-/** Whether this is an iPhone's Home Screen app, which draws its own
- *  status bar: navigator.standalone is iOS's alone. */
-function isHomeScreenApp() {
-  return "standalone" in navigator && navigator.standalone === true
-}
-
-/** How long the strip stays: a few frames, so iOS samples it at least
- *  once. */
-const NUDGE_MS = 100
-
-/** Makes iOS 26 color the status bar again, from the new background.
- *  WebKit (LocalFrameView::fixedContainerEdges) samples the top edge only
- *  when a fixed or sticky element is added or removed. It takes a fresh
- *  color only from a full-width bar taller than 10px and at least 10%
- *  opaque; a full-screen layer, a dimming backdrop or a side drawer keeps
- *  the color the edge had. So this shows such a bar, in the page's
- *  background at 12% over the top 16px, for 100 ms: a manual popover, in
- *  the top layer above an open drawer or menu, that lets every tap
- *  through and leaves focus alone. After it goes, the shell (or the drawer
- *  over it) keeps the color it gave. Returns its cleanup. */
+/** Makes iOS color the status bar again, from the new background, in
+ *  Safari and in the Home Screen app alike. WebKit
+ *  (LocalFrameView::fixedContainerEdges) samples the top edge only when a
+ *  fixed or sticky element is added or removed, and takes a fresh color
+ *  only from a full-width bar taller than 10px and at least 10% opaque.
+ *  It never takes one while anything in the top layer shows (the phone's
+ *  drawer and its menu, wherever they sit), and a strip in the top layer
+ *  doesn't count. So for one frame this shows such a bar, a plain fixed
+ *  one in the page's background at 12% over the top 16px, and, on iOS,
+ *  hides what the top layer holds: the frame the colors snap in shows the
+ *  page alone, then the drawer and menu are back and iOS fades the bar to
+ *  the new color. Measured on iOS 27.2 in the Simulator's Home Screen app.
+ *  Returns its cleanup. */
 function nudgeStatusBar() {
-  // A browser without popovers has no top layer to show it in.
-  if (!("showPopover" in HTMLElement.prototype)) return
-  const strip = document.createElement("div")
-  strip.popover = "manual"
-  strip.ariaHidden = "true"
-  strip.dataset.slot = "status-bar-nudge"
-  strip.style.cssText =
-    "position:fixed;inset:0 0 auto 0;width:auto;height:16px;margin:0;padding:0;border:0;background:var(--background);opacity:0.12;pointer-events:none"
-  document.body.appendChild(strip)
-  strip.showPopover()
-  const timer = window.setTimeout(() => strip.remove(), NUDGE_MS)
+  let undo = () => {}
+  let second = 0
+  const first = requestAnimationFrame(() => {
+    const strip = document.createElement("div")
+    strip.ariaHidden = "true"
+    strip.dataset.slot = "status-bar-nudge"
+    strip.style.cssText =
+      "position:fixed;inset:0 0 auto 0;height:16px;background:var(--background);opacity:0.12;pointer-events:none;z-index:2147483647"
+    // navigator.standalone is iOS's alone: elsewhere nothing blinks.
+    const open = !("standalone" in navigator)
+      ? []
+      : [
+          ...document.querySelectorAll<HTMLElement>(
+            ":popover-open, dialog:modal"
+          ),
+        ].filter((el) => el.style.visibility === "")
+    // A hidden element can't hold focus, so WebKit drops it: it goes back
+    // where it was (the menu's Theme), for a keyboard or VoiceOver.
+    const focused = document.activeElement
+    for (const el of open) el.style.visibility = "hidden"
+    document.body.appendChild(strip)
+    undo = () => {
+      strip.remove()
+      for (const el of open) el.style.visibility = ""
+      if (focused instanceof HTMLElement && document.activeElement !== focused)
+        focused.focus({ preventScroll: true })
+      undo = () => {}
+    }
+    // Back on the next frame, so exactly one is drawn with the strip.
+    second = requestAnimationFrame(() => undo())
+  })
   return () => {
-    clearTimeout(timer)
-    strip.remove()
+    cancelAnimationFrame(first)
+    cancelAnimationFrame(second)
+    undo()
   }
 }
 

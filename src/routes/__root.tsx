@@ -10,7 +10,7 @@
 // status bar in the page's background, light or dark, following the
 // theme the account menu picks: the server writes the saved one from its
 // cookie (src/lib/theme.ts), since an iPhone's Home Screen app reads the
-// tag once, as the page loads.
+// tag at launch, as the page loads.
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "@/components/ui/dev-agent"
@@ -28,7 +28,6 @@ import { AppPreferences, THEME_COLOR_SCRIPT } from "@/components/ui/preferences"
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
 import { Viewport } from "@/components/ui/viewport"
-import { RESTORE_SCRIPT } from "@/lib/reload-for-status-bar"
 import { savedTheme, THEME_COLOR } from "@/lib/theme"
 
 import appCss from "@/styles/app.css?url"
@@ -77,7 +76,6 @@ function RootDocument({ children }: { children: ReactNode }) {
           content={color("dark")}
         />
         <ScriptOnce>{THEME_COLOR_SCRIPT}</ScriptOnce>
-        <ScriptOnce>{RESTORE_SCRIPT}</ScriptOnce>
       </head>
       <body>
         <AppPreferences>{children}</AppPreferences>

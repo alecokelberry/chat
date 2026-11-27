@@ -309,17 +309,8 @@
   /* A theme change snaps (preferences.tsx). */
   [data-theme-changing] *,
   [data-theme-changing] *::before,
-  [data-theme-changing] *::after,
-  [data-restoring] *,
-  [data-restoring] *::before,
-  [data-restoring] *::after {
+  [data-theme-changing] *::after {
     transition: none !important;
-  }
-  /* After the status bar's reload, while the drawer and menu reopen
-     (src/lib/reload-for-status-bar.ts): a page with nothing visible yet,
-     so WebKit keeps the old frame on screen until it's back as it was. */
-  [data-restoring] body {
-    visibility: hidden;
   }
   * {
     @apply border-border outline-ring;
