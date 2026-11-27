@@ -47,7 +47,7 @@ function NewChat() {
             void navigate({
               to: "/c/$id",
               params: { id },
-              state: { firstMessage: { text, model } },
+              state: { firstMessage: { text, model, files: files.length } },
             })
           }}
         />

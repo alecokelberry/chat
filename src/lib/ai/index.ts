@@ -43,6 +43,7 @@ import { lastModel, lastTimeZone, LIGHTNING } from "@/lib/ai/models"
 import { READ_LIMIT, readPage } from "@/lib/ai/read-page"
 import { SEARCH_LIMIT, SearchError, webSearch } from "@/lib/ai/search"
 import { failWhenSilent, SilentModelError } from "@/lib/ai/silence"
+import { isImagePart } from "@/lib/chat/attachments"
 
 /** How long NVIDIA may send nothing before a reply ends. NVIDIA's first
  *  word normally comes within a second (docs/nvidia.md); the mock's limit
@@ -105,7 +106,7 @@ function inlineImagesOnly(message: UIMessage): UIMessage {
   return {
     ...message,
     parts: message.parts.filter(
-      (part) => part.type !== "file" || part.url.startsWith("data:image/")
+      (part) => part.type !== "file" || isImagePart(part)
     ),
   }
 }

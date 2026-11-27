@@ -192,34 +192,38 @@ const SEARCH_PARTS = [
 ]
 
 /** An image a question could carry (src/lib/chat/attachments.ts): a
- *  `width` × `height` SVG, or bytes that won't decode for `broken`. */
-const image = (name: string, width: number, height: number) => ({
+ *  `width` × `height` SVG, or, when `broken`, bytes that won't decode. */
+const image = (
+  name: string,
+  { width = 1, height = 1, broken = false } = {}
+) => ({
   type: "file" as const,
   mediaType: "image/jpeg",
   filename: name,
-  url:
-    width === 0
-      ? "data:image/jpeg;base64,bm90IGFuIGltYWdl"
-      : `data:image/svg+xml,${encodeURIComponent(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#5b7bc9"/><circle cx="50%" cy="50%" r="${Math.min(width, height) / 3}" fill="#f2c94c"/></svg>`
-        )}`,
+  url: broken
+    ? "data:image/jpeg;base64,bm90IGFuIGltYWdl"
+    : `data:image/svg+xml,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#5b7bc9"/><circle cx="50%" cy="50%" r="${Math.min(width, height) / 3}" fill="#f2c94c"/></svg>`
+      )}`,
 })
 
-/** Four images and no words: a panorama, a tall screenshot, a 1-pixel
- *  image and one that won't decode, with long and non-Latin names. */
+/** Four images and no words, all with long names (one unbreakable, one
+ *  non-Latin): a panorama, a tall screenshot, a 1-pixel image and one
+ *  that won't decode. */
 const IMAGE_PARTS = [
+  image("IMG_20261127_183412_HDR_panorama_from_the_top_of_the_hill.jpeg", {
+    width: 1600,
+    height: 120,
+  }),
+  image("Screenshot 2026-11-27 at 18.34.12 (very long scrolling capture).png", {
+    width: 120,
+    height: 1600,
+  }),
+  image("王秀英在黄山顶上拍的日出照片和她的朋友们一起看云海的那天早上.jpg"),
   image(
-    "IMG_20261127_183412_HDR_panorama_from_the_top_of_the_hill.jpeg",
-    1600,
-    120
+    "Bartholomew-Fitzgerald-Northwind-Industries-Holdings-Signed-Receipt.jpg",
+    { broken: true }
   ),
-  image(
-    "Screenshot 2026-11-27 at 18.34.12 (very long scrolling capture).png",
-    120,
-    1600
-  ),
-  image("王秀英の写真.jpg", 1, 1),
-  image("broken.jpg", 0, 0),
 ]
 
 /** `messages`, or the fixture's thread. */

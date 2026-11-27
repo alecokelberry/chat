@@ -8,7 +8,7 @@
 // with ✕ to take it out; a file the rules turn away, or one that won't
 // decode, never joins, and a toast says why. A question shows its images
 // as a row of thumbnails above its bubble, and a tap opens one full size.
-import { useState } from "react"
+import { useRef, useState } from "react"
 import type { FileUIPart } from "ai"
 import { ImageOffIcon, ImagePlusIcon, PlusIcon, XIcon } from "lucide-react"
 
@@ -42,17 +42,20 @@ type FileRejection = Parameters<
   NonNullable<React.ComponentProps<typeof FileInput>["onReject"]>
 >[0][number]
 
-const REASONS: Record<string, string> = {
+type RejectReason = FileRejection["reasons"][number]
+
+const REASONS: Partial<Record<RejectReason, string>> = {
   "file-type": "Only images can be attached",
   "file-too-large": `Files can be up to ${MAX_FILE_BYTES / 1_000_000} MB`,
   "too-many-files": `Up to ${MAX_FILES} files a message`,
 }
 
 /** Why a file was turned away, in words. */
-const reasonFor = ({ file, reasons }: FileRejection) =>
-  reasons[0] === "too-many-files"
-    ? (REASONS["too-many-files"] ?? "")
-    : `${file.name}: ${REASONS[reasons[0] ?? ""] ?? "Can't attach it"}`
+function reasonFor({ file, reasons: [reason] }: FileRejection) {
+  const words =
+    (reason === undefined ? undefined : REASONS[reason]) ?? "Can't attach it"
+  return reason === "too-many-files" ? words : `${file.name}: ${words}`
+}
 
 /** The composer's files: what's attached, which are ready to send, and
  *  the file input's controller and handlers. */
@@ -61,11 +64,28 @@ export function useAttachments() {
   const [ready, setReady] = useState(() => new Map<File, FileUIPart>())
   const [controller] = useState(createFileInputController)
 
+  // The files attached right now, for a preparation that ends after its
+  // file was taken out: it's dropped, without a toast.
+  const attached = useRef<File[]>([])
+
+  /** Keeps `ready` to the files still attached. */
+  function keep(value: File[]) {
+    attached.current = value
+    setFiles(value)
+    setReady(
+      (parts) => new Map([...parts].filter(([file]) => value.includes(file)))
+    )
+  }
+
   function prepare(file: File) {
     imagePart(file).then(
-      (part) => setReady((parts) => new Map(parts).set(file, part)),
+      (part) => {
+        if (attached.current.includes(file))
+          setReady((parts) => new Map(parts).set(file, part))
+      },
       (error: unknown) => {
-        setFiles((current) => current.filter((other) => other !== file))
+        if (!attached.current.includes(file)) return
+        keep(attached.current.filter((other) => other !== file))
         toast.error(
           error instanceof AttachmentError ? error.message : "Can't attach it"
         )
@@ -79,9 +99,9 @@ export function useAttachments() {
     files,
     parts,
     preparing: parts.length < files.length,
-    clear: () => setFiles([]),
+    clear: () => keep([]),
     onValueChange: (value: File[], details: { added: readonly File[] }) => {
-      setFiles(value)
+      keep(value)
       details.added.forEach(prepare)
     },
     onReject: (rejected: readonly FileRejection[]) => {
@@ -128,7 +148,11 @@ export function AttachmentsInput({
 }
 
 /** The + at the composer's start, and its menu. */
-export function AttachMenu({ attachments }: { attachments: Attachments }) {
+export function AttachMenu({
+  controller,
+}: {
+  controller: Attachments["controller"]
+}) {
   return (
     <Menu>
       <Tooltip type="label">
@@ -144,7 +168,7 @@ export function AttachMenu({ attachments }: { attachments: Attachments }) {
         <TooltipContent>Attach</TooltipContent>
       </Tooltip>
       <MenuContent>
-        <MenuItem onClick={() => attachments.controller.open()}>
+        <MenuItem onClick={() => controller.open()}>
           <ImagePlusIcon aria-hidden />
           Add photos & files
         </MenuItem>

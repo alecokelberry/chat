@@ -114,7 +114,8 @@ export function Question({
           >
             <PencilIcon aria-hidden />
           </MessageAction>
-          <CopyAction text={text} label="Copy message" />
+          {/* An image-only question has no words to copy. */}
+          {text !== "" && <CopyAction text={text} label="Copy message" />}
         </MessageToolbar>
       )}
     </div>

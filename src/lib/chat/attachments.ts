@@ -63,12 +63,16 @@ export async function imagePart(file: File): Promise<FileUIPart> {
   }
 }
 
+/** Whether a part is an image a question carries: inline, as a data
+ *  URL. The server passes on only these, so it never fetches a link. */
+export const isImagePart = (
+  part: UIMessage["parts"][number]
+): part is FileUIPart =>
+  part.type === "file" && part.url.startsWith("data:image/")
+
 /** A message's images, in the order they were attached. */
 export const imagesOf = (message: UIMessage): FileUIPart[] =>
-  message.parts.filter(
-    (part): part is FileUIPart =>
-      part.type === "file" && part.mediaType.startsWith("image/")
-  )
+  message.parts.filter(isImagePart)
 
 // A new chat's first question leaves the new-chat page with its images
 // here, for the chat's page to send (src/routes/_app/c.$id.tsx): history

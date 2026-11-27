@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto"
-import { test as base, expect, type Locator, type Page } from "@playwright/test"
+import {
+  test as base,
+  expect,
+  type FileChooser,
+  type Locator,
+  type Page,
+} from "@playwright/test"
 
 import { E2E_SETUP_CODE } from "../playwright.config"
 
@@ -226,4 +232,15 @@ type AgentBridge = {
         items: { value: unknown }[]
       }[]
   >
+}
+
+/** Attaches files with + › Add photos & files. */
+export async function pick(
+  page: Page,
+  files: Parameters<FileChooser["setFiles"]>[0]
+) {
+  await page.getByRole("button", { name: "Attach" }).click()
+  const chooser = page.waitForEvent("filechooser")
+  await page.getByRole("menuitem", { name: "Add photos & files" }).click()
+  await (await chooser).setFiles(files)
 }

@@ -80,7 +80,7 @@ export function Composer({
       >
         <AttachmentTiles attachments={attachments} />
         <div className="flex items-end gap-1">
-          <AttachMenu attachments={attachments} />
+          <AttachMenu controller={attachments.controller} />
           <Textarea
             ref={field}
             aria-label="Message"

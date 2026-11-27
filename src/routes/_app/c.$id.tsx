@@ -49,6 +49,7 @@ import { HeaderTitle, HeaderTitleEdit } from "@/components/ui/header-title"
 import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
+import { toast } from "@/components/ui/toast"
 import { imagesOf, takeHandedOffFiles } from "@/lib/chat/attachments"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
@@ -56,7 +57,7 @@ import { pageTitle } from "@/lib/utils"
 
 declare module "@tanstack/react-router" {
   interface HistoryState {
-    firstMessage?: { text: string; model: ModelKey }
+    firstMessage?: { text: string; model: ModelKey; files?: number }
   }
 }
 
@@ -184,12 +185,19 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   useEffect(() => {
     if (firstMessage === undefined || sent.current) return
     sent.current = true
+    void navigate({ to: ".", replace: true, state: {} })
+    const files = takeHandedOffFiles(id)
+    // A reload before the first send keeps the words (history state) but
+    // not the images (memory): say so rather than send without them.
+    if (files.length < (firstMessage.files ?? 0)) {
+      toast.error("Your images didn't come through. Attach them again.")
+      if (firstMessage.text === "") return
+    }
     void sendMessage({
       text: firstMessage.text,
-      files: takeHandedOffFiles(id),
+      files,
       metadata: sentWith(firstMessage.model),
     })
-    void navigate({ to: ".", replace: true, state: {} })
   }, [firstMessage, sendMessage, navigate, id])
 
   // isStreaming also covers a reply another tab started.

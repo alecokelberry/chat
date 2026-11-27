@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright"
 import type { Page } from "@playwright/test"
 
-import { expect, greeting, send, signInAsDev, test } from "./session"
+import { expect, greeting, pick, send, signInAsDev, test } from "./session"
 
 // An accessibility scan (axe-core) of the main screens, in light and dark
 // at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
@@ -91,10 +91,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         page,
       }) => {
         await signInAsDev(page)
-        await page.getByRole("button", { name: "Attach" }).click()
-        const chooser = page.waitForEvent("filechooser")
-        await page.getByRole("menuitem", { name: "Add photos & files" }).click()
-        await (await chooser).setFiles(["e2e/fixtures/small.jpg"])
+        await pick(page, ["e2e/fixtures/small.jpg"])
         await expect(
           page.getByRole("list", { name: "Attached files" }).locator("img")
         ).toHaveCount(1)

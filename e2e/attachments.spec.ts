@@ -1,7 +1,8 @@
-import type { FileChooser, Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 import {
   expect,
+  pick,
   questions,
   replies,
   sidebar,
@@ -21,14 +22,6 @@ const SMALL = "e2e/fixtures/small.jpg" // 400 × 300
 
 const tiles = (page: Page) =>
   page.getByRole("list", { name: "Attached files" }).locator("img")
-
-/** Picks files with + › Add photos & files. */
-async function pick(page: Page, files: Parameters<FileChooser["setFiles"]>[0]) {
-  await page.getByRole("button", { name: "Attach" }).click()
-  const chooser = page.waitForEvent("filechooser")
-  await page.getByRole("menuitem", { name: "Add photos & files" }).click()
-  await (await chooser).setFiles(files)
-}
 
 /** A 200 × 100 PNG made in the page, as a DataTransfer, for paste and
  *  drop. */
@@ -79,6 +72,10 @@ test("picked images reach the model, shrunk, and stay with the question", async 
   await page.reload()
   await expect(page.getByRole("button", { name: /^View / })).toHaveCount(2)
   await expect(sidebar(page)).toBeVisible()
+
+  const other = await page.context().newPage()
+  await other.goto(page.url())
+  await expect(other.getByRole("button", { name: /^View / })).toHaveCount(2)
 })
 
 test("an image alone sends from a new chat", async ({ page }) => {
@@ -119,6 +116,10 @@ test("pasted and dropped images attach, and ✕ takes one out", async ({
 
   await page.getByRole("button", { name: "Remove pasted.png" }).first().click()
   await expect(tiles(page)).toHaveCount(1)
+  // The list is one Tab stop, and Delete takes out the focused file.
+  await page.getByRole("list", { name: "Attached files" }).focus()
+  await page.keyboard.press("Delete")
+  await expect(tiles(page)).toHaveCount(0)
 })
 
 test("files the rules turn away never attach, and a toast says why", async ({
@@ -153,4 +154,64 @@ test("files the rules turn away never attach, and a toast says why", async ({
   ).toBeVisible()
   await expect(page.getByText("Can't read HEIC in this browser")).toBeVisible()
   await expect(tiles(page)).toHaveCount(3)
+})
+
+// ui-sdk's agent bridge (window.agent, test builds): an agent finds
+// Attach by name and opens its menu, takes a file out through the file
+// input, and opens an image.
+test("an agent can open the menu, take a file out and view an image", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  // By query, not the snapshot, which lists only the first 100
+  // components (e2e/search.spec.ts).
+  const press = (label: string) =>
+    page.evaluate(async (wanted) => {
+      const { agent } = window
+      const found = await agent.query({ text: wanted })
+      const ref =
+        "error" in found
+          ? ""
+          : (found.find((entry) => entry.label === wanted)?.ref ?? "")
+      const done = await agent.act({
+        steps: [{ ref, action: "press", args: [] }],
+      })
+      return done.ok
+    }, label)
+
+  expect(await press("Attach")).toBe(true)
+  await expect(
+    page.getByRole("menuitem", { name: "Add photos & files" })
+  ).toBeVisible()
+  await page.keyboard.press("Escape")
+
+  await pick(page, [SMALL, WIDE])
+  await expect(tiles(page)).toHaveCount(2)
+  // The file input offers removeFile, naming a file by its item.
+  const removed = await page.evaluate(async () => {
+    const { agent } = window
+    // A query lists only the items its text matches.
+    const found = await agent.query({ text: "wide.png" })
+    const input =
+      "error" in found
+        ? undefined
+        : found.find((entry) => entry.label === "Attachments")
+    // An item carries its file's name as its label, which the type leaves out.
+    const item = input?.items.find(
+      (entry) => "label" in entry && entry.label === "wide.png"
+    )
+    const done = await agent.act({
+      steps: [
+        { ref: input?.ref ?? "", action: "removeFile", args: [item?.value] },
+      ],
+    })
+    return done.ok
+  })
+  expect(removed).toBe(true)
+  await expect(tiles(page)).toHaveCount(1)
+  await page.getByRole("button", { name: "Send" }).click()
+  await expect(replies(page)).toHaveText([/Saw 1 image\..*Done\.$/])
+
+  expect(await press("View small.jpg")).toBe(true)
+  await expect(page.getByRole("dialog", { name: "small.jpg" })).toBeVisible()
 })
