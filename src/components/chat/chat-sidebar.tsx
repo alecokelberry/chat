@@ -48,6 +48,10 @@ import {
   SearchButton,
   SearchDialog,
 } from "@/components/chat/search"
+import {
+  createSettingsController,
+  SettingsDialog,
+} from "@/components/chat/settings"
 import { BrandMark } from "@/components/ui/brand-mark"
 import { Menu } from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"
@@ -134,6 +138,7 @@ export function ChatSidebar({
   const [opened, setOpened] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const [search] = useState(createSearchController)
+  const [settings] = useState(createSettingsController)
   // Replays a press from before hydration through the button itself.
   const trigger = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -170,7 +175,11 @@ export function ChatSidebar({
         </div>
         {phone === false && <ChatList chats={chats} />}
         <SidebarFooter>
-          <AccountMenu account={account} tooltip={collapsed} />
+          <AccountMenu
+            account={account}
+            settings={settings}
+            tooltip={collapsed}
+          />
         </SidebarFooter>
       </Sidebar>
       {/* Relative: a chat's title pill sits over this column's top, in the
@@ -215,7 +224,11 @@ export function ChatSidebar({
                 onPick={close}
               />
               <SidebarFooter>
-                <AccountMenu account={account} onOpenChat={close} />
+                <AccountMenu
+                  account={account}
+                  settings={settings}
+                  onOpenChat={close}
+                />
               </SidebarFooter>
             </SidebarDrawerContent>
           )}
@@ -223,6 +236,7 @@ export function ChatSidebar({
         {children}
       </div>
       <SearchDialog controller={search} onPick={close} />
+      <SettingsDialog controller={settings} account={account} />
     </div>
   )
 }
