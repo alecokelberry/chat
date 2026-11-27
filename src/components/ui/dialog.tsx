@@ -1,7 +1,8 @@
 // Dialog: ui-sdk's dialog (focus trap, Escape and outside press, return
 // focus, scroll lock) as a raised panel over a dimmed page: the popover
 // fill, a hairline, 20px corners and the dialog shadow, 640px wide and
-// 12% of the screen from the top, like a command palette, so its height can change
+// 12% of the screen from the top, like a command palette (960px `wide`,
+// from md, for a preview beside a list), so its height can change
 // without it jumping around the screen's middle. It appears at once: it's
 // opened from the keyboard as often as not (⌘K), and keyboard actions
 // never animate (DESIGN.md › Motion); only the scrim fades. On a touch
@@ -48,11 +49,14 @@ function Dialog(props: React.ComponentProps<typeof DialogPrimitive>) {
   return <DialogPrimitive presentation="auto" {...props} />
 }
 
+/** `wide`: 960px wide and its full height from md, for a list with a
+ *  preview beside it, so the preview has room whatever the list holds. */
 function DialogContent({
   className,
   children,
+  wide = false,
   ...props
-}: React.ComponentProps<typeof DialogContentPrimitive>) {
+}: React.ComponentProps<typeof DialogContentPrimitive> & { wide?: boolean }) {
   return (
     <>
       <DialogBackdropPrimitive className="fixed inset-0 bg-overlay transition-opacity duration-pane ease-standard data-ending-style:opacity-0 data-starting-style:opacity-0 data-[presentation=sheet]:hidden" />
@@ -60,6 +64,8 @@ function DialogContent({
         className={cn(
           "flex flex-col overflow-hidden border border-border-strong bg-popover text-popover-foreground outline-hidden",
           "data-[presentation=dialog]:fixed data-[presentation=dialog]:inset-x-4 data-[presentation=dialog]:top-dialog-top data-[presentation=dialog]:mx-auto data-[presentation=dialog]:max-h-dialog-height data-[presentation=dialog]:max-w-dialog data-[presentation=dialog]:rounded-overlay data-[presentation=dialog]:shadow-dialog",
+          wide &&
+            "md:data-[presentation=dialog]:h-dialog-height md:data-[presentation=dialog]:max-w-dialog-wide",
           "data-[presentation=sheet]:sheet-handle data-[presentation=sheet]:sheet-tall data-[presentation=sheet]:w-full data-[presentation=sheet]:rounded-t-overlay data-[presentation=sheet]:border-b-0 data-[presentation=sheet]:pt-2 data-[presentation=sheet]:sheet-bleed",
           className
         )}

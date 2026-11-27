@@ -1,5 +1,5 @@
 // A chat's actions, the archived Chat's (Grok's), in each sidebar row's …
-// menu and the open chat's header …: Pin or Unpin, Rename, then Open in
+// menu, each Search result's … and the open chat's header …: Pin or Unpin, Rename, then Open in
 // new tab (a real link, so it opens the way the browser opens links),
 // then Delete, in red, which an agent can't press (data-agent-confirm).
 //
@@ -37,11 +37,18 @@ export function ChatMenuContent({
   chat,
   onRename,
   onPin,
+  deletedFocus = () => document.getElementById("main"),
+  container,
 }: {
   chat: ChatRef
   onRename: () => void
   /** Called as Pin or Unpin is chosen. */
   onPin?: () => void
+  /** Where focus goes once Delete takes the … away: the page, or
+   *  Search's field. */
+  deletedFocus?: () => HTMLElement | null
+  /** Where the menu renders, if not in place: Search's, outside its list. */
+  container?: Element | null
 }) {
   const list = useChatList()
   // Delete takes the …  away with its row (or header), so focus goes to
@@ -51,9 +58,8 @@ export function ChatMenuContent({
     <MenuContent
       align="end"
       side="bottom"
-      finalFocus={() =>
-        deleting.current ? document.getElementById("main") : null
-      }
+      finalFocus={() => (deleting.current ? deletedFocus() : null)}
+      container={container}
     >
       <MenuGroup>
         <MenuItem
@@ -100,8 +106,8 @@ export function ChatMenuContent({
   )
 }
 
-/** The title being renamed: place it in a SidebarRowEdit or a
- *  HeaderTitleEdit. It saves through the list and calls `onClose`; if
+/** The title being renamed: place it in a SidebarRowEdit, a
+ *  HeaderTitleEdit or a CommandFieldEdit. It saves through the list and calls `onClose`; if
  *  focus was in the field, it goes back to `returnFocus` (the … that
  *  opened it), not to the page. */
 export function RenameField({

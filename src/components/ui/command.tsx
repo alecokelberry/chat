@@ -18,6 +18,11 @@
 // line, and CommandStatus says, quietly, when they failed to load. Since
 // the filter is then a function, CommandMatchText marks a label's matched
 // letters itself, as CommandItemText does for the built-in filters.
+//
+// A result can have a … beside it (CommandRow, CommandRowAction), its menu
+// rendered outside the list, and a field can stand in for the search
+// field (CommandFieldEdit), since the listbox may hold only options. From
+// md, CommandPreview shows the highlighted result beside the list.
 import {
   useCallback,
   useEffect,
@@ -50,15 +55,22 @@ import {
   matchSegments,
 } from "@ui-sdk/react/text-match"
 
+import { MenuTrigger } from "@/components/ui/menu"
 import { cn } from "@/lib/utils"
 
 /** The search field, led by its glyph. */
+/** `hidden`: kept in the page, out of sight, while CommandFieldEdit
+ *  stands in for it. */
 function CommandInput({
   className,
+  hidden = false,
   ...props
-}: React.ComponentProps<typeof CommandInputPrimitive>) {
+}: React.ComponentProps<typeof CommandInputPrimitive> & { hidden?: boolean }) {
   return (
-    <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
+    <div
+      hidden={hidden}
+      className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4"
+    >
       <SearchIcon
         aria-hidden
         className="size-icon shrink-0 text-muted-foreground"
@@ -297,6 +309,84 @@ function CommandWindow<T extends { value: string }>({
   )
 }
 
+/** A result with actions beside it: the option, then its
+ *  CommandRowAction, in the same box, so the listbox's own entries are
+ *  options only. The option leaves room at its end for the …. */
+function CommandRow({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="command-row"
+      className={cn("group/row relative [&>[role=option]]:pe-10", className)}
+      {...props}
+    />
+  )
+}
+
+/** A row's 24px …, its menu's trigger, 8px from its end and centered on
+ *  its first line: shown while the row is hovered or highlighted, or its
+ *  menu is open, and always on touch screens, with a 40px touch area
+ *  there. For the pointer only: no tab stop (the field keeps the
+ *  keyboard) and hidden from assistive tech, so the listbox holds only
+ *  options; the open chat's own …, and the sidebar row's, hold the same
+ *  actions for everyone. */
+function CommandRowAction({
+  className,
+  ...props
+}: React.ComponentProps<typeof MenuTrigger>) {
+  return (
+    <MenuTrigger
+      data-slot="command-row-action"
+      tabIndex={-1}
+      aria-hidden
+      className={cn(
+        "absolute end-2 top-2 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-hidden select-none group-hover/row:opacity-100 group-has-data-highlighted/row:opacity-100 after:absolute after:-inset-2 hover:bg-accent hover:text-foreground data-open:bg-accent data-open:text-foreground data-open:opacity-100 pointer-coarse:opacity-100 pointer-fine:after:hidden [&>svg]:size-3.5 [&>svg]:shrink-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+/** In the search field's row, in its place (CommandInput `hidden`):
+ *  `icon` where the search glyph was, then another field, like Search's
+ *  rename, with its ✕ ✓. */
+function CommandFieldEdit({
+  icon,
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & { icon: ReactNode }) {
+  return (
+    <div
+      data-slot="command-field-edit"
+      className={cn(
+        "flex h-14 shrink-0 items-center gap-3 border-b border-border ps-4 pe-2 [&>svg]:size-icon [&>svg]:shrink-0 [&>svg]:text-muted-foreground",
+        className
+      )}
+      {...props}
+    >
+      {icon}
+      {children}
+    </div>
+  )
+}
+
+/** Beside the list from md, the highlighted result's preview, scrolling
+ *  on its own; none on a phone. */
+function CommandPreview({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      role="region"
+      data-slot="command-preview"
+      className={cn(
+        "hidden min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain border-s border-border p-5 md:flex",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 /** A quiet line under the list, from `children` (the list's state), or
  *  nothing. */
 function CommandStatus({
@@ -340,6 +430,10 @@ export {
   CommandItemLines,
   CommandList,
   CommandMatchText,
+  CommandPreview,
+  CommandRow,
+  CommandRowAction,
+  CommandFieldEdit,
   CommandStatus,
   CommandWindow,
   fuzzyScore,

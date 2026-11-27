@@ -207,6 +207,78 @@ test("an edited question and a deleted chat stop matching", async ({
   await expect(dialog(page)).toContainText(`No chats match “${after}”`)
 })
 
+test("a computer previews the highlighted chat beside the list", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const word = madeUpWord()
+  await chatSaying(page, `Preview ${word} for me`)
+  const preview = dialog(page).getByRole("region", { name: "Preview" })
+
+  // Opened, the first chat is highlighted, and previewed.
+  await page.keyboard.press("ControlOrMeta+k")
+  const first = dialog(page).getByRole("option").first()
+  await expect(first).toHaveAttribute("aria-selected", "true")
+  await expect(field(page)).toHaveAttribute(
+    "aria-activedescendant",
+    (await first.getAttribute("id")) ?? ""
+  )
+  await expect(preview).toBeVisible()
+
+  // A match by its words: its question and its reply, read-only.
+  await findWords(page, word)
+  await expect(preview.getByText(`Preview ${word} for me`)).toBeVisible()
+  await expect(preview.getByRole("article", { name: "Reply" })).toContainText(
+    "Done."
+  )
+  await expect(preview.getByRole("button")).toHaveCount(0)
+
+  // A chat with nothing in it says so.
+  await field(page).fill("seeded kept")
+  await expect(preview).toHaveText("Seeded kept title has no messages yet")
+})
+
+test("a result's … renames its chat in the field's place, and deletes it", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const word = madeUpWord()
+  const path = await chatSaying(page, `Rename ${word} from Search`)
+  await findWords(page, word)
+  const row = messages(page).locator('[data-slot="command-row"]')
+
+  const name = `Found ${madeUpWord()}`
+  await row.hover()
+  await row.locator("button").click()
+  await page.getByRole("menuitem", { name: "Rename" }).click()
+  const title = dialog(page).getByRole("textbox", { name: "Chat title" })
+  await expect(title).toBeFocused()
+  await expect(field(page)).toBeHidden()
+  await title.fill(name)
+  await page.keyboard.press("Enter")
+  await expect(field(page)).toBeFocused()
+  await expect(messages(page).getByRole("option")).toContainText(name)
+  await expect(
+    page.getByRole("navigation", { name: "Chats" }).getByRole("link", { name })
+  ).toBeVisible()
+
+  await row.hover()
+  await row.locator("button").click()
+  await page.getByRole("menuitem", { name: "Delete" }).click()
+  await expect(messages(page)).toHaveCount(0)
+  await expect(field(page)).toBeFocused()
+  await expect(dialog(page)).toBeVisible()
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/_serverFn/") &&
+      response.request().method() === "POST"
+  )
+  await page.evaluate(() => window.toast.dismiss())
+  expect((await deleted).ok()).toBe(true)
+  // The open chat went, so the page went to a new one.
+  await expect(page).not.toHaveURL(new RegExp(`${path}$`))
+})
+
 test.describe("on a touch phone", () => {
   test.use({
     viewport: { width: 390, height: 844 },
@@ -227,6 +299,13 @@ test.describe("on a touch phone", () => {
     await field(page).fill("seeded kept")
     await dialog(page).getByRole("option", { name: "Seeded kept title" }).tap()
     await expect(page).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
+    // No room for a preview beside the list.
+    await page.getByRole("button", { name: "Search" }).tap()
+    await expect(dialog(page).getByRole("option").first()).toBeVisible()
+    await expect(
+      dialog(page).getByRole("region", { name: "Preview" })
+    ).toBeHidden()
+    await page.keyboard.press("Escape")
 
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     await page

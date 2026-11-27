@@ -6,7 +6,7 @@
 // unchanged question just closes. Sending replaces this question and
 // everything after it, and the reply is asked again (the chat's onEdit).
 // Edit and Save wait while a reply streams.
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ComponentProps } from "react"
 import { CheckIcon, PencilIcon, XIcon } from "lucide-react"
 
 import { CopyAction, MessageAction } from "@/components/chat/message-action"
@@ -53,13 +53,9 @@ export function Question({
 
   return (
     <div data-slot="message" className="group/message flex flex-col gap-2.5">
-      <article
-        aria-label="Your message"
-        className={cn(
-          "max-w-4/5 self-end rounded-3xl bg-bubble-user px-4 py-3 break-words whitespace-pre-wrap",
-          // Room to rewrite a short question.
-          editing && "w-full"
-        )}
+      <QuestionBubble
+        // Room to rewrite a short question.
+        className={cn(editing && "w-full")}
       >
         {editing ? (
           <Textarea
@@ -80,7 +76,7 @@ export function Question({
         ) : (
           text
         )}
-      </article>
+      </QuestionBubble>
       {editing ? (
         <MessageToolbar aria-label="Edit actions" align="end">
           <MessageAction label="Cancel" onClick={close}>
@@ -113,5 +109,23 @@ export function Question({
         </MessageToolbar>
       )}
     </div>
+  )
+}
+
+/** A question's bubble, on the end side: in the thread, and read-only in
+ *  Search's preview. */
+export function QuestionBubble({
+  className,
+  ...props
+}: ComponentProps<"article">) {
+  return (
+    <article
+      aria-label="Your message"
+      className={cn(
+        "max-w-4/5 self-end rounded-3xl bg-bubble-user px-4 py-3 break-words whitespace-pre-wrap",
+        className
+      )}
+      {...props}
+    />
   )
 }
