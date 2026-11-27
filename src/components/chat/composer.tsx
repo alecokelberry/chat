@@ -103,10 +103,10 @@ export function Composer({
   const blind = attachments.hasImages && !chosen.seesImages
   useEffect(() => onDraft?.(!empty), [onDraft, empty])
   const online = useOnline()
-  const ready = canSend({ empty, waiting: attachments.waiting, blind, online })
+  const ready = !empty && !attachments.waiting && !blind
 
   function send() {
-    if (!ready || busy) return
+    if (!ready || busy || !online) return
     onSend(message, attachments.parts)
     setText("")
     attachments.clear()
@@ -146,7 +146,12 @@ export function Composer({
           <div className={cn("flex", wrapped && "ms-auto")}>
             <ModelPicker value={model} onValueChange={onModelChange} />
           </div>
-          <SendOrStop busy={busy} ready={ready} onStop={onStop} />
+          <SendOrStop
+            busy={busy}
+            ready={ready}
+            online={online}
+            onStop={onStop}
+          />
         </div>
       </form>
       <OfflineLine offline={!online} />
@@ -158,16 +163,6 @@ export function Composer({
       />
     </AttachmentsInput>
   )
-}
-
-/** Whether Send has something to send and nothing holding it back. */
-function canSend(state: {
-  empty: boolean
-  waiting: boolean
-  blind: boolean
-  online: boolean
-}) {
-  return !state.empty && !state.waiting && !state.blind && state.online
 }
 
 function subscribeOnline(notify: () => void) {
@@ -216,10 +211,12 @@ function OfflineLine({ offline }: { offline: boolean }) {
 function SendOrStop({
   busy,
   ready,
+  online,
   onStop,
 }: {
   busy: boolean
   ready: boolean
+  online: boolean
   onStop?: () => Promise<void> | void
 }) {
   return busy ? (
@@ -239,7 +236,7 @@ function SendOrStop({
             type="submit"
             variant="send"
             size="circle"
-            disabled={!ready}
+            disabled={!ready || !online}
             // Still focusable, so its tooltip reaches keyboards too
             // (ui-sdk's Tooltip docs, Disabled buttons).
             focusableWhenDisabled
