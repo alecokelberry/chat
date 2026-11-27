@@ -7,7 +7,7 @@ import {
   type Page,
 } from "@playwright/test"
 
-import { E2E_SETUP_CODE } from "../playwright.config"
+import { BASE_URL, E2E_SETUP_CODE } from "../playwright.config"
 
 // What every e2e test shares, so parallel work never grows its own copy:
 // `test` and `expect` (specs import them from here, not from
@@ -90,12 +90,21 @@ export async function hydrated(page: Page) {
   )
 }
 
+/** Signs in as this worker's own Dev (dev+N@chat.test, seeded like Dev
+ *  in e2e/seed.sql), so tests in parallel never see each other's chats,
+ *  and opens a new chat. It asks the dev sign-in endpoint directly, the
+ *  way Playwright's auth docs sign in through an API: e2e/sign-in.spec.ts
+ *  tests the button itself. */
 export async function signInAsDev(page: Page) {
-  await page.goto("/sign-in")
+  const response = await page.request.post("/api/auth/dev-sign-in", {
+    data: { as: String(test.info().parallelIndex) },
+    // Better Auth refuses a POST without its own origin.
+    headers: { origin: BASE_URL },
+  })
+  expect(response.ok(), await response.text()).toBe(true)
+  await page.goto("/")
   await hydrated(page)
-  await page.getByRole("button", { name: "Sign in as Dev" }).click()
   await expectSignedInAs(page, "Dev")
-  await hydrated(page)
 }
 
 /** Adds a virtual authenticator to the page, standing in for Touch ID. */

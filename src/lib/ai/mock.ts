@@ -1,9 +1,11 @@
 // The mock model: stands in for NVIDIA when MOCK_MODEL is "1" (e2e and, if
-// you like, local dev), so tests never call NVIDIA. It waits half a second
-// before the first word, so a test sees the waiting marker, then streams a
-// fixed reply a word at a time, under three seconds in all (five with
-// thinking), ending in "Done.", so a test can watch it arrive and stop it
-// partway. The reply opens by saying which model id it stands in for and
+// you like, local dev), so tests never call NVIDIA. It streams a fixed
+// reply a word at a time with no waits, ending in "Done.", so a test that
+// only needs a reply spends no time on one. A message that mentions
+// "(paced)" gets the same reply as a person sees one: half a second before
+// the first word, so a test sees the waiting marker, then a word every
+// 60ms, under three seconds in all (five with thinking), so a test can
+// watch it arrive and stop it partway. The reply opens by saying which model id it stands in for and
 // whether the request turned thinking on, so a test can check what a real
 // call would have asked NVIDIA for. With thinking on, it first thinks
 // aloud (REASONING), streamed the same way, as NVIDIA streams
@@ -97,9 +99,21 @@ export const BURSTS = [
   "the way a busy model often sends them. Done.",
 ]
 
-/** The pause before each word, in milliseconds. */
+/** The pause before each word, in milliseconds: none unless the message
+ *  asks for a paced reply. */
 const wordDelay = (message: string) =>
-  message.includes("burst") ? 600 : message.includes("(slow)") ? 250 : 60
+  message.includes("burst")
+    ? 600
+    : message.includes("(slow)")
+      ? 250
+      : message.includes("(paced)")
+        ? 60
+        : 0
+
+/** The wait before the first word: half a second when paced, so a test
+ *  sees the waiting marker. */
+const firstWordDelay = (message: string) =>
+  /burst|\(slow\)|\(paced\)/.test(message) ? 500 : 0
 
 /** Each word keeps the space or newline after it. */
 const wordsOf = (line: string) => line.split(/(?<=\s)/)
@@ -460,7 +474,7 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {
         stream: simulateReadableStream({
-          initialDelayInMs: 500,
+          initialDelayInMs: firstWordDelay(message),
           chunkDelayInMs: wordDelay(message),
           chunks: [
             ...(thinking

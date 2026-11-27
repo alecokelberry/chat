@@ -124,7 +124,7 @@ test("Stop ends the reply and keeps what arrived", async ({ page }) => {
     })
   })
   await signInAsDev(page)
-  await send(page, "Tell me a long story")
+  await send(page, "Tell me a long story (paced)")
 
   const reply = page.getByRole("article", { name: "Reply" }).last()
   await expect(reply).toContainText("mock")

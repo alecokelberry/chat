@@ -1,5 +1,7 @@
 import { generateKeyPairSync, randomBytes } from "node:crypto"
 
+import { BASE_URL } from "../playwright.config"
+
 import {
   addAuthenticator,
   expect,
@@ -56,6 +58,31 @@ test("Dev signs in on this machine without a passkey", async ({ page }) => {
   await page.goto("/sign-in")
   await page.getByRole("button", { name: "Sign in as Dev" }).click()
   await expectSignedInAs(page, "Dev")
+})
+
+test("a worker's own Dev signs in only on this machine, by number", async ({
+  playwright,
+}) => {
+  // The same server by another name is refused, as every address but
+  // localhost is (live and Previews among them): by Better Auth's allowed
+  // hosts, and by devSignInAllowed behind it.
+  const elsewhere = await playwright.request.newContext({
+    baseURL: BASE_URL.replace("localhost", "127.0.0.1"),
+  })
+  const there = await elsewhere.post("/api/auth/dev-sign-in", {
+    data: { as: "1" },
+    headers: { origin: BASE_URL.replace("localhost", "127.0.0.1") },
+  })
+  expect(there.ok()).toBe(false)
+  await elsewhere.dispose()
+
+  const here = await playwright.request.newContext({ baseURL: BASE_URL })
+  const named = await here.post("/api/auth/dev-sign-in", {
+    data: { as: "owner@chat.test" },
+    headers: { origin: BASE_URL },
+  })
+  expect(named.status()).toBe(400)
+  await here.dispose()
 })
 
 test("a passkey this server doesn't know isn't offered", async ({

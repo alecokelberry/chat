@@ -125,7 +125,7 @@ test("an open edit waits for a reply another tab started", async ({
 
   const other = await context.newPage()
   await other.goto(page.url())
-  await send(other, "From the other tab")
+  await send(other, "From the other tab (paced)")
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
 
   await expect(page.getByRole("button", { name: "Save" })).toBeDisabled()

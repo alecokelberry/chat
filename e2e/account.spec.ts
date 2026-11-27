@@ -35,7 +35,7 @@ test.describe("on a computer", () => {
     await signInAsDev(page)
     await accountRow(page).click()
     await expect(menu(page)).toContainText("Dev")
-    await expect(menu(page)).toContainText("dev@chat.test")
+    await expect(menu(page)).toContainText(/dev\+\d+@chat\.test/)
 
     // Theme swaps the tags for fresh ones rather than editing them, which
     // the drawer would undo when it closes.
@@ -258,7 +258,7 @@ test.describe("on a computer", () => {
       .toBe(36)
     expect((await accountRow(page).boundingBox())?.height).toBe(36)
     await accountRow(page).click()
-    await expect(menu(page)).toContainText("dev@chat.test")
+    await expect(menu(page)).toContainText(/dev\+\d+@chat\.test/)
   })
 
   // ui-sdk's agent test: the row is a control an agent can find and press,
@@ -297,7 +297,7 @@ test.describe("on a phone", () => {
     const drawer = page.getByRole("dialog", { name: "Chats" })
     await expect(drawer.locator("svg.lucide-message-circle")).toBeVisible()
     await drawer.getByRole("button", { name: "Dev", exact: true }).tap()
-    await expect(menu(page)).toContainText("dev@chat.test")
+    await expect(menu(page)).toContainText(/dev\+\d+@chat\.test/)
     await expect(menu(page)).toHaveAttribute("data-presentation", "sheet")
     await expectNoHeldStart(page)
 

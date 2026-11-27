@@ -16,6 +16,7 @@ import {
 import { setSessionCookie } from "better-auth/cookies"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { passkey } from "@better-auth/passkey"
+import { z } from "zod"
 
 /** The live address, and what every Preview's address ends with
  *  (<branch>-chat.alecokelberry.workers.dev). */
@@ -29,6 +30,12 @@ const OWNER = { email: "owner@chat.test", name: "Alec" }
 /** Dev: the local test account, kept apart from the owner's. `.test` can't
  *  reach an inbox. */
 const DEV = { email: "dev@chat.test", name: "Dev" }
+
+/** Dev's account, or with `as` one of its numbered twins (dev+3@chat.test,
+ *  also named Dev): each e2e worker signs in as its own, so parallel tests
+ *  never see each other's chats (e2e/session.ts, e2e/seed.sql). */
+const devAccount = (as?: string) =>
+  as === undefined ? DEV : { ...DEV, email: `dev+${as}@chat.test` }
 
 /** Whether Dev can sign in from this address: only with DEV_SIGN_IN set
  *  (.dev.vars and e2e, never live) and only on localhost. */
@@ -54,20 +61,29 @@ const devSignIn = {
   endpoints: {
     devSignIn: createAuthEndpoint(
       "/dev-sign-in",
-      { method: "POST" },
+      {
+        method: "POST",
+        body: z.object({
+          as: z
+            .string()
+            .regex(/^\d{1,3}$/)
+            .optional(),
+        }),
+      },
       async (ctx) => {
         if (ctx.request === undefined || !devSignInAllowed(ctx.request.url)) {
           throw APIError.fromStatus("NOT_FOUND")
         }
+        const account = devAccount(ctx.body.as)
         const adapter = ctx.context.internalAdapter
         const find = async () =>
-          (await adapter.findUserByEmail(DEV.email))?.user ?? null
+          (await adapter.findUserByEmail(account.email))?.user ?? null
         // Two first sign-ins at once (parallel tests) both find no Dev, and
         // one create loses on the unique email: it takes the winner's.
         const user =
           (await find()) ??
           (await adapter
-            .createUser({ ...DEV, emailVerified: false }, { method: "dev" })
+            .createUser({ ...account, emailVerified: false }, { method: "dev" })
             .catch(async (error: unknown) => {
               const found = await find()
               if (found === null) throw error
@@ -166,14 +182,18 @@ function createAuth() {
               })
             }
             const adapter = ctx.context.internalAdapter
-            // The owner: the oldest account that isn't Dev's, whatever its
-            // email, so the live row can carry the real one. Live there's
-            // no Dev account (DEV_SIGN_IN is never set there).
+            // The owner: the oldest account that isn't Dev's or one of its
+            // numbered twins (all named Dev), whatever its email, so the
+            // live row can carry the real one. Live there's no Dev account
+            // (DEV_SIGN_IN is never set there).
             const [owner] = await adapter.listUsers(
               1,
               0,
               { field: "createdAt", direction: "asc" },
-              [{ field: "email", operator: "ne", value: DEV.email }]
+              [
+                { field: "email", operator: "ne", value: DEV.email },
+                { field: "name", operator: "ne", value: DEV.name },
+              ]
             )
             const user =
               owner ??

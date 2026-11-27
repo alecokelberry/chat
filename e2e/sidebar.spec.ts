@@ -29,7 +29,7 @@ test("a new chat shows at the top as New chat, then takes its title", async ({
   page,
 }) => {
   await signInAsDev(page)
-  await send(page, "Name me")
+  await send(page, "Name me (paced)")
   const open = sidebar(page).locator("a[aria-current=page]")
   // While the reply streams, the chat is listed but not yet named.
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible()
