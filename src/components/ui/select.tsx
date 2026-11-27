@@ -30,14 +30,18 @@ function Select<T>(props: React.ComponentProps<typeof SelectPrimitive<T>>) {
 function SelectTrigger({
   className,
   children,
+  outline = false,
   ...props
 }: Omit<React.ComponentProps<typeof SelectTriggerPrimitive>, "children"> & {
   children?: React.ReactNode
+  /** Settings' look: a hairline around the pill, as the outline Button. */
+  outline?: boolean
 }) {
   return (
     <SelectTriggerPrimitive
       className={cn(
         "group/select relative inline-flex h-8 shrink-0 press items-center gap-1 rounded-full ps-3 pe-2.5 text-base font-medium whitespace-nowrap text-foreground outline-hidden select-none after:absolute after:-inset-1 hover:bg-secondary-hover focus-visible:ring-2 focus-visible:ring-ring active:bg-secondary-active data-open:bg-secondary-hover",
+        outline && "border border-border-strong",
         className
       )}
       {...props}

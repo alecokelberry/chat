@@ -1,11 +1,22 @@
 import type { Page } from "@playwright/test"
 
-import { expect, send, signInAsDev, tapInSheet, test } from "./session"
+import {
+  expect,
+  hydrated,
+  replies,
+  send,
+  signInAsDev,
+  tapInSheet,
+  test,
+  unique,
+} from "./session"
 
 // Settings (src/components/chat/settings.tsx): the account menu's Settings
 // opens it at Account (the row itself has no gear); search
 // filters its sections; Account shows who's signed in and signs out;
-// Appearance flips the theme and wraps replies' long code lines. On a
+// Appearance flips the theme and wraps replies' long code lines;
+// Customize's response style reaches the model (the mock names it) and is
+// saved on the account. On a
 // phone the sections come first, and a tap slides to one, with Back.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
@@ -67,6 +78,7 @@ test.describe("on a computer", () => {
     await expect(sections(page).getByRole("tab")).toHaveText([
       "Account",
       "Appearance",
+      "Customize",
     ])
   })
 
@@ -137,6 +149,119 @@ test.describe("on a computer", () => {
     )
     expect(turned).toBe("on")
     await expect(wrap).toBeChecked()
+  })
+
+  test("Customize's response style reaches the model and stays saved", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const openCustomize = async () => {
+      await openSettings(page)
+      await sections(page).getByRole("tab", { name: "Customize" }).click()
+    }
+    await openCustomize()
+    const style = settings(page).getByRole("combobox", {
+      name: /^Response style/,
+    })
+    await expect(style).toHaveText("Default")
+    await style.click()
+    const saved = page.waitForResponse(/update-user/)
+    await page.getByRole("option", { name: "Concise" }).click()
+    expect((await saved).ok()).toBe(true)
+    await page.keyboard.press("Escape")
+
+    await send(page, unique("Say hi (style)"))
+    await expect(replies(page).last()).toContainText("Styled as concise.")
+
+    // Custom: its words, saved as typing rests.
+    await page.reload()
+    await hydrated(page)
+    await openCustomize()
+    await expect(style).toHaveText("Concise")
+    await style.click()
+    await page.getByRole("option", { name: "Custom" }).click()
+    const instructions = settings(page).getByRole("textbox", {
+      name: "Custom instructions",
+    })
+    const typed = page.waitForResponse(/update-user/)
+    await instructions.fill("Answer like a pirate.")
+    expect((await typed).ok()).toBe(true)
+    await page.keyboard.press("Escape")
+    await page.goto("/")
+    // Before hydration, Enter is only a new line.
+    await hydrated(page)
+    await send(page, unique("Say hi (style)"))
+    await expect(replies(page).last()).toContainText(
+      'Styled as custom, "Answer like a pirate.".'
+    )
+
+    // Back to Default, which hides the box.
+    await openCustomize()
+    await style.click()
+    await page.getByRole("option", { name: "Default" }).click()
+    await expect(settings(page).getByRole("textbox")).toHaveCount(0)
+  })
+
+  // ui-sdk's agent test: an agent finds the response style by its name
+  // and can choose one, which saves like a pick does.
+  test("an agent can choose a response style", async ({ page }) => {
+    await signInAsDev(page)
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Customize" }).click()
+    const style = settings(page).getByRole("combobox", {
+      name: /^Response style/,
+    })
+    await expect(style).toHaveText("Default")
+    // As with the switch, the agent sees the select a beat after it shows.
+    const refOf = () =>
+      page.evaluate(
+        () =>
+          window.agent
+            .snapshot()
+            .find((part) => part.label?.startsWith("Response style") === true)
+            ?.ref ?? ""
+      )
+    await expect.poll(refOf).not.toBe("")
+    const choose = async (value: string) => {
+      const saved = page.waitForResponse(/update-user/)
+      const ref = await refOf()
+      const chosen = await page.evaluate(
+        async ([ref, value]) => {
+          const result = await window.agent.act({
+            steps: [{ ref, action: "setValue", args: [value] }],
+          })
+          return result.ok ? value : (result.error?.message ?? "refused")
+        },
+        [ref, value] as const
+      )
+      expect(chosen).toBe(value)
+      expect((await saved).ok()).toBe(true)
+    }
+    await choose("formal")
+    await expect(style).toHaveText("Formal")
+    // Back to Default, which the other tests start from.
+    await choose("default")
+    await expect(style).toHaveText("Default")
+  })
+
+  test.describe(() => {
+    // The refusal is a 400, which the browser logs.
+    test.use({ allowedProblems: [/status of 400/] })
+
+    test("the server refuses a response style it doesn't know", async ({
+      page,
+    }) => {
+      await signInAsDev(page)
+      const status = await page.evaluate(async () => {
+        const response = await fetch("/api/auth/update-user", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ responseStyle: "pirate" }),
+        })
+        return response.status
+      })
+      expect(status).toBe(400)
+    })
   })
 
   test("the account row has no gear", async ({ page }) => {

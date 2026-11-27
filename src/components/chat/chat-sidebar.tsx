@@ -80,6 +80,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { groupChats } from "@/lib/chat/groups"
+import type { Customize } from "@/lib/ai/style"
 import { usePhone } from "@/lib/phone"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
 import type { ChatSummary } from "@/lib/chat/store"
@@ -124,10 +125,13 @@ const FIRST_SCREEN = 40
 
 export function ChatSidebar({
   account,
+  customize,
   collapsed: startCollapsed,
   children,
 }: {
   account: Account
+  /** The response style as saved, for Settings. */
+  customize: Customize
   /** Whether the computer's column starts as a rail. */
   collapsed: boolean
   children: ReactNode
@@ -245,7 +249,11 @@ export function ChatSidebar({
         {children}
       </div>
       <SearchDialog controller={search} onPick={close} />
-      <SettingsDialog controller={settings} account={account} />
+      <SettingsDialog
+        controller={settings}
+        account={account}
+        customize={customize}
+      />
     </div>
   )
 }

@@ -30,7 +30,10 @@
 // chat with images gets "Saw N images." after the opening, or "Told of N
 // images." when a model that can't see got "[image: name]" instead, so a
 // test sees what reached the model, and "Read notes.txt." for each PDF or
-// text file the question carries ("(cut)" when its text was cut).
+// text file the question carries ("(cut)" when its text was cut). One that
+// mentions "(style)" gets "Styled as <style>." first: the response style
+// the instructions asked for (Settings › Customize), so a test sees the
+// choice reach the model.
 // Asked for a chat's title (generateText), it answers "Talking to the mock
 // model" at once.
 //
@@ -134,18 +137,33 @@ function backwards(message: string) {
     : `Backwards: ${word.split("").reverse().join("")}. `
 }
 
+/** What the instructions asked of the reply's style (Settings ›
+ *  Customize, src/lib/ai/style.ts): a preset's name, the custom words, or
+ *  default when they add nothing. */
+function styleOf(prompt: Prompt) {
+  const system = prompt.find((message) => message.role === "system")
+  const text = typeof system?.content === "string" ? system.content : ""
+  const preset = /Response style: (\w+)\./.exec(text)?.[1]
+  if (preset !== undefined) return preset
+  const custom = /The user's preferences[^\n]*\n([^\n]*)/.exec(text)?.[1]
+  return custom === undefined ? "default" : `custom, "${custom}"`
+}
+
 /** The mock's reply to a message (wordsOf splits it for streaming). */
 const replyTo = (
   message: string,
   modelId: string,
   thinking: boolean,
-  { images, told, readNote }: Pick<Asked, "images" | "told" | "readNote">
+  { images, told, readNote }: Pick<Asked, "images" | "told" | "readNote">,
+  style: string
 ) =>
-  message.includes("long code")
-    ? LONG_CODE_REPLY
-    : message.includes("markdown")
-      ? MARKDOWN_REPLY
-      : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${readNote}${backwards(message)}${REPLY}`
+  message.includes("(style)")
+    ? `Styled as ${style}. ${REPLY}`
+    : message.includes("long code")
+      ? LONG_CODE_REPLY
+      : message.includes("markdown")
+        ? MARKDOWN_REPLY
+        : `This is the mock model talking, as ${modelId} with thinking ${thinking ? "on" : "off"}. ${imagesNote(images, told)}${readNote}${backwards(message)}${REPLY}`
 
 /** Whether a request's chat template options turn thinking on. */
 const thinks = (kwargs: unknown) =>
@@ -510,7 +528,8 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       const words = bursty
         ? BURSTS
         : wordsOf(
-            afterTools(asked) ?? replyTo(message, modelId, thinking, asked)
+            afterTools(asked) ??
+              replyTo(message, modelId, thinking, asked, styleOf(prompt))
           )
       const thoughts = thinking ? wordsOf(REASONING) : []
       return {

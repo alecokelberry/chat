@@ -13,6 +13,7 @@ import {
   DialogTitle,
   createDialogController,
 } from "@/components/ui/dialog"
+import type { Customize } from "@/lib/ai/style"
 import { whenIdle } from "@/lib/idle"
 import { isSectionId, type SectionId } from "@/lib/settings/sections"
 
@@ -31,9 +32,12 @@ const Settings = lazy(() =>
 export function SettingsDialog({
   controller,
   account,
+  customize,
 }: {
   controller: SettingsController
   account: Account
+  /** The response style as last saved. */
+  customize: Customize
 }) {
   useEffect(() => whenIdle(() => void load()), [])
   return (
@@ -45,7 +49,7 @@ export function SettingsDialog({
             fallback={<DialogTitle className="sr-only">Settings</DialogTitle>}
           >
             <Settings
-              account={account}
+              pages={{ account, customize }}
               first={isSectionId(state.payload) ? state.payload : "account"}
             />
           </Suspense>

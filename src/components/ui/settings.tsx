@@ -236,11 +236,12 @@ function SettingsRow({
 }
 
 /** A row holding one control that its name and description label (a
- *  Switch): ui-sdk's Field, so the two are tied to the control for screen
+ *  Switch, or `stacked`, a text box under them): ui-sdk's Field, so the two are tied to the control for screen
  *  readers and agents, and a press on the name works the control. */
 function SettingsField({
   name,
   description,
+  stacked = false,
   className,
   children,
   ...props
@@ -248,12 +249,15 @@ function SettingsField({
   children: React.ReactNode
   name: React.ReactNode
   description?: React.ReactNode
+  /** The control under the name, the row's full width (a text box). */
+  stacked?: boolean
 }) {
   return (
     <Field
       data-slot="settings-row"
       className={cn(
         "flex min-h-16 items-center gap-3 px-4 py-3 not-first:border-t not-first:border-border",
+        stacked && "flex-col items-stretch gap-2",
         className
       )}
       {...props}

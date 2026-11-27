@@ -7,11 +7,17 @@
 // nav keeps the sections whose name or settings hold what's typed
 // (src/lib/settings/sections.ts), and the first of them shows; with none,
 // it says so. Each section's page is its own component below: Account
-// (who's signed in, Sign Out) and Appearance (the theme, code wrapping). The look is
+// (who's signed in, Sign Out), Appearance (the theme, code wrapping) and
+// Customize (the response style, src/lib/ai/style.ts). The look is
 // src/components/ui/settings.tsx. It loads on its own, after first load,
 // through the dialog in src/components/chat/settings-dialog.tsx.
 import { useEffect, useRef, useState } from "react"
-import { CircleUserRoundIcon, ContrastIcon } from "lucide-react"
+import { useRouter } from "@tanstack/react-router"
+import {
+  CircleUserRoundIcon,
+  ContrastIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react"
 
 import type { Account } from "@/components/chat/account-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -32,6 +38,23 @@ import {
   SettingsRow,
   SettingsSearch,
 } from "@/components/ui/settings"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/components/ui/toast"
+import {
+  CUSTOM_MAX,
+  RESPONSE_STYLES,
+  isResponseStyle,
+  type Customize,
+  type ResponseStyle,
+} from "@/lib/ai/style"
+import { authClient } from "@/lib/auth/client"
 import { useSignOut } from "@/lib/auth/use-sign-out"
 import { initialsOf } from "@/lib/settings/initials"
 import {
@@ -43,21 +66,26 @@ import {
 const ICONS: Record<SectionId, React.ReactNode> = {
   account: <CircleUserRoundIcon aria-hidden />,
   appearance: <ContrastIcon aria-hidden />,
+  customize: <SlidersHorizontalIcon aria-hidden />,
 }
 
+/** What a section's page may need. */
+export type PageProps = { account: Account; customize: Customize }
+
 /** Each section's page. */
-const PAGES: Record<SectionId, (account: Account) => React.ReactNode> = {
-  account: (account) => <AccountPage account={account} />,
+const PAGES: Record<SectionId, (props: PageProps) => React.ReactNode> = {
+  account: ({ account }) => <AccountPage account={account} />,
   appearance: () => <AppearancePage />,
+  customize: ({ customize }) => <CustomizePage saved={customize} />,
 }
 
 /** The nav and the page. It mounts each time Settings opens, so the
  *  search starts empty and the page is the one asked for. */
 export function Settings({
-  account,
+  pages,
   first,
 }: {
-  account: Account
+  pages: PageProps
   first: SectionId
 }) {
   const [query, setQuery] = useState("")
@@ -115,7 +143,7 @@ export function Settings({
             title={section.label}
             onBack={() => setPage(false)}
           >
-            {PAGES[section.id](account)}
+            {PAGES[section.id](pages)}
           </SettingsPage>
         ))}
       </SettingsLayout>
@@ -165,6 +193,112 @@ function AppearancePage() {
       >
         <Switch checked={wrap} onCheckedChange={setWrap} />
       </SettingsField>
+    </SettingsCard>
+  )
+}
+
+const STYLE_NAMES: Record<ResponseStyle, string> = {
+  default: "Default",
+  custom: "Custom",
+  concise: "Concise",
+  formal: "Formal",
+  tutor: "Tutor",
+  comprehensive: "Comprehensive",
+}
+
+/** How long Custom's text rests before it's saved. */
+const SAVE_AFTER_MS = 600
+
+/** The response style, and Custom's own words, saved to the account as
+ *  they change (a pick at once, the words once typing rests), so every
+ *  device's next message follows them. A failed save says so. */
+function CustomizePage({ saved }: { saved: Customize }) {
+  const router = useRouter()
+  const [style, setStyle] = useState<ResponseStyle>(
+    isResponseStyle(saved.style) ? saved.style : "default"
+  )
+  const [custom, setCustom] = useState(saved.custom)
+  const stored = useRef(saved.custom)
+
+  async function save(fields: {
+    responseStyle?: ResponseStyle
+    customInstructions?: string
+  }) {
+    const { error } = await authClient.updateUser(fields)
+    if (error) {
+      toast.error("Couldn't save your response style")
+      return
+    }
+    // The layout's copy (the session) follows, for the next open.
+    void router.invalidate()
+  }
+
+  useEffect(() => {
+    if (custom === stored.current) return
+    const timer = setTimeout(() => {
+      stored.current = custom
+      void save({ customInstructions: custom })
+    }, SAVE_AFTER_MS)
+    return () => clearTimeout(timer)
+  })
+
+  return (
+    <SettingsCard>
+      <SettingsRow
+        name="Customize Chat's response"
+        description="Personalize how Chat responds to you"
+      >
+        <Select<ResponseStyle>
+          value={style}
+          onValueChange={(next) => {
+            if (next === null) return
+            setStyle(next)
+            void save({ responseStyle: next })
+          }}
+        >
+          <SelectTrigger
+            outline
+            aria-label={`Response style: ${STYLE_NAMES[style]}`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RESPONSE_STYLES.map((option) => (
+              <SelectItem
+                key={option}
+                value={option}
+                label={STYLE_NAMES[option]}
+              >
+                {STYLE_NAMES[option]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingsRow>
+      {style === "custom" && (
+        <SettingsField
+          stacked
+          name="Custom instructions"
+          description={
+            custom.length > CUSTOM_MAX - 200
+              ? `${custom.length.toLocaleString()} of ${CUSTOM_MAX.toLocaleString()} characters`
+              : "How Chat should answer: tone, length, format, anything"
+          }
+        >
+          <Textarea
+            variant="box"
+            maxLength={CUSTOM_MAX}
+            placeholder="Answer in British English, and keep code in TypeScript…"
+            value={custom}
+            onValueChange={(value) => setCustom(value)}
+            onBlur={() => {
+              if (custom === stored.current) return
+              stored.current = custom
+              void save({ customInstructions: custom })
+            }}
+          />
+        </SettingsField>
+      )}
     </SettingsCard>
   )
 }
