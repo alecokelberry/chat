@@ -362,10 +362,11 @@ test("a long text file is cut, and any model reads documents", async ({
   )
 })
 
-test("a PDF with no text, and a binary file, are turned away", async ({
+test("a PDF with no text holds Send until it's out; a binary file is turned away", async ({
   page,
 }) => {
   await signInAsDev(page)
+  await page.getByRole("textbox", { name: "Message" }).fill("Read these")
   await pick(page, [
     fixture(SCAN, "application/pdf"),
     {
@@ -374,11 +375,13 @@ test("a PDF with no text, and a binary file, are turned away", async ({
       buffer: Buffer.from([0x50, 0x00, 0x4b]),
     },
   ])
-  await expect(page.getByText("scan.pdf: No text found")).toBeVisible()
   await expect(page.getByText("data.txt: Not a text file")).toBeVisible()
-  await expect(page.getByRole("list", { name: "Attached files" })).toHaveCount(
-    0
-  )
+  await expect(chips(page)).toHaveText([/scan\.pdf.*No text found/])
+  const send = page.getByRole("button", { name: "Send" })
+  await expect(send).toBeDisabled()
+  await page.getByRole("button", { name: "Remove scan.pdf" }).click()
+  await expect(chips(page)).toHaveCount(0)
+  await expect(send).toBeEnabled()
 })
 
 test("the PDF reader loads only once a PDF is picked", async ({ page }) => {

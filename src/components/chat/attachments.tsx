@@ -7,7 +7,8 @@
 // shows as a tile above the text, a spinner until it's ready (an image's
 // thumbnail, or a document's name and kind),
 // with ✕ to take it out; a file the rules turn away, or one that won't
-// decode, never joins, and a toast says why. A question shows its images
+// decode, never joins, and a toast says why. A PDF with no text (a scan)
+// stays, its chip saying "No text found", and Send waits until it's out. A question shows its images
 // as a row of thumbnails above its bubble, a tap opening one full size,
 // and its documents as chips.
 // With images attached and a model that can't see them (Ultra, Lightning),
@@ -38,6 +39,7 @@ import {
 import {
   ACCEPT,
   AttachmentError,
+  NoTextError,
   attachmentPart,
   isImageFile,
   type AttachmentPart,
@@ -70,6 +72,8 @@ function reasonFor({ file, reasons: [reason] }: FileRejection) {
 export function useAttachments() {
   const [files, setFiles] = useState<File[]>([])
   const [ready, setReady] = useState(() => new Map<File, AttachmentPart>())
+  // Documents with no text: still attached, holding Send.
+  const [empty, setEmpty] = useState(() => new Set<File>())
   const [controller] = useState(createFileInputController)
 
   // The files attached right now, for a preparation that ends after its
@@ -83,6 +87,9 @@ export function useAttachments() {
     setReady(
       (parts) => new Map([...parts].filter(([file]) => value.includes(file)))
     )
+    setEmpty(
+      (files) => new Set([...files].filter((file) => value.includes(file)))
+    )
   }
 
   function prepare(file: File) {
@@ -93,6 +100,10 @@ export function useAttachments() {
       },
       (error: unknown) => {
         if (!attached.current.includes(file)) return
+        if (error instanceof NoTextError) {
+          setEmpty((files) => new Set(files).add(file))
+          return
+        }
         keep(attached.current.filter((other) => other !== file))
         toast.error(
           error instanceof AttachmentError ? error.message : "Can't attach it"
@@ -106,7 +117,8 @@ export function useAttachments() {
     controller,
     files,
     parts,
-    preparing: parts.length < files.length,
+    /** Send waits: a file is still being prepared, or has no text. */
+    waiting: parts.length < files.length,
     clear: () => keep([]),
     onValueChange: (value: File[], details: { added: readonly File[] }) => {
       keep(value)
@@ -121,6 +133,8 @@ export function useAttachments() {
     hasImages: files.some(isImageFile),
     /** The ready part for a file, for its tile. */
     partFor: (file: File) => ready.get(file),
+    /** Whether a file turned out to have no text. */
+    hasNoText: (file: File) => empty.has(file),
   }
 }
 
@@ -199,7 +213,9 @@ export function AttachmentTiles({ attachments }: { attachments: Attachments }) {
           const part = attachments.partFor(file)
           return (
             <>
-              {part === undefined ? (
+              {attachments.hasNoText(file) ? (
+                <FileChip name={file.name} kind="No text found" />
+              ) : part === undefined ? (
                 <Spinner />
               ) : part.type === "file" ? (
                 <img src={part.url} alt={file.name} />

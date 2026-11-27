@@ -72,7 +72,7 @@ export function Composer({
   const empty = message === "" && attachments.files.length === 0
   const chosen = modelOf(model)
   const blind = attachments.hasImages && !chosen.seesImages
-  const ready = !empty && !attachments.preparing && !blind
+  const ready = !empty && !attachments.waiting && !blind
 
   function send() {
     if (!ready || busy) return

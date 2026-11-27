@@ -95,7 +95,7 @@ async function documentPart(file: File): Promise<DocumentPart> {
   const text = (isPdf(file) ? await pdfText(file) : await file.text()).trim()
   if (text.includes("\u0000"))
     throw new AttachmentError(`${file.name}: Not a text file`)
-  if (text === "") throw new AttachmentError(`${file.name}: No text found`)
+  if (text === "") throw new NoTextError(`${file.name}: No text found`)
   return {
     type: "data-document",
     data: {
@@ -124,6 +124,10 @@ async function pdfText(file: File): Promise<string> {
 
 /** A file that can't be attached, with the reason to show. */
 export class AttachmentError extends Error {}
+
+/** A document with no text to read, like a scanned PDF: it stays attached,
+ *  its chip says "No text found", and Send waits until it's taken out. */
+export class NoTextError extends AttachmentError {}
 
 const isHeic = (file: File) =>
   /^image\/hei[cf]$/.test(file.type) || /\.hei[cf]$/i.test(file.name)
