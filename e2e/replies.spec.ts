@@ -33,13 +33,25 @@ test("Copy puts the reply's markdown on the clipboard and says so", async ({
 
   // The reply's Copy, not its question's.
   const actions = page.getByRole("toolbar", { name: "Reply actions" })
-  await actions.getByRole("button", { name: "Copy" }).click()
+  await actions.getByRole("button", { name: "Copy reply" }).click()
   await expect(actions.getByRole("button", { name: "Copied" })).toBeVisible()
   const copied = await page.evaluate(() => navigator.clipboard.readText())
   expect(copied).toMatch(REPLY)
   await expect(page.getByRole("article", { name: "Reply" })).toHaveText(copied)
-  // It goes back to Copy after a moment.
-  await expect(actions.getByRole("button", { name: "Copy" })).toBeVisible()
+  // It goes back to Copy reply after a moment.
+  await expect(
+    actions.getByRole("button", { name: "Copy reply" })
+  ).toBeVisible()
+
+  // The question's Copy and Edit have names of their own.
+  await page.getByRole("article", { name: "Your message" }).hover()
+  const question = page.getByRole("toolbar", { name: "Question actions" })
+  await expect(
+    question.getByRole("button", { name: "Copy message", exact: true })
+  ).toBeVisible()
+  await expect(
+    question.getByRole("button", { name: "Edit message", exact: true })
+  ).toBeVisible()
 })
 
 test("a reply says who answered and how long it took, after a reload too", async ({
@@ -169,7 +181,7 @@ test("Retry replaces the last reply in place", async ({ page }) => {
   await expect(
     page
       .getByRole("toolbar", { name: "Reply actions" })
-      .getByRole("button", { name: "Copy" })
+      .getByRole("button", { name: "Copy reply" })
   ).toHaveCount(2)
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(1)
 
@@ -280,13 +292,13 @@ test("an agent can find a reply's actions, and Retry needs a person", async ({
       .filter((entry) => entry.offPage !== true && entry.ref !== "more")
       .map((entry) => entry.label)
     const found = await Promise.all(
-      ["Reply actions", "Copy", "Retry"].map((text) => agent.query({ text }))
+      ["Reply actions", "Copy reply", "Retry"].map((text) =>
+        agent.query({ text })
+      )
     )
     const entries = found.flatMap((list) => ("error" in list ? [] : list))
-    // The question has a Copy too; the reply's comes after it.
-    const copy = entries.findLast((entry) => entry.label === "Copy")?.ref ?? ""
     const copied = await agent.act({
-      steps: [{ ref: copy, action: "press", args: [] }],
+      steps: [{ ref: "Copy reply", action: "press", args: [] }],
     })
     const retried = await agent.act({
       steps: [{ ref: "Retry", action: "press", args: [] }],
@@ -300,7 +312,7 @@ test("an agent can find a reply's actions, and Retry needs a person", async ({
   })
   expect(result.labels.every(Boolean)).toBe(true)
   expect(result.found).toEqual(
-    expect.arrayContaining(["Reply actions", "Copy", "Retry"])
+    expect.arrayContaining(["Reply actions", "Copy reply", "Retry"])
   )
   expect(result.copied).toBe(true)
   expect(result.retried).toBe(false)

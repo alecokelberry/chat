@@ -103,7 +103,7 @@ export function Question({
         >
           <MessageAction
             ref={editButton}
-            label="Edit"
+            label="Edit message"
             onClick={() => setEditing(true)}
             disabled={busy}
           >

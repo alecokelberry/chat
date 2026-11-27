@@ -57,7 +57,7 @@ export function MessageAction({
 
 export function CopyAction({
   text,
-  label = "Copy",
+  label = "Copy message",
 }: {
   /** What to copy; a function reads it at the press (a table's rows). */
   text: string | (() => string)

@@ -28,7 +28,7 @@ export function ReplyActions({
       aria-label="Reply actions"
       reveal={latest ? "always" : "hover"}
     >
-      {text !== "" && <CopyAction text={text} />}
+      {text !== "" && <CopyAction text={text} label="Copy reply" />}
       {onRetry && (
         <MessageAction
           label="Retry"
