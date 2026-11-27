@@ -74,16 +74,22 @@ export async function expectSignedInAs(page: Page, name: string) {
   ).toBeAttached()
 }
 
-export async function signInAsDev(page: Page) {
-  await page.goto("/sign-in")
-  await page.getByRole("button", { name: "Sign in as Dev" }).click()
-  await expectSignedInAs(page, "Dev")
-  // Typing before React hydrates is lost; the agent bridge sees the
-  // controls once it has. The bridge itself may not be there yet, so check
-  // for it first: a TypeError would end the wait instead of retrying it.
+/** Waits until React has hydrated the page: a click or keystroke before
+ *  that is lost. The agent bridge sees the controls once it has. The bridge
+ *  itself may not be there yet, so check for it first: a TypeError would end
+ *  the wait instead of retrying it. */
+export async function hydrated(page: Page) {
   await page.waitForFunction(
     () => "agent" in window && window.agent.snapshot().length > 0
   )
+}
+
+export async function signInAsDev(page: Page) {
+  await page.goto("/sign-in")
+  await hydrated(page)
+  await page.getByRole("button", { name: "Sign in as Dev" }).click()
+  await expectSignedInAs(page, "Dev")
+  await hydrated(page)
 }
 
 /** Adds a virtual authenticator to the page, standing in for Touch ID. */
@@ -112,6 +118,7 @@ export async function addAuthenticator(page: Page) {
 export async function signInAsOwner(page: Page) {
   const authenticator = await addAuthenticator(page)
   await page.goto(`/setup#${E2E_SETUP_CODE}`)
+  await hydrated(page)
   await page.getByRole("button", { name: "Add a passkey" }).click()
   await expectSignedInAs(page, "Alec")
   return authenticator

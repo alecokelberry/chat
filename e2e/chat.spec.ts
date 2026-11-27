@@ -32,12 +32,18 @@ test("a new chat streams the reply and keeps it after a reload", async ({
 
 // The mock's whole reply, once: it opens by naming the model, which has no
 // spaces, then says REPLY (whose only special characters are dots).
+// A "(slow)" reply takes about ten seconds, so waiting for its end gets
+// longer than the usual five.
+const SLOW_END = { timeout: 20_000 }
 const WHOLE_REPLY = new RegExp(
   String.raw`^This is the mock model talking, as \S+ with thinking (on|off)\. ` +
     REPLY.replaceAll(".", String.raw`\.`) +
     "$"
 )
 
+// Tests that open a reply mid-way send "(slow)", so it streams for about ten
+// seconds, not two: a reload or a second tab takes as long as the runner
+// is slow, and a reply that ended meanwhile would fail them for no bug.
 // Mid-reply: the text so far is there and Stop is showing, and more text
 // arrives than was there at first, before the end.
 async function expectStillStreaming(page: Page) {
@@ -54,13 +60,13 @@ test("a reload mid-reply shows the text so far, then keeps streaming", async ({
   page,
 }) => {
   await signInAsDev(page)
-  await send(page, "Keep going")
+  await send(page, "Keep going (slow)")
   const reply = page.getByRole("article", { name: "Reply" })
   await expect(reply).toContainText("mock")
 
   await page.reload()
   await expectStillStreaming(page)
-  await expect(reply).toHaveText(WHOLE_REPLY)
+  await expect(reply).toHaveText(WHOLE_REPLY, SLOW_END)
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
 
   // And it was saved whole, once.
@@ -73,7 +79,7 @@ test("a second tab on the chat shows the same reply streaming", async ({
   context,
 }) => {
   await signInAsDev(page)
-  await send(page, "Two tabs")
+  await send(page, "Two tabs (slow)")
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(page.getByRole("article", { name: "Reply" })).toContainText(
     "mock"
@@ -85,7 +91,8 @@ test("a second tab on the chat shows the same reply streaming", async ({
   await expectStillStreaming(page)
   for (const tab of [page, other]) {
     await expect(tab.getByRole("article", { name: "Reply" })).toHaveText(
-      WHOLE_REPLY
+      WHOLE_REPLY,
+      SLOW_END
     )
   }
 })

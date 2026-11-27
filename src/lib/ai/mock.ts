@@ -90,6 +90,10 @@ export const BURSTS = [
   "the way a busy model often sends them. Done.",
 ]
 
+/** The pause before each word, in milliseconds. */
+const wordDelay = (message: string) =>
+  message.includes("burst") ? 600 : message.includes("(slow)") ? 400 : 60
+
 /** Each word keeps the space or newline after it. */
 const wordsOf = (line: string) => line.split(/(?<=\s)/)
 
@@ -419,7 +423,7 @@ export function mockModel(modelId: string): MockLanguageModelV4 {
       return {
         stream: simulateReadableStream({
           initialDelayInMs: 500,
-          chunkDelayInMs: bursty ? 600 : 60,
+          chunkDelayInMs: wordDelay(message),
           chunks: [
             ...(thinking
               ? [
