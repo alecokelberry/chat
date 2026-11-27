@@ -230,16 +230,27 @@ test("Pin moves a chat to Pinned and Unpin moves it back", async ({ page }) => {
   const today = sidebar(page).getByRole("region", { name: "Today" })
   const link = sidebar(page).locator("a[aria-current=page]")
 
+  // The row moves at once, before the write lands: reload only after it.
+  const written = () =>
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/_serverFn/") &&
+        response.request().method() === "POST"
+    )
   await rowMenu(page).click()
+  let pinWritten = written()
   await menu(page).getByRole("menuitem", { name: "Pin" }).click()
   await expect(pinned.locator("a[aria-current=page]")).toBeVisible()
+  await pinWritten
   await page.reload()
   await expect(pinned.locator("a[aria-current=page]")).toBeVisible()
 
   await openRow(page).hover()
   await rowMenu(page).click()
+  pinWritten = written()
   await menu(page).getByRole("menuitem", { name: "Unpin" }).click()
   await expect(today.locator("a[aria-current=page]")).toBeVisible()
+  await pinWritten
   await page.reload()
   await expect(today.locator("a[aria-current=page]")).toBeVisible()
   await expect(link).toHaveCount(1)

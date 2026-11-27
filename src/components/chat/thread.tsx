@@ -14,6 +14,8 @@
 // search arrives, and again while it reads what a search found, the
 // waiting marker holds its place (pending-reply.tsx).
 // A failed reply ends the thread with one quiet line saying why, and Retry.
+// Search's preview shows a chat read-only (ThreadPreview): its questions
+// and replies' words, nothing else.
 // The markdown renderer loads in the browser only, starting as this module
 // does, so it's ready before the first message arrives over the WebSocket;
 // a reply waits for it rather than flash its raw markdown. The server never
@@ -29,7 +31,7 @@ import {
 } from "lucide-react"
 
 import { PendingReply } from "@/components/chat/pending-reply"
-import { Question } from "@/components/chat/question"
+import { Question, QuestionBubble } from "@/components/chat/question"
 import { ReplyActions } from "@/components/chat/reply-actions"
 import { Sources } from "@/components/chat/sources"
 import { Button } from "@/components/ui/button"
@@ -151,6 +153,28 @@ export function Thread({
         </div>
       )}
     </MessageScroller>
+  )
+}
+
+/** A chat's messages, read-only, for Search's preview: each question's
+ *  bubble and each reply's markdown, without steps or actions. */
+export function ThreadPreview({ messages }: { messages: UIMessage[] }) {
+  return (
+    <div className="flex flex-col gap-6">
+      {messages.map((message) => {
+        const text = textOf(message)
+        if (text === "") return null
+        return message.role === "user" ? (
+          <QuestionBubble key={message.id}>{text}</QuestionBubble>
+        ) : (
+          <article key={message.id} aria-label="Reply">
+            <Suspense>
+              <Reply text={text} streaming={false} stopped={false} />
+            </Suspense>
+          </article>
+        )
+      })}
+    </div>
   )
 }
 

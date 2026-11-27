@@ -6,7 +6,8 @@ import { expect, greeting, send, signInAsDev, test } from "./session"
 // An accessibility scan (axe-core) of the main screens, in light and dark
 // at 1440 and 390: sign-in, a new chat, a chat with a markdown reply, the
 // model picker, the chat list's drawer (at 390), a row's menu, the
-// account menu open, and Search open with a query. It fails on serious or
+// account menu open, and Search open with a query (its preview beside, at
+// 1440) and a result's menu. It fails on serious or
 // critical WCAG 2.2 AA problems, and says which rule and which elements.
 // A new screen joins the list in `screens` when it lands (DESIGN.md ›
 // Access).
@@ -91,6 +92,13 @@ for (const colorScheme of ["light", "dark"] as const) {
         const field = page.getByRole("combobox", { name: "Search chats" })
         await field.fill("seeded")
         await expect(page.getByRole("option").first()).toBeVisible()
+        await scan(page)
+        // A result's … open.
+        const row = page.locator('[data-slot="command-row"]').first()
+        await row.hover()
+        await row.locator("button").click()
+        // Settled, not mid-fade, so contrast is measured at full ink.
+        await expect(page.getByRole("menu")).toHaveCSS("opacity", "1")
         await scan(page)
       })
     })
