@@ -1,16 +1,15 @@
 // The account row and its menu, the archived Chat's (Grok's): at the
 // bottom of the sidebar, a 40px row with the initials' avatar and the
-// name (in the computer's rail, the avatar alone, named in a tooltip), and
-// a gear at its end that opens Settings (src/components/chat/settings.tsx).
-// The row opens a menu above it (a sheet on a phone): the name and email,
-// then Settings, then Theme, which flips light and dark and stays open so its sun and moon
+// name (in the computer's rail, the avatar alone, named in a tooltip). It
+// opens a menu above it (a sheet on a phone): the name and email, then
+// Settings (src/components/chat/settings.tsx), then Theme, which flips light and dark and stays open so its sun and moon
 // spin, Feature tour, which adds the pinned demo chat (src/lib/chat/tour.ts)
 // or refreshes it, and opens it, then Sign out, which lands on /sign-in. Agents ask before signing out
 // (data-agent-confirm).
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { CompassIcon, LogOutIcon, SettingsIcon } from "lucide-react"
 
-import type { SettingsController } from "@/components/chat/settings"
+import type { SettingsController } from "@/components/chat/settings-dialog"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -23,11 +22,7 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu"
 import { useToggleTheme } from "@/components/ui/preferences"
-import {
-  SidebarAccount,
-  SidebarAccountAction,
-  SidebarRow,
-} from "@/components/ui/sidebar"
+import { SidebarRow } from "@/components/ui/sidebar"
 import { ThemeIcon } from "@/components/ui/theme-icon"
 import { toast } from "@/components/ui/toast"
 import {
@@ -48,7 +43,7 @@ export function AccountMenu({
   onOpenChat,
 }: {
   account: Account
-  /** Opens Settings: the gear, and the menu's Settings. */
+  /** Opens Settings, from the menu's Settings. */
   settings: SettingsController
   /** Named in a tooltip, for the rail, where the name is hidden. */
   tooltip?: boolean
@@ -71,7 +66,7 @@ export function AccountMenu({
     }
   }
   return (
-    <SidebarAccount>
+    <>
       <Menu>
         <Tooltip disabled={!tooltip}>
           <TooltipTrigger
@@ -135,19 +130,6 @@ export function AccountMenu({
           </MenuItem>
         </MenuContent>
       </Menu>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <SidebarAccountAction
-              aria-label="Settings"
-              onClick={() => void settings.open({ payload: "account" })}
-            />
-          }
-        >
-          <SettingsIcon aria-hidden />
-        </TooltipTrigger>
-        <TooltipContent side="top">Settings</TooltipContent>
-      </Tooltip>
-    </SidebarAccount>
+    </>
   )
 }

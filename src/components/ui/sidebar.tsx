@@ -326,38 +326,6 @@ function SidebarRowEdit({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-/** The account row with its gear: the row fills the width, keeping 44px
- *  at its end clear, and the gear sits over that end, 4px in, so the two stay sibling buttons (a button
- *  can't hold another). In the rail, the avatar alone, no gear. */
-function SidebarAccount({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-account"
-      className={cn("relative", className)}
-      {...props}
-    />
-  )
-}
-
-/** The gear at the end of the account row: a 32px circle with a 20px
- *  glyph, the header buttons' muted ink, the row's wash on hover; a 40px
- *  invisible touch area. Gone in the rail. */
-function SidebarAccountAction({
-  className,
-  ...props
-}: React.ComponentProps<typeof ButtonPrimitive>) {
-  return (
-    <ButtonPrimitive
-      data-slot="sidebar-account-action"
-      className={cn(
-        "absolute end-1 top-1 flex size-8 press items-center justify-center rounded-full text-sidebar-icon ring-sidebar-ring outline-hidden select-none group-data-collapsed/sidebar:hidden after:absolute after:-inset-1 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 active:bg-sidebar-accent [&>svg]:size-icon [&>svg]:shrink-0",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
 const sidebarRowVariants = cva(
   "flex h-10 w-full press items-center rounded-item py-1.5 text-base font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden select-none no-touch-callout focus-visible:ring-2",
   {
@@ -370,12 +338,11 @@ const sidebarRowVariants = cva(
         raised:
           "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-icon [&>svg]:shrink-0",
         // The account, Grok's: a 26px avatar (12px initials) and the name,
-        // medium in full ink, 8px in, 44px clear at the end for the gear
-        // (SidebarAccountAction), in a muted row; hover and open fill the row at once
+        // medium in full ink, 8px in, in a muted row; hover and open fill the row at once
         // with the chat rows' wash, and the avatar dims to 75%. In the rail, the avatar alone in a
         // 36px circle.
         account:
-          "gap-2 rounded-item ps-2 pe-11 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-sidebar-accent hover:text-foreground active:bg-sidebar-accent active:text-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>[data-slot=avatar]_*]:text-xs [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
+          "gap-2 rounded-item px-2 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-sidebar-accent hover:text-foreground active:bg-sidebar-accent active:text-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>[data-slot=avatar]_*]:text-xs [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
         // A chat: its title only, 12px in and 8px at the end (36px while
         // its … shows), fading out at the end instead of an ellipsis. The
         // open chat (the link's aria-current) keeps the hover's wash and
@@ -405,8 +372,6 @@ function SidebarRow({
 
 export {
   Sidebar,
-  SidebarAccount,
-  SidebarAccountAction,
   SidebarDrawer,
   SidebarDrawerContent,
   SidebarDrawerTrigger,

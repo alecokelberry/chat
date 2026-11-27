@@ -1,10 +1,11 @@
 import type { Page } from "@playwright/test"
 
-import { expect, signInAsDev, tapInSheet, test } from "./session"
+import { expect, send, signInAsDev, tapInSheet, test } from "./session"
 
-// Settings (src/components/chat/settings.tsx): the gear at the end of the
-// account row and the menu's Settings both open it at Account; search
-// filters its sections; Account shows who's signed in and signs out. On a
+// Settings (src/components/chat/settings.tsx): the account menu's Settings
+// opens it at Account (the row itself has no gear); search
+// filters its sections; Account shows who's signed in and signs out;
+// Appearance flips the theme and wraps replies' long code lines. On a
 // phone the sections come first, and a tap slides to one, with Back.
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Chats" })
@@ -12,14 +13,20 @@ const settings = (page: Page) => page.getByRole("dialog", { name: "Settings" })
 const sections = (page: Page) =>
   settings(page).getByRole("tablist", { name: "Settings" })
 
+/** Opens Settings from the account menu, as a person does. */
+async function openSettings(page: Page) {
+  await sidebar(page).getByRole("button", { name: "Dev", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Settings" }).click()
+}
+
 test.describe("on a computer", () => {
   test.use({ viewport: { width: 1440, height: 900 } })
 
-  test("the gear opens Settings at Account, with focus in search", async ({
+  test("the account menu's Settings opens it at Account, with focus in search", async ({
     page,
   }) => {
     await signInAsDev(page)
-    await sidebar(page).getByRole("button", { name: "Settings" }).click()
+    await openSettings(page)
     await expect(settings(page)).toBeVisible()
     const search = settings(page).getByRole("searchbox", {
       name: "Search settings",
@@ -37,25 +44,18 @@ test.describe("on a computer", () => {
     await expect(settings(page)).toBeHidden()
   })
 
-  test("the menu's Settings opens it too", async ({ page }) => {
-    await signInAsDev(page)
-    await sidebar(page)
-      .getByRole("button", { name: "Dev", exact: true })
-      .click()
-    await page.getByRole("menuitem", { name: "Settings" }).click()
-    await expect(settings(page)).toBeVisible()
-  })
-
   test("search keeps the sections that match, and says when none do", async ({
     page,
   }) => {
     await signInAsDev(page)
-    await sidebar(page).getByRole("button", { name: "Settings" }).click()
+    await openSettings(page)
     const search = settings(page).getByRole("searchbox", {
       name: "Search settings",
     })
     await search.fill("sign")
     await expect(sections(page).getByRole("tab")).toHaveText(["Account"])
+    await search.fill("wrap")
+    await expect(sections(page).getByRole("tab")).toHaveText(["Appearance"])
 
     await search.fill("zanzibarite")
     await expect(sections(page).getByRole("tab")).toHaveCount(0)
@@ -64,23 +64,89 @@ test.describe("on a computer", () => {
     await settings(page).getByRole("button", { name: "Clear search" }).click()
     await expect(search).toHaveValue("")
     await expect(search).toBeFocused()
-    await expect(sections(page).getByRole("tab")).toHaveText(["Account"])
+    await expect(sections(page).getByRole("tab")).toHaveText([
+      "Account",
+      "Appearance",
+    ])
   })
 
   test("Sign Out in Account signs out", async ({ page }) => {
     await signInAsDev(page)
-    await sidebar(page).getByRole("button", { name: "Settings" }).click()
+    await openSettings(page)
     await settings(page).getByRole("button", { name: "Sign Out" }).click()
     await expect(page).toHaveURL(/\/sign-in$/)
   })
 
-  test("the rail has no gear", async ({ page }) => {
+  test("Appearance flips the theme and wraps long code lines", async ({
+    page,
+  }) => {
     await signInAsDev(page)
-    await sidebar(page).getByRole("button", { name: "Sidebar" }).click()
-    await expect(sidebar(page)).toHaveAttribute("data-collapsed")
+    await send(page, "Show me some markdown")
+    const code = page.locator('[data-streamdown="code-block-body"] pre').first()
+    await expect(code).toHaveCSS("white-space", "pre")
+
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    const html = page.locator("html")
+    const scheme = await html.getAttribute("data-color-scheme")
+    await settings(page).getByRole("button", { name: "Dark theme" }).click()
+    await expect(html).not.toHaveAttribute("data-color-scheme", scheme ?? "")
+
+    const wrap = settings(page).getByRole("switch", {
+      name: "Wrap long code blocks",
+    })
+    await expect(wrap).not.toBeChecked()
+    // Its name works it too: the row is a Field.
+    await settings(page).getByText("Wrap long code blocks").click()
+    await expect(wrap).toBeChecked()
+    await expect(html).toHaveAttribute("data-code-wrap", "wrap")
+    await expect(code).toHaveCSS("white-space", "pre-wrap")
+
+    await page.reload()
+    await expect(html).toHaveAttribute("data-code-wrap", "wrap")
+  })
+
+  // ui-sdk's agent test: an agent finds the switch by its name and can
+  // turn it on.
+  test("an agent can turn on Wrap long code blocks", async ({ page }) => {
+    await signInAsDev(page)
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    const wrap = settings(page).getByRole("switch", {
+      name: "Wrap long code blocks",
+    })
+    await expect(wrap).not.toBeChecked()
+    // The agent learns of the switch a beat after it shows, as its part
+    // registers, so wait for it there as an agent would.
+    const refOf = () =>
+      page.evaluate(
+        () =>
+          window.agent
+            .snapshot()
+            .find((part) => part.label === "Wrap long code blocks")?.ref ?? ""
+      )
+    await expect.poll(refOf).not.toBe("")
+    const turned = await page.evaluate(
+      async (ref) => {
+        const result = await window.agent.act({
+          steps: [{ ref, action: "setChecked", args: [true] }],
+        })
+        return result.ok ? "on" : (result.error?.message ?? "refused")
+      },
+      await refOf()
+    )
+    expect(turned).toBe("on")
+    await expect(wrap).toBeChecked()
+  })
+
+  test("the account row has no gear", async ({ page }) => {
+    await signInAsDev(page)
+    await expect(
+      sidebar(page).getByRole("button", { name: "Dev", exact: true })
+    ).toBeVisible()
     await expect(
       sidebar(page).getByRole("button", { name: "Settings" })
-    ).toBeHidden()
+    ).toHaveCount(0)
   })
 })
 
@@ -93,7 +159,9 @@ test.describe("on a phone", () => {
     await signInAsDev(page)
     await page.getByRole("button", { name: "Open sidebar" }).tap()
     const drawer = page.getByRole("dialog", { name: "Chats" })
-    await drawer.getByRole("button", { name: "Settings" }).tap()
+    await drawer.getByRole("button", { name: "Dev", exact: true }).tap()
+    const menu = page.getByRole("menu")
+    await tapInSheet(menu, menu.getByRole("menuitem", { name: "Settings" }))
 
     const sheet = settings(page)
     await expect(sheet).toBeVisible()

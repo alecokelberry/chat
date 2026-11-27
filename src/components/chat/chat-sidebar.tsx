@@ -51,7 +51,7 @@ import {
 import {
   createSettingsController,
   SettingsDialog,
-} from "@/components/chat/settings"
+} from "@/components/chat/settings-dialog"
 import { BrandMark } from "@/components/ui/brand-mark"
 import { Menu } from "@/components/ui/menu"
 import { NewChatGlyph } from "@/components/ui/new-chat-glyph"

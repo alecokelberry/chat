@@ -132,6 +132,17 @@
   .typeset-docs [data-streamdown="code-block-body"] code > span {
     display: block;
   }
+  /* Settings › Appearance › Wrap long code blocks (data-code-wrap, from
+     ui/preferences.tsx): long lines wrap at the block's width, breaking a
+     long word only when it must, instead of scrolling sideways. */
+  [data-code-wrap="wrap"]
+    .typeset-docs
+    [data-streamdown="code-block-body"]
+    pre {
+    width: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
   .typeset-docs [data-streamdown="code-block-body"] code span span {
     color: var(--sdm-c, inherit);
     @variant dark {

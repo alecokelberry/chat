@@ -147,9 +147,8 @@ for (const colorScheme of ["light", "dark"] as const) {
         await signInAsDev(page)
         if (name === "390")
           await page.getByRole("button", { name: "Open sidebar" }).click()
-        await page
-          .getByRole("button", { name: "Settings", exact: true })
-          .click()
+        await page.getByRole("button", { name: "Dev", exact: true }).click()
+        await page.getByRole("menuitem", { name: "Settings" }).click()
         const settings = page.getByRole("dialog", { name: "Settings" })
         await expect(settings).toBeVisible()
         await scan(page)

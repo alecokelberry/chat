@@ -4,7 +4,7 @@
 // ignoring case and the spaces around it, in the order listed here. A new
 // section or setting adds itself here.
 
-export type SectionId = "account"
+export type SectionId = "account" | "appearance"
 
 export type Section = {
   id: SectionId
@@ -18,6 +18,11 @@ export const SECTIONS: readonly Section[] = [
     id: "account",
     label: "Account",
     settings: ["Name", "Email", "Sign out"],
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    settings: ["Theme", "Dark theme", "Wrap long code blocks"],
   },
 ]
 
