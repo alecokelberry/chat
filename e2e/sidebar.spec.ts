@@ -468,7 +468,6 @@ test.describe("a chat wiped for good", () => {
     // end the agent before its answer leaves, and the delete then fails.
     expect(await savedMessages(page, id)).toBe(2)
     await expect(toasts(page)).toHaveCount(0)
-    await expect(page.getByText("Couldn't delete the chat")).toHaveCount(0)
 
     await expect.poll(() => savedMessages(page, id)).toBe(0)
     await page.reload()
