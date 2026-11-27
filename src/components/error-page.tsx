@@ -44,7 +44,7 @@ function Notice({
     >
       <div className="flex max-w-sm flex-col items-center gap-2">
         <h1 className="text-base font-medium">{title}</h1>
-        <p className="text-sm/relaxed text-muted-foreground">{children}</p>
+        <p className="text-sm text-muted-foreground">{children}</p>
       </div>
       <div className="flex gap-2">{actions}</div>
     </main>

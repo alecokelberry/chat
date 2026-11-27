@@ -82,7 +82,7 @@ function SelectItem<T>({
   return (
     <SelectItemPrimitive<T>
       className={cn(
-        "relative flex min-h-8 items-center rounded-xl py-0.75 ps-2 pe-8 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:ps-3 in-data-[presentation=sheet]:text-base highlighted:bg-accent highlighted:text-accent-foreground",
+        "relative flex min-h-8 items-center rounded-item py-0.75 ps-2 pe-8 text-sm outline-hidden select-none active:bg-accent active:text-accent-foreground in-data-[presentation=sheet]:min-h-12 in-data-[presentation=sheet]:ps-3 in-data-[presentation=sheet]:text-base highlighted:bg-accent highlighted:text-accent-foreground",
         className
       )}
       {...props}

@@ -21,7 +21,7 @@ function ThemeToggle() {
       className={buttonVariants({
         variant: "ghost",
         size: "circle",
-        className: "[&_svg]:size-5",
+        className: "[&_svg]:size-icon",
       })}
     >
       <ThemeIcon />

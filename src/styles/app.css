@@ -87,8 +87,6 @@
   /* Color roles. */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-toast: var(--toast);
@@ -97,7 +95,6 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-active: var(--primary-active);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary-hover: var(--secondary-hover);
   --color-secondary-active: var(--secondary-active);
   --color-muted: var(--muted);
@@ -113,15 +110,9 @@
   --color-overlay: var(--overlay);
   --color-bubble-user: var(--bubble-user);
   --color-send: var(--send);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
@@ -138,7 +129,7 @@
   --radius-xl: 12px;
   --radius-2xl: 16px;
   --radius-3xl: 24px;
-  --radius-item: 10px; /* list and sidebar rows */
+  --radius-item: 12px; /* sidebar, menu and select rows */
   --radius-overlay: 20px; /* menus and dialogs */
   --radius-composer: 29px; /* half its 58px one-line height: Grok's pill */
 
@@ -151,19 +142,12 @@
 
   /* Motion (DESIGN.md › Motion). Named durations are utilities below
      (duration-menu, …). standard for color and in-place changes; decelerate
-     for anything arriving; accelerate for anything leaving; spring for
-     panes that slide; out-quint for toasts. */
+     for anything arriving (and a popup leaving the way it came); spring
+     for panes that slide; out-quint for toasts. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-decelerate: cubic-bezier(0, 0, 0, 1);
-  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-drawer: cubic-bezier(
-    0.32,
-    0.72,
-    0,
-    1
-  ); /* iOS's sheet curve: the phone sidebar */
   --default-transition-duration: 120ms;
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 120ms; /* hover, press */
@@ -172,8 +156,6 @@
   --duration-pane: 200ms; /* dialogs and scrims */
   --duration-spin: 300ms; /* the theme icon's spin */
   --duration-sidebar: 200ms; /* collapse and expand */
-  --duration-drawer: 300ms; /* the phone sidebar opening; closing is duration-pane */
-  --duration-sheet: 500ms; /* phone sheets (Search, Settings): Vaul's iOS timing */
   --duration-toast: 500ms; /* toasts in, out and stacking */
 
   /* Sizes. */
@@ -184,7 +166,6 @@
   --spacing-list-overlap: 20px; /* the chat list's start under New Chat: its negative margin and its top padding */
   --spacing-header: var(--header-height);
   --spacing-header-content: calc(var(--header-height) + 1.5rem);
-  --container-content: 730px; /* Grok's reply column */
   --container-composer: 764px; /* Grok's composer; the thread's column too */
   --container-signin: 384px;
 }
@@ -197,8 +178,6 @@
 
   --background: #f9f8f7;
   --foreground: #2c2c2b;
-  --card: #f5f3f2;
-  --card-foreground: #2c2c2b;
   --popover: #fefefc;
   --popover-foreground: #2c2c2b;
   --toast: #363636; /* toasts are dark in both themes */
@@ -209,7 +188,6 @@
   --secondary: hsl(39 100% 8% / 8%);
   --secondary-hover: hsl(39 100% 8% / 12%);
   --secondary-active: hsl(39 100% 8% / 16%);
-  --secondary-foreground: #2c2c2b;
   --muted: #f5f3f2;
   --muted-foreground: #6b6b6a;
   --accent: hsl(39 100% 8% / 6%);
@@ -219,28 +197,14 @@
   --border-strong: hsl(36 20% 5% / 11%);
   --input: #e6e5e3;
   --ring: #858584; /* 3.5:1 on the page: a focus ring must reach 3:1 */
-  --surface: #fefefc;
   --overlay: hsl(0 0% 2% / 20%);
   --bubble-user: #efeeec;
   --send: #ec4899;
   --highlight: oklch(0.86 0.17 95); /* <mark> in prose, mixed to 40% */
-  --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-700);
-  --warning: var(--color-yellow-500);
-  --warning-foreground: var(--color-yellow-700);
   --destructive-foreground: var(
     --color-red-700
   ); /* red text on a red tint, 5.3:1 */
-  --sidebar: #f9f8f7;
-  --sidebar-foreground: #2c2c2b;
-  --sidebar-primary: #2c2c2b;
-  --sidebar-primary-foreground: #fefefc;
-  --sidebar-accent: hsl(39 100% 8% / 6%);
-  --sidebar-accent-foreground: #2c2c2b;
   --sidebar-border: hsl(36 20% 5% / 8%);
-  --sidebar-ring: #858584;
-  --sidebar-muted: #6b6b6a; /* section labels, 5.0:1 */
-  --sidebar-icon: #6b6b6a; /* row glyphs, header buttons */
   --ink-secondary: rgb(
     44 44 43 / 75.6%
   ); /* Grok's secondary ink (rows, follow-ups), 6.1:1 */
@@ -257,7 +221,7 @@
   --dialog-shadow: /* Grok's */
     0 12px 40px 0 rgb(10 9 8 / 0.18), 0 2px 8px 0 rgb(10 9 8 / 0.08);
   --tooltip-shadow:
-    inset 0 0 0 0.5px hsl(36 20% 5% / 8%), 0 1px 2px 0 rgb(0 0 0 / 0.07),
+    inset 0 0 0 0.5px var(--sidebar-border), 0 1px 2px 0 rgb(0 0 0 / 0.07),
     0 2px 4px -2px rgb(0 0 0 / 0.05);
   /* What ui-sdk's sheets (menus on phones) dim the page to. */
   --sheet-backdrop: var(--overlay);
@@ -271,8 +235,6 @@
     --scrollbar-thumb: oklch(100% 0 0 / 0.15);
     --background: #1e1d1d;
     --foreground: #e6e5e3;
-    --card: #282726;
-    --card-foreground: #e6e5e3;
     --popover: #191919;
     --popover-foreground: #e6e5e3;
     --primary: #e6e5e3;
@@ -282,7 +244,6 @@
     --secondary: hsl(0 0% 99% / 8%);
     --secondary-hover: hsl(0 0% 99% / 12%);
     --secondary-active: hsl(0 0% 99% / 16%);
-    --secondary-foreground: #e6e5e3;
     --muted: #282726;
     --muted-foreground: #999897;
     --accent: hsl(0 0% 99% / 6%);
@@ -292,26 +253,12 @@
     --border-strong: hsl(0 0% 99% / 12%);
     --input: hsl(0 0% 99% / 6%);
     --ring: #767574; /* 3.7:1 on the page */
-    --surface: #191919;
     --overlay: hsl(0 0% 2% / 50%);
     --bubble-user: #282726;
     --highlight: oklch(0.62 0.13 95); /* darker, so light ink reads on it */
     --send: #f15aa6;
-    --success: var(--color-emerald-500);
-    --success-foreground: var(--color-emerald-400);
-    --warning: var(--color-yellow-500);
-    --warning-foreground: var(--color-yellow-400);
     --destructive-foreground: var(--color-red-300); /* 4.5:1 on its tint */
-    --sidebar: #1e1d1d;
-    --sidebar-foreground: #e6e5e3;
-    --sidebar-primary: #e6e5e3;
-    --sidebar-primary-foreground: #1e1d1d;
-    --sidebar-accent: hsl(0 0% 99% / 6%);
-    --sidebar-accent-foreground: #e6e5e3;
     --sidebar-border: hsl(0 0% 99% / 6%);
-    --sidebar-ring: #767574;
-    --sidebar-muted: #999897; /* 5.8:1 */
-    --sidebar-icon: #999897;
     --ink-secondary: rgb(230 229 227 / 75.6%); /* 8:1 */
     --sidebar-rail: hsl(0 0% 99% / 20%);
     --popover-shadow:
@@ -321,10 +268,24 @@
       0 12px 32px 0 rgb(0 0 0 / 0.4), inset 0 1px 0 0 hsl(0 0% 99% / 6%);
     --dialog-shadow: 0 16px 48px 0 rgb(0 0 0 / 0.5);
     --tooltip-shadow:
-      inset 0 0 0 0.5px hsl(0 0% 99% / 6%), 0 1px 2px 0 rgb(0 0 0 / 0.3),
+      inset 0 0 0 0.5px var(--sidebar-border), 0 1px 2px 0 rgb(0 0 0 / 0.3),
       0 2px 5px -2px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
+}
+
+/* Roles that share another's value in both themes point at it, so they
+   can't drift apart. Set on .dark too, so a dark scope resolves its own. */
+:root,
+.dark {
+  --surface: var(--popover);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-ring: var(--ring);
+  --sidebar-muted: var(--muted-foreground); /* section labels */
+  --sidebar-icon: var(--muted-foreground); /* row glyphs, header buttons */
 }
 
 @layer base {
