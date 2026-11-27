@@ -357,6 +357,25 @@ test.describe("on a phone", () => {
     // open and the draft untouched: the page never loads again.
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "standalone", { value: true })
+      // What the top layer and focus were the moment the strip showed.
+      const seen: string[] = []
+      Object.assign(window, { nudgeSeen: seen })
+      new MutationObserver((records) => {
+        const added = records.flatMap((record) => [...record.addedNodes])
+        const strip = added.some(
+          (node) =>
+            node instanceof HTMLElement &&
+            node.dataset.slot === "status-bar-nudge"
+        )
+        if (!strip) return
+        for (const el of document.querySelectorAll(":popover-open"))
+          seen.push(getComputedStyle(el).visibility)
+      }).observe(document, { childList: true, subtree: true })
+      addEventListener(
+        "click",
+        () => Object.assign(window, { focusedAtTap: document.activeElement }),
+        true
+      )
     })
     await watchStatusBar(page)
     await signInAsDev(page)
@@ -384,8 +403,23 @@ test.describe("on a phone", () => {
       "dark"
     )
     await expect.poll(() => statusBar(page)).toBe(DARK)
-    // The drawer and menu were hidden for the one frame the strip showed.
+    // The drawer and menu were hidden for the one frame the strip showed,
+    // then came back with focus where the tap left it.
     await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
+    const seen = await page.evaluate(() =>
+      "nudgeSeen" in window && Array.isArray(window.nudgeSeen)
+        ? window.nudgeSeen.map(String)
+        : []
+    )
+    expect(seen.length).toBeGreaterThan(1)
+    expect(new Set(seen)).toEqual(new Set(["hidden"]))
+    expect(
+      await page.evaluate(
+        () =>
+          "focusedAtTap" in window &&
+          window.focusedAtTap === document.activeElement
+      )
+    ).toBe(true)
     await expect(drawer).toBeVisible()
     await expect(menu(page)).toBeVisible()
     await expect(drawer).toHaveCSS("visibility", "visible")

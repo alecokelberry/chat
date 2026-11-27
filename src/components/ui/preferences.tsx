@@ -162,11 +162,16 @@ function nudgeStatusBar() {
             ":popover-open, dialog:modal"
           ),
         ].filter((el) => el.style.visibility === "")
+    // A hidden element can't hold focus, so WebKit drops it: it goes back
+    // where it was (the menu's Theme), for a keyboard or VoiceOver.
+    const focused = document.activeElement
     for (const el of open) el.style.visibility = "hidden"
     document.body.appendChild(strip)
     undo = () => {
       strip.remove()
       for (const el of open) el.style.visibility = ""
+      if (focused instanceof HTMLElement && document.activeElement !== focused)
+        focused.focus({ preventScroll: true })
       undo = () => {}
     }
     // Back on the next frame, so exactly one is drawn with the strip.
