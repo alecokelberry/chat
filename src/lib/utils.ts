@@ -9,33 +9,20 @@ export const cn = createCn({
       spacing: [
         "icon",
         "sidebar",
+        "sidebar-rail",
         "sidebar-header",
+        "list-overlap",
         "header",
         "header-content",
       ],
       radius: ["item", "overlay", "composer"],
-      container: ["content", "composer", "signin"],
-      ease: [
-        "standard",
-        "decelerate",
-        "accelerate",
-        "spring",
-        "drawer",
-        "out-quint",
-      ],
+      container: ["composer", "signin"],
+      ease: ["standard", "decelerate", "spring", "out-quint"],
     },
     classGroups: {
       duration: [
         {
-          duration: [
-            "fast",
-            "base",
-            "menu",
-            "pane",
-            "spin",
-            "sidebar",
-            "drawer",
-          ],
+          duration: ["fast", "base", "menu", "pane", "spin", "sidebar"],
         },
       ],
     },

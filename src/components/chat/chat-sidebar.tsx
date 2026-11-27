@@ -184,7 +184,7 @@ export function ChatSidebar({
                 data-debug-taps
                 className="flex h-sidebar-header shrink-0 items-center px-3"
               >
-                <BrandMark className="size-5" />
+                <BrandMark className="size-icon" />
               </div>
               <SidebarHeader className="relative z-10">
                 <NewChatLink onClick={close} tooltip={false} />
