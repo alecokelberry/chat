@@ -71,6 +71,7 @@ function AppLayout() {
       <SkipLink />
       <ChatSidebar
         account={previewAccount(user, data)}
+        customize={user.customize}
         collapsed={sidebarCollapsed}
       >
         <Outlet />

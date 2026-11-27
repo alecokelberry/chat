@@ -49,6 +49,7 @@ import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
+  getCustomize,
   isUntitled,
   setFirstTitle,
   touchChat,
@@ -133,9 +134,19 @@ export class ChatAgent extends AIChatAgent<Env> {
   ) {
     const started = Date.now()
     const model = lastModel(this.messages).key
-    this.indexed = await touchChat(this.env.DB, this.owner)
+    // The owner's response style is read each turn, so a change in
+    // Settings reaches the next message on any device.
+    const [indexed, customize] = await Promise.all([
+      touchChat(this.env.DB, this.owner),
+      getCustomize(this.env.DB, this.owner.userId),
+    ])
+    this.indexed = indexed
     this.broadcast(CHATS_CHANGED)
-    const result = await streamReply(this.messages, options?.abortSignal)
+    const result = await streamReply(
+      this.messages,
+      options?.abortSignal,
+      customize
+    )
     let thinking: number | undefined
     return result.toUIMessageStreamResponse({
       onError: replyError,

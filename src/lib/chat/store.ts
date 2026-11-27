@@ -14,9 +14,16 @@ import {
   text,
 } from "drizzle-orm/sqlite-core"
 
+import type { Customize } from "@/lib/ai/style"
+
 /** Better Auth's user table (migrations/0001_auth.sql makes it), named here
- *  only so a chat can reference its owner. */
-const user = sqliteTable("user", { id: text().primaryKey() })
+ *  so a chat can reference its owner and a reply can read the owner's
+ *  Customize choices. Not exported, so drizzle-kit leaves it alone. */
+const user = sqliteTable("user", {
+  id: text().primaryKey(),
+  responseStyle: text().notNull(),
+  customInstructions: text().notNull(),
+})
 
 /** The browser makes a chat's id, so it's unique only per user: the key is
  *  both. Times are milliseconds since 1970. */
@@ -60,6 +67,19 @@ export type ChatOwner = { userId: string; id: string }
 const db = (d1: D1Database) => drizzle(d1)
 const isChat = ({ userId, id }: ChatOwner) =>
   and(eq(chat.userId, userId), eq(chat.id, id))
+
+/** The user's response style and Custom's words (src/lib/ai/style.ts),
+ *  or Default's when the row is gone. */
+export async function getCustomize(
+  d1: D1Database,
+  userId: string
+): Promise<Customize> {
+  const [row] = await db(d1)
+    .select({ style: user.responseStyle, custom: user.customInstructions })
+    .from(user)
+    .where(eq(user.id, userId))
+  return row ?? { style: "default", custom: "" }
+}
 
 /** Adds the chat, or moves it to the top: it just got a message.
  *  Whether Search's index already holds all its words. */

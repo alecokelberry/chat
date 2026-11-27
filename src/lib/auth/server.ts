@@ -18,6 +18,8 @@ import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { passkey } from "@better-auth/passkey"
 import { z } from "zod"
 
+import { CUSTOM_MAX, RESPONSE_STYLES } from "@/lib/ai/style"
+
 /** The live address, and what every Preview's address ends with
  *  (<branch>-chat.alecokelberry.workers.dev). */
 const LIVE_HOST = "chat.alecokelberry.workers.dev"
@@ -157,6 +159,22 @@ function createAuth() {
     // (both the page and its chat list ask). Signing out clears it here;
     // another device's sign-out reaches this one within the 5 minutes.
     session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
+    // Settings › Customize (src/lib/ai/style.ts), saved with updateUser,
+    // which checks each against its schema.
+    user: {
+      additionalFields: {
+        responseStyle: {
+          type: "string",
+          defaultValue: "default",
+          validator: { input: z.enum(RESPONSE_STYLES) },
+        },
+        customInstructions: {
+          type: "string",
+          defaultValue: "",
+          validator: { input: z.string().max(CUSTOM_MAX) },
+        },
+      },
+    },
     plugins: [
       passkey({
         rpName: "Chat",
