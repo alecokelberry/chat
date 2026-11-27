@@ -288,6 +288,100 @@ test.describe("on a computer", () => {
     ).toBeVisible()
   })
 
+  /** Opens Settings at Customize and returns its two controls. */
+  async function openCustomize(page: Page) {
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Customize" }).click()
+    return {
+      style: settings(page).getByRole("combobox", { name: /^Response style/ }),
+      words: settings(page).getByRole("textbox", {
+        name: "Custom instructions",
+      }),
+    }
+  }
+
+  /** Puts the account back on Default with no words, where tests start. */
+  async function resetCustomize(page: Page) {
+    const status = await page.evaluate(async () => {
+      const response = await fetch("/api/auth/update-user", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          responseStyle: "default",
+          customInstructions: "",
+        }),
+      })
+      return response.status
+    })
+    expect(status).toBe(200)
+  }
+
+  test("the last words typed save as Settings closes", async ({ page }) => {
+    await signInAsDev(page)
+    const { style, words } = await openCustomize(page)
+    await style.click()
+    await page.getByRole("option", { name: "Custom" }).click()
+    const saved = page.waitForRequest(
+      (request) =>
+        request.url().includes("update-user") &&
+        request.postData()?.includes("Reply in haiku.") === true
+    )
+    await words.fill("Reply in haiku.")
+    // At once, before typing has rested.
+    await page.keyboard.press("Escape")
+    await expect(settings(page)).toBeHidden()
+    await (await saved).response()
+
+    await page.reload()
+    await hydrated(page)
+    const reopened = await openCustomize(page)
+    await expect(reopened.words).toHaveValue("Reply in haiku.")
+    await resetCustomize(page)
+  })
+
+  test("another browser's change shows when Settings opens", async ({
+    page,
+    browser,
+  }) => {
+    await signInAsDev(page)
+    // A second browser, signed in before the change: its session cookie
+    // still holds Default.
+    const other = await browser.newContext()
+    const there = await other.newPage()
+    await signInAsDev(there)
+
+    const { style } = await openCustomize(page)
+    await style.click()
+    const saved = page.waitForResponse(/update-user/)
+    await page.getByRole("option", { name: "Formal" }).click()
+    expect((await saved).ok()).toBe(true)
+
+    const seen = await openCustomize(there)
+    await expect(seen.style).toHaveText("Formal")
+    await other.close()
+    await resetCustomize(page)
+  })
+
+  test.describe(() => {
+    // The failed request is logged by the browser.
+    test.use({ allowedProblems: [/Failed to load resource/] })
+
+    test("a save that fails says so and shows what's saved", async ({
+      page,
+    }) => {
+      await signInAsDev(page)
+      const { style } = await openCustomize(page)
+      await expect(style).toHaveText("Default")
+      await page.route(/update-user/, (route) => route.abort())
+      await style.click()
+      await page.getByRole("option", { name: "Concise" }).click()
+      await expect(
+        page.getByText("Couldn't save your response style")
+      ).toBeVisible()
+      await expect(style).toHaveText("Default")
+    })
+  })
+
   test.describe(() => {
     // The refusal is a 400, which the browser logs.
     test.use({ allowedProblems: [/status of 400/] })
@@ -301,6 +395,21 @@ test.describe("on a computer", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ responseStyle: "pirate" }),
+        })
+        return response.status
+      })
+      expect(status).toBe(400)
+    })
+
+    test("the server refuses Custom words over 1,500 characters", async ({
+      page,
+    }) => {
+      await signInAsDev(page)
+      const status = await page.evaluate(async () => {
+        const response = await fetch("/api/auth/update-user", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ customInstructions: "x".repeat(1_501) }),
         })
         return response.status
       })

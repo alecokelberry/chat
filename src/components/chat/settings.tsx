@@ -13,7 +13,7 @@
 // look is src/components/ui/settings.tsx and src/components/ui/usage.tsx.
 // It loads on its own, after first load, through the dialog in
 // src/components/chat/settings-dialog.tsx.
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import {
   ChartNoAxesColumnIcon,
@@ -61,11 +61,12 @@ import { toast } from "@/components/ui/toast"
 import {
   CUSTOM_MAX,
   RESPONSE_STYLES,
-  isResponseStyle,
+  STYLE_NAMES,
   type Customize,
   type ResponseStyle,
 } from "@/lib/ai/style"
 import { authClient } from "@/lib/auth/client"
+import { getCustomizeNow } from "@/lib/auth/session"
 import { useSignOut } from "@/lib/auth/use-sign-out"
 import { getUsage } from "@/lib/chat/list"
 import { initialsOf } from "@/lib/settings/initials"
@@ -212,53 +213,87 @@ function AppearancePage() {
   )
 }
 
-const STYLE_NAMES: Record<ResponseStyle, string> = {
-  default: "Default",
-  custom: "Custom",
-  concise: "Concise",
-  formal: "Formal",
-  tutor: "Tutor",
-  comprehensive: "Comprehensive",
-}
-
 /** How long Custom's text rests before it's saved. */
 const SAVE_AFTER_MS = 600
 
 /** The response style, and Custom's own words, saved to the account as
- *  they change (a pick at once, the words once typing rests), so every
- *  device's next message follows them. A failed save says so. */
+ *  they change (a pick at once, the words once typing rests, or as the box
+ *  loses focus or Settings closes), so every device's next message follows
+ *  them. It opens with what D1 holds now, since the session it starts from
+ *  may be a few minutes old. A failed save says so and goes back to what's
+ *  saved: the style shows it again, and the words try again on the next
+ *  rest, blur or close. */
 function CustomizePage({ saved }: { saved: Customize }) {
   const router = useRouter()
-  const [style, setStyle] = useState<ResponseStyle>(
-    isResponseStyle(saved.style) ? saved.style : "default"
-  )
+  const [style, setStyle] = useState<ResponseStyle>(saved.style)
   const [custom, setCustom] = useState(saved.custom)
-  const stored = useRef(saved.custom)
+  // What the account holds, as last read or sent.
+  const stored = useRef(saved)
+  // The words as typed, for a save when Settings closes.
+  const typed = useRef(saved.custom)
+  // Whether a change was made here, which a late fresh read mustn't undo.
+  const touched = useRef(false)
 
-  async function save(fields: {
-    responseStyle?: ResponseStyle
-    customInstructions?: string
-  }) {
-    const { error } = await authClient.updateUser(fields)
-    if (error) {
+  useEffect(() => {
+    let open = true
+    getCustomizeNow()
+      .then((now) => {
+        if (!open || now === null || touched.current) return
+        stored.current = now
+        typed.current = now.custom
+        setStyle(now.style)
+        setCustom(now.custom)
+      })
+      // Keeps the session's copy, which is only a few minutes old.
+      .catch(() => undefined)
+    return () => {
+      open = false
+    }
+  }, [])
+
+  async function save(fields: Partial<Customize>) {
+    const before = stored.current
+    stored.current = { ...before, ...fields }
+    const saved = await authClient
+      .updateUser({
+        responseStyle: fields.style,
+        customInstructions: fields.custom,
+      })
+      .then(({ error }) => error === null)
+      // A network failure rejects instead.
+      .catch(() => false)
+    if (!saved) {
       toast.error("Couldn't save your response style")
+      if (fields.style !== undefined) {
+        stored.current = { ...stored.current, style: before.style }
+        setStyle(before.style)
+      }
+      if (fields.custom !== undefined) {
+        stored.current = { ...stored.current, custom: before.custom }
+      }
       return
     }
     // The layout's copy (the session) follows, for the next open.
     void router.invalidate()
   }
 
+  function saveTyped() {
+    if (typed.current === stored.current.custom) return
+    void save({ custom: typed.current })
+  }
+  const saveTypedLater = useEffectEvent(saveTyped)
+
+  // Once typing rests.
   useEffect(() => {
-    if (custom === stored.current) return
-    const timer = setTimeout(() => {
-      stored.current = custom
-      void save({ customInstructions: custom })
-    }, SAVE_AFTER_MS)
+    const timer = setTimeout(saveTypedLater, SAVE_AFTER_MS)
     return () => clearTimeout(timer)
-  })
+  }, [custom])
+
+  // When Settings closes mid-rest.
+  useEffect(() => () => saveTypedLater(), [])
 
   return (
-    <SettingsCard>
+    <SettingsCard label="Customize">
       <SettingsRow
         name="Customize Chat's response"
         description="Personalize how Chat responds to you"
@@ -267,8 +302,9 @@ function CustomizePage({ saved }: { saved: Customize }) {
           value={style}
           onValueChange={(next) => {
             if (next === null) return
+            touched.current = true
             setStyle(next)
-            void save({ responseStyle: next })
+            void save({ style: next })
           }}
         >
           <SelectTrigger
@@ -305,12 +341,12 @@ function CustomizePage({ saved }: { saved: Customize }) {
             maxLength={CUSTOM_MAX}
             placeholder="Answer in British English, and keep code in TypeScript…"
             value={custom}
-            onValueChange={(value) => setCustom(value)}
-            onBlur={() => {
-              if (custom === stored.current) return
-              stored.current = custom
-              void save({ customInstructions: custom })
+            onValueChange={(value) => {
+              touched.current = true
+              typed.current = value
+              setCustom(value)
             }}
+            onBlur={saveTyped}
           />
         </SettingsField>
       )}

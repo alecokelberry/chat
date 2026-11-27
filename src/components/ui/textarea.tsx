@@ -16,7 +16,7 @@ const variants = {
   inline: "block max-h-draft-inline min-h-6",
   // A box of its own (Settings › Customize): a hairline, the rows'
   // corners, 12px in, at least four lines tall.
-  box: "block max-h-draft-inline min-h-28 rounded-item border border-border-strong px-3 py-2 focus-visible:border-ring",
+  box: "block max-h-draft-inline min-h-28 rounded-item border border-border-strong px-3 py-2 outline-hidden focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring",
 }
 
 function Textarea({
