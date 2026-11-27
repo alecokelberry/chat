@@ -99,6 +99,82 @@ test.describe("on a computer", () => {
     await expect(statusBar.last()).toHaveAttribute("content", "#1e1d1d")
   })
 
+  test("the server writes the saved theme's status bar color", async ({
+    browser,
+  }) => {
+    // An iPhone's Home Screen app reads theme-color once, as the page
+    // loads, so it has to be right in the HTML: here with no scripts at
+    // all, the phone light and Dark saved.
+    const context = await browser.newContext({
+      baseURL: test.info().project.use.baseURL,
+      colorScheme: "light",
+      javaScriptEnabled: false,
+    })
+    const page = await context.newPage()
+    await page.goto("/sign-in")
+    const statusBar = page.locator('meta[name="theme-color"]')
+    await expect(statusBar.first()).toHaveAttribute("content", "#f9f8f7")
+    await expect(statusBar.last()).toHaveAttribute("content", "#1e1d1d")
+    await context.addCookies([
+      { name: "theme", value: "dark", url: page.url() },
+    ])
+    await page.reload()
+    await expect(statusBar).toHaveCount(2)
+    await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
+    await expect(statusBar.last()).toHaveAttribute("content", "#1e1d1d")
+    await context.close()
+  })
+
+  test("picking a theme saves it in the cookie the server reads", async ({
+    page,
+    context,
+  }) => {
+    await page.goto("/sign-in")
+    await page.getByRole("button", { name: "Dark theme" }).click()
+    await expect
+      .poll(async () =>
+        (await context.cookies()).find((c) => c.name === "theme")
+      )
+      .toMatchObject({ value: "dark" })
+  })
+
+  test("in the Home Screen app, a theme change reloads the page", async ({
+    page,
+  }) => {
+    // Its status bar is drawn from the color the page loaded with.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "standalone", { value: true })
+    })
+    await page.goto("/sign-in")
+    await expect(page.getByRole("button", { name: "Dark theme" })).toBeVisible()
+    const loads: string[] = []
+    page.on("load", () => loads.push(page.url()))
+    await page.getByRole("button", { name: "Dark theme" }).click()
+    await expect.poll(() => loads.length).toBe(1)
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    const statusBar = page.locator('meta[name="theme-color"]')
+    await expect(statusBar.first()).toHaveAttribute("content", "#1e1d1d")
+    // Once, not again and again: the reloaded page leaves it be.
+    await page.waitForTimeout(1000)
+    expect(loads).toHaveLength(1)
+
+    // Under System, the phone switching to dark doesn't reload: the next
+    // launch picks it up, and a draft or a streaming reply isn't lost.
+    await page.evaluate(() => localStorage.setItem("theme", "system"))
+    await page.reload()
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "system"
+    )
+    const settled = loads.length
+    await page.emulateMedia({ colorScheme: "dark" })
+    await page.waitForTimeout(1000)
+    expect(loads).toHaveLength(settled)
+  })
+
   test("the sign-in switch flips the theme and keeps it after a reload", async ({
     page,
   }) => {

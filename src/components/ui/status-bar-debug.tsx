@@ -64,6 +64,10 @@ function topEdge() {
   return chain
 }
 
+function themeCookie() {
+  return /(?:^|; )theme=(\w+)/.exec(document.cookie)?.[1] ?? "none"
+}
+
 function read(loadedAs: string, changes: string[]) {
   const html = document.documentElement
   const metas = [
@@ -81,7 +85,7 @@ function read(loadedAs: string, changes: string[]) {
   return [
     `build ${BUILD} · loaded ${LOADED_AT} as ${loadedAs}`,
     `standalone ${matchMedia("(display-mode: standalone)").matches ? "yes" : "no"} · phone ${matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}`,
-    `theme ${html.dataset.colorScheme ?? "?"} · html ${getComputedStyle(html).backgroundColor} · body ${getComputedStyle(document.body).backgroundColor}`,
+    `theme ${html.dataset.colorScheme ?? "?"} · cookie ${themeCookie()} · html ${getComputedStyle(html).backgroundColor} · body ${getComputedStyle(document.body).backgroundColor}`,
     ...metas.map((m) => `meta ${m}`),
     `safe top ${safeTop} · inner ${innerHeight} · vv ${Math.round(vv?.height ?? 0)}@${Math.round(vv?.offsetTop ?? 0)} · screen ${screen.height}`,
     "top edge:",
