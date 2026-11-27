@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import type { Page } from "@playwright/test"
 
 import {
@@ -178,16 +180,21 @@ test("a word from a question or a reply finds its chat, with the line", async ({
   await expect(dialog(page)).toHaveCount(0)
 })
 
-test("an attachment's file name finds its chat, but not its text", async ({
+test("an image's or document's file name finds its chat, but not its text", async ({
   page,
 }) => {
   await signInAsDev(page)
-  const [named, inside] = [madeUpWord(), madeUpWord()]
+  const [named, inside, photo] = [madeUpWord(), madeUpWord(), madeUpWord()]
   await pick(page, [
     {
       name: `${named}-notes.txt`,
       mimeType: "text/plain",
       buffer: Buffer.from(`Only the file holds ${inside}.`),
+    },
+    {
+      name: `${photo}.jpg`,
+      mimeType: "image/jpeg",
+      buffer: readFileSync("e2e/fixtures/small.jpg"),
     },
   ])
   await expect(
@@ -196,11 +203,20 @@ test("an attachment's file name finds its chat, but not its text", async ({
       .getByText("Text", { exact: true })
   ).toBeVisible()
   await chatSaying(page, "Sum this up")
+  // A later question says the file's word, so a search for it shows a
+  // match once it has run: only that question, not the one with the file.
+  await send(page, `Is ${inside} in it?`)
+  await expect(replies(page)).toHaveText([/Done\.$/, /Done\.$/])
 
   await findWords(page, named)
   await expect(messages(page).getByRole("option")).toHaveCount(1)
-  await field(page).fill(inside)
-  await expect(dialog(page)).toContainText("No chats match")
+  await findWords(page, photo)
+  await expect(messages(page).getByRole("option")).toHaveCount(1)
+  await findWords(page, inside)
+  await expect(messages(page).getByRole("option")).toHaveCount(1)
+  await expect(messages(page).getByRole("option")).toContainText(
+    `Is ${inside} in it?`
+  )
 })
 
 test("one letter searches titles only, and a title match comes first", async ({

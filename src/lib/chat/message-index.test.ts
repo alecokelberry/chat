@@ -137,3 +137,34 @@ test("a question's attachments are found by their names, not their text", () => 
   expect(search("What changed")).toContain(question)
   expect(search("northwind")).not.toContain(question)
 })
+
+test("a file name is found by the words inside a CamelCase or IMG4021 name", () => {
+  const question = holding(
+    wordsOf({
+      id: "q",
+      role: "user",
+      parts: [
+        {
+          type: "file",
+          mediaType: "image/jpeg",
+          filename: "IMG4021.jpg",
+          url: "data:image/jpeg;base64,AA==",
+        },
+        {
+          type: "data-document",
+          data: {
+            name: "PackingList.md",
+            mediaType: "text/plain",
+            text: "Water",
+            cut: false,
+          },
+        },
+      ],
+    })
+  )
+  expect(search("list")).toContain(question)
+  expect(search("packinglist")).toContain(question)
+  expect(search("4021")).toContain(question)
+  expect(search("img4021")).toContain(question)
+  expect(search("water")).not.toContain(question)
+})

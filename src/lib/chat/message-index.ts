@@ -60,8 +60,18 @@ const TEXT_MAX = 100_000
  *  search would match on every word of a long file. */
 function partWords(part: UIMessage["parts"][number]) {
   if (part.type === "text") return part.text
-  if (part.type === "file") return part.filename ?? ""
-  return isDocument(part) ? part.data.name : ""
+  if (part.type === "file") return nameWords(part.filename ?? "")
+  return isDocument(part) ? nameWords(part.data.name) : ""
+}
+
+/** A file name, then its words split where the index wouldn't: at a
+ *  lower-to-upper case change and between letters and digits, so "list"
+ *  finds PackingList.md and "4021" finds IMG4021.jpg. */
+const nameWords = (name: string) => {
+  const split = name
+    .replaceAll(/(\p{Ll})(\p{Lu})/gu, "$1 $2")
+    .replaceAll(/(\p{L})(\p{N})|(\p{N})(\p{L})/gu, "$1$3 $2$4")
+  return split === name ? name : `${name} ${split}`
 }
 
 /** A message's words: its text parts (a question, a reply's answer) and

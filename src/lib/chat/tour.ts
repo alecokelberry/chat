@@ -18,10 +18,17 @@ export const TOUR_ID = "f3a70a2e-0000-4000-8000-000000000001"
 
 export const TOUR_TITLE = "Feature tour (demo)"
 
-const asked = (id: string, text: string, model: ModelKey): UIMessage => ({
+/** A question, with its attachments before its words, as one is sent
+ *  (questionParts, src/lib/chat/attachments.ts). */
+const asked = (
+  id: string,
+  text: string,
+  model: ModelKey,
+  attachments: UIMessage["parts"] = []
+): UIMessage => ({
   id: `tour-${id}`,
   role: "user",
-  parts: [{ type: "text", text }],
+  parts: [...attachments, { type: "text", text }],
   metadata: { model },
 })
 
@@ -218,10 +225,7 @@ export const TOUR_MESSAGES: UIMessage[] = [
     started: WRITTEN + 180_000,
     ms: 7_600,
   }),
-  {
-    ...asked("9", "Anything missing from my packing list?", "super"),
-    parts: [PACKING_LIST, text("Anything missing from my packing list?")],
-  },
+  asked("9", "Anything missing from my packing list?", "super", [PACKING_LIST]),
   replied("10", [text(PACKED)], {
     model: "super",
     started: WRITTEN + 240_000,

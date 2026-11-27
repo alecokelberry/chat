@@ -16,7 +16,8 @@ import {
 // adds the pinned demo chat and opens it, rendered like any chat (thinking,
 // web search, a folded code block, a table, math, an attached text file).
 // Pressing it again refreshes the same chat, dropping what was asked since,
-// and never adds a second. It deletes like any chat. Search's next open indexes its words.
+// and never adds a second. It deletes like any chat. Search's next open
+// indexes its words.
 
 const PATH = `/c/${TOUR_ID}`
 const QUESTIONS = TOUR_MESSAGES.filter((m) => m.role === "user").length
