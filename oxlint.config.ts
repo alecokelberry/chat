@@ -134,6 +134,17 @@ export default defineConfig({
       // imports Playwright's own would skip both.
       files: ["e2e/**"],
       rules: {
+        // A sleep is a guess: it passes on a fast machine and flakes on a
+        // slow one (AGENTS.md, Tests). Wait on what the page shows, or on
+        // settled() from e2e/session.ts.
+        "no-restricted-properties": [
+          "error",
+          {
+            property: "waitForTimeout",
+            message:
+              "Don't sleep: wait on what the page shows, or on settled() (e2e/session.ts).",
+          },
+        ],
         "no-restricted-imports": [
           "error",
           {
