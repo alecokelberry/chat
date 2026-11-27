@@ -16,7 +16,7 @@ import {
 // adds the pinned demo chat and opens it, rendered like any chat (thinking,
 // web search, a folded code block, a table, math). Pressing it again
 // refreshes the same chat, dropping what was asked since, and never adds a
-// second. It deletes like any chat.
+// second. It deletes like any chat. Search's next open indexes its words.
 
 const PATH = `/c/${TOUR_ID}`
 const QUESTIONS = TOUR_MESSAGES.filter((m) => m.role === "user").length
@@ -54,6 +54,27 @@ test("Feature tour adds one pinned demo chat, refreshes it, and deletes", async 
   await expect(thread.locator("table")).toHaveCount(1)
   await expect(thread.locator(".katex-display")).toHaveCount(2)
   await expect(thread.getByText("Super · 4.3s")).toBeVisible()
+
+  // Put back whole, its words aren't in Search's index until Search opens
+  // and has it index itself; then a word only a reply holds finds it.
+  const search = page.getByRole("dialog", { name: "Search" })
+  await expect(async () => {
+    // A fresh open each try: each open asks again.
+    if ((await search.count()) > 0) await page.keyboard.press("Escape")
+    await expect(search).toHaveCount(0)
+    await page.keyboard.press("ControlOrMeta+k")
+    await page
+      .getByRole("combobox", { name: "Search chats" })
+      .fill("typescript")
+    await expect(
+      search
+        .getByRole("group", { name: "Messages" })
+        .getByRole("option")
+        .filter({ hasText: TOUR_TITLE })
+    ).toBeVisible({ timeout: 2000 })
+  }).toPass()
+  await page.keyboard.press("Escape")
+  await expect(search).toHaveCount(0)
 
   // Asked on, it's a chat like any other; the tour again puts it back.
   await send(page, "One more question")

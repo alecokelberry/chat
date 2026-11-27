@@ -27,7 +27,10 @@
 //
 // After every reply, finished, stopped or failed, it brings Search's index
 // of the chat's words up to date (src/lib/chat/message-index.ts): that
-// turn's question and reply, minus whatever an edit or Retry removed.
+// turn's question and reply, minus whatever an edit or Retry removed, or
+// the whole chat if the index never held all of it (the chat's row says,
+// as the send moves it up). Search also asks it to index itself whole
+// (indexAll) when it opens, for a chat from before the index.
 //
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
@@ -99,9 +102,25 @@ export class ChatAgent extends AIChatAgent<Env> {
     this.resetTurnState()
     await this.sessions.session().clearMessages()
     await this.persistMessages(messages)
-    await this.index(messages)
     this.broadcast(CHATS_CHANGED)
   }
+
+  /** Puts every word the chat holds in Search's index and marks the chat
+   *  indexed, an empty chat too. An RPC method, for the Worker
+   *  (src/lib/chat/list.ts), on one of the user's unindexed chats. */
+  async indexAll() {
+    await indexMessages(
+      this.env.DB,
+      this.owner,
+      this.messages,
+      this.messages,
+      true
+    )
+  }
+
+  /** Whether Search's index held all the chat's words when this turn's
+   *  send came in. */
+  private indexed = true
 
   /** What deleteChat's schedule runs. */
   async wipe() {
@@ -114,7 +133,7 @@ export class ChatAgent extends AIChatAgent<Env> {
   ) {
     const started = Date.now()
     const model = lastModel(this.messages).key
-    await touchChat(this.env.DB, this.owner)
+    this.indexed = await touchChat(this.env.DB, this.owner)
     this.broadcast(CHATS_CHANGED)
     const result = await streamReply(this.messages, options?.abortSignal)
     let thinking: number | undefined
@@ -140,18 +159,28 @@ export class ChatAgent extends AIChatAgent<Env> {
     if (result.status === "aborted" || result.status === "error")
       await this.saveTimeOf(result.message)
     if (result.status !== "error") await this.nameIfUntitled()
+    await this.indexTurn()
+  }
+
+  /** Writes this turn's question and reply to Search's index, or the
+   *  whole chat if the index didn't hold it all, and drops what the chat
+   *  no longer holds. Best effort: a chat that fails to index still
+   *  answered; that turn's words are only missing from Search. */
+  private async indexTurn() {
     const question = this.messages.findLastIndex(
       (message) => message.role === "user"
     )
-    await this.index(this.messages.slice(Math.max(question, 0)))
-  }
-
-  /** Writes `changed` to Search's index and drops what the chat no longer
-   *  holds. Best effort: a chat that fails to index still answered; that
-   *  turn's words are only missing from Search. */
-  private async index(changed: readonly UIMessage[]) {
+    const changed = this.indexed
+      ? this.messages.slice(Math.max(question, 0))
+      : this.messages
     try {
-      await indexMessages(this.env.DB, this.owner, this.messages, changed)
+      await indexMessages(
+        this.env.DB,
+        this.owner,
+        this.messages,
+        changed,
+        !this.indexed
+      )
     } catch (error) {
       console.error("Couldn't index the chat's words for Search", error)
     }
