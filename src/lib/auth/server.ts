@@ -30,26 +30,6 @@ const OWNER = { email: "owner@chat.test", name: "Alec" }
  *  reach an inbox. */
 const DEV = { email: "dev@chat.test", name: "Dev" }
 
-/** Dev's accounts: dev@chat.test, and any dev+N@chat.test. */
-const isDev = (email: string) => /^dev(\+\d+)?@chat\.test$/.test(email)
-
-/** The owner: the oldest account that isn't a Dev one, whatever its email,
- *  so the live row can carry the real one. Live there are no Dev accounts
- *  (DEV_SIGN_IN is never set), so it's the first account made. */
-async function findOwner(adapter: {
-  listUsers: (
-    limit: number,
-    offset: number,
-    sortBy: { field: string; direction: "asc" | "desc" }
-  ) => Promise<{ id: string; name: string; email: string }[]>
-}) {
-  const users = await adapter.listUsers(100, 0, {
-    field: "createdAt",
-    direction: "asc",
-  })
-  return users.find((user) => !isDev(user.email)) ?? null
-}
-
 /** Whether Dev can sign in from this address: only with DEV_SIGN_IN set
  *  (.dev.vars and e2e, never live) and only on localhost. */
 export function devSignInAllowed(url: string): boolean {
@@ -186,8 +166,17 @@ function createAuth() {
               })
             }
             const adapter = ctx.context.internalAdapter
+            // The owner: the oldest account that isn't Dev's, whatever its
+            // email, so the live row can carry the real one. Live there's
+            // no Dev account (DEV_SIGN_IN is never set there).
+            const [owner] = await adapter.listUsers(
+              1,
+              0,
+              { field: "createdAt", direction: "asc" },
+              [{ field: "email", operator: "ne", value: DEV.email }]
+            )
             const user =
-              (await findOwner(adapter)) ??
+              owner ??
               (await adapter.createUser(
                 { ...OWNER, emailVerified: false },
                 { method: "passkey-setup" }
