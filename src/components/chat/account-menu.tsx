@@ -6,6 +6,7 @@
 // spin, Feature tour, which adds the pinned demo chat (src/lib/chat/tour.ts)
 // or refreshes it, and opens it, then Sign out, which lands on /sign-in. Agents ask before signing out
 // (data-agent-confirm).
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { CompassIcon, LogOutIcon } from "lucide-react"
 
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth/client"
 import { addTour } from "@/lib/chat/list"
+import { restored } from "@/lib/reload-for-status-bar"
 
 export type Account = { name: string; email: string }
 
@@ -47,6 +49,7 @@ export function AccountMenu({
   account,
   tooltip = false,
   onOpenChat,
+  reopen = false,
 }: {
   account: Account
   /** Named in a tooltip, for the rail, where the name is hidden. */
@@ -54,7 +57,19 @@ export function AccountMenu({
   /** Feature tour opened its chat: the phone's drawer closes, as it does
    *  for a row. */
   onOpenChat?: () => void
+  /** It was open before the status bar's reload (Theme keeps it open), so
+   *  it starts open again (src/lib/reload-for-status-bar.ts). */
+  reopen?: boolean
 }) {
+  // Read once: it's about the moment the menu appears. It opens from an
+  // effect rather than defaultOpen, so onOpenChangeComplete says when it's
+  // up.
+  const reopening = useRef(reopen)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    // oxlint-disable-next-line react-hooks-js/set-state-in-effect -- opens once it's on the page, so its open completes
+    if (reopening.current) setOpen(true)
+  }, [])
   const navigate = useNavigate()
   const router = useRouter()
   const toggleTheme = useToggleTheme()
@@ -74,7 +89,15 @@ export function AccountMenu({
     }
   }
   return (
-    <Menu>
+    <Menu
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(open) => {
+        if (!open || !reopening.current) return
+        reopening.current = false
+        restored("menu")
+      }}
+    >
       <Tooltip disabled={!tooltip}>
         <TooltipTrigger
           render={
@@ -95,7 +118,7 @@ export function AccountMenu({
         </TooltipTrigger>
         <TooltipContent side="right">{account.name}</TooltipContent>
       </Tooltip>
-      <MenuContent side="top">
+      <MenuContent side="top" data-account-menu>
         <MenuGroup>
           <MenuGroupLabel>
             {account.name}

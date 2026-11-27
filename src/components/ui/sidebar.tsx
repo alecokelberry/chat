@@ -208,7 +208,7 @@ function SidebarDrawerContent({
     <>
       <DrawerBackdrop className="fixed inset-0 z-40 bg-overlay" />
       <DrawerContent
-        data-slot="sidebar"
+        data-sidebar-drawer
         className={cn(
           "flex h-full w-sidebar flex-col bg-sidebar pt-safe pb-safe text-sidebar-foreground shadow-dialog outline-hidden",
           className

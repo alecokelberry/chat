@@ -32,6 +32,7 @@ import {
 import { PressFeedback } from "@/components/ui/press-feedback"
 import { Toasts } from "@/components/ui/toast"
 import { Viewport } from "@/components/ui/viewport"
+import { RESTORE_SCRIPT } from "@/lib/reload-for-status-bar"
 import { savedTheme } from "@/lib/theme"
 
 import appCss from "@/styles/app.css?url"
@@ -80,6 +81,7 @@ function RootDocument({ children }: { children: ReactNode }) {
           content={color("dark")}
         />
         <ScriptOnce>{THEME_COLOR_SCRIPT}</ScriptOnce>
+        <ScriptOnce>{RESTORE_SCRIPT}</ScriptOnce>
       </head>
       <body>
         <AppPreferences>{children}</AppPreferences>
