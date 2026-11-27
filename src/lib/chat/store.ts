@@ -68,6 +68,24 @@ export async function touchChat(d1: D1Database, { userId, id }: ChatOwner) {
     })
 }
 
+/** Adds the chat with `title`, pinned, at the top, or puts an existing one
+ *  back that way: the feature tour's row (src/lib/chat/tour.ts), which
+ *  pressing Feature tour again refreshes rather than repeats. */
+export async function putPinnedChat(
+  d1: D1Database,
+  { userId, id }: ChatOwner,
+  title: string
+) {
+  const now = Date.now()
+  await db(d1)
+    .insert(chat)
+    .values({ userId, id, title, pinned: true, createdAt: now, updatedAt: now })
+    .onConflictDoUpdate({
+      target: [chat.userId, chat.id],
+      set: { title, pinned: true, updatedAt: now },
+    })
+}
+
 /** Whether the chat still waits for its title. */
 export async function isUntitled(
   d1: D1Database,

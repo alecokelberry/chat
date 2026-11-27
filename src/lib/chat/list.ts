@@ -6,7 +6,8 @@
 // touches only the signed-in user's own chat. A rename or pin then has the
 // chat's agent tell its open tabs (on any device) to load the list again;
 // a delete drops the row, then has the agent tell its tabs and wipe its
-// messages.
+// messages. Feature tour in the account menu adds the demo chat
+// (src/lib/chat/tour.ts) through addTour.
 import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -18,9 +19,11 @@ import { CHAT_ID } from "@/lib/chat/id"
 import {
   deleteChatRow,
   listChats,
+  putPinnedChat,
   updateChat,
   type ChatOwner,
 } from "@/lib/chat/store"
+import { TOUR_ID, TOUR_MESSAGES, TOUR_TITLE } from "@/lib/chat/tour"
 
 /** The signed-in user's id, or null. */
 async function userId(): Promise<string | null> {
@@ -97,3 +100,14 @@ export const deleteChat = createServerFn({ method: "POST" })
     if (!(await deleteChatRow(env.DB, owner))) throw new Error("No such chat")
     await (await agentOf(owner)).deleteChat()
   })
+
+/** Puts the feature tour (src/lib/chat/tour.ts) in the signed-in user's
+ *  list, pinned, or refreshes it there: always the same chat, so it never
+ *  adds a second and touches no other. The row goes first, so the agent's
+ *  CHATS_CHANGED loads a list that has it. The chat's id, to open it. */
+export const addTour = createServerFn({ method: "POST" }).handler(async () => {
+  const owner = await ownChat(TOUR_ID)
+  await putPinnedChat(env.DB, owner, TOUR_TITLE)
+  await (await agentOf(owner)).replaceMessages(TOUR_MESSAGES)
+  return TOUR_ID
+})

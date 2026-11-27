@@ -187,7 +187,7 @@ export function ChatSidebar({
                 onPick={close}
               />
               <SidebarFooter>
-                <AccountMenu account={account} />
+                <AccountMenu account={account} onOpenChat={close} />
               </SidebarFooter>
             </SidebarDrawerContent>
           )}
