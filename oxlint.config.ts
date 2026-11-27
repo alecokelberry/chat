@@ -75,6 +75,7 @@ export default defineConfig({
     "**/coverage/**",
     "**/playwright-report/**",
     "**/test-results/**",
+    "**/blob-report/**",
     "docs/**",
     ".agents/**",
     ".claude/**",
