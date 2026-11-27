@@ -79,7 +79,9 @@ test("Feature tour adds one pinned demo chat, refreshes it, and deletes", async 
   // Asked on, it's a chat like any other; the tour again puts it back.
   await send(page, "One more question")
   await expect(questions(page)).toHaveCount(QUESTIONS + 1)
-  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Stop", exact: true })
+  ).toHaveCount(0)
   await openTour(page)
   await expect(replies(page)).toHaveCount(QUESTIONS)
   await page.reload()
