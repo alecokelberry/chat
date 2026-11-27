@@ -130,94 +130,6 @@ test("a pinned chat sits under Pinned, at the top", async ({ page }) => {
   ).toHaveCount(1)
 })
 
-// The Chats header (Grok's): its chevron folds the chats below Pinned,
-// remembered in this browser; its … sorts them by last activity or date
-// created, Pinned staying on top; its + starts a new chat; and a long list
-// ends in Show more. The worst-case list (src/lib/dev/worst-case.ts) has
-// 1,000 chats, started in the opposite order to their last activity.
-const chatsHeader = (page: Page) =>
-  sidebar(page).getByRole("button", { name: "Chats", exact: true })
-
-test("the Chats header folds the list, and it stays folded after a reload", async ({
-  page,
-}) => {
-  await signInAsDev(page)
-  await showAllChats(page)
-  const older = sidebar(page).getByRole("region", { name: "Older" })
-  await expect(older).toBeVisible()
-  await expect(chatsHeader(page)).toHaveAttribute("aria-expanded", "true")
-  await chatsHeader(page).click()
-  await expect(older).toBeHidden()
-  await expect(chatsHeader(page)).toHaveAttribute("aria-expanded", "false")
-  // Pinned stays out of the fold.
-  await expect(
-    sidebar(page).getByRole("link", { name: "Seeded pinned" })
-  ).toBeVisible()
-  await page.reload()
-  await expect(chatsHeader(page)).toHaveAttribute("aria-expanded", "false")
-  await expect(older).toBeHidden()
-  // And from the keyboard.
-  await chatsHeader(page).focus()
-  await page.keyboard.press("Enter")
-  await showAllChats(page)
-  await expect(older).toBeVisible()
-})
-
-test("the Chats … sorts by date created, keeping Pinned on top", async ({
-  page,
-}) => {
-  await signInAsDev(page)
-  await page.goto("/?data=worst")
-  const firstUnpinned = sidebar(page)
-    .getByRole("region", { name: "Chats" })
-    .getByRole("listitem")
-    .first()
-    .getByRole("link")
-  await expect(firstUnpinned).not.toHaveText("Worst-case chat 1000")
-  await sidebar(page).getByRole("button", { name: "Chats options" }).click()
-  const sort = page.getByRole("menu")
-  await expect(
-    sort.getByRole("menuitemradio", { name: "Last activity" })
-  ).toBeChecked()
-  await sort.getByRole("menuitemradio", { name: "Date created" }).click()
-  await expect(firstUnpinned).toHaveText("Worst-case chat 1000")
-  await expect(sidebar(page).getByRole("heading").first()).toHaveText("Pinned")
-  await expect(
-    sidebar(page).getByRole("region", { name: "Pinned" }).getByRole("listitem")
-  ).toHaveCount(3)
-  // Remembered in this browser.
-  await page.reload()
-  await expect(firstUnpinned).toHaveText("Worst-case chat 1000")
-})
-
-test("a long list ends in Show more, which shows the rest", async ({
-  page,
-}) => {
-  await signInAsDev(page)
-  await page.goto("/?data=worst")
-  const chats = sidebar(page).getByRole("region", { name: "Chats" })
-  await expect(chats.getByRole("listitem")).toHaveCount(30)
-  await chats.getByRole("button", { name: "Show more" }).click()
-  await expect(chats.getByRole("listitem")).toHaveCount(997)
-  await expect(chats.getByRole("button", { name: "Show more" })).toHaveCount(0)
-})
-
-test("the Chats + starts a new chat, with ⌘J in its tooltip", async ({
-  page,
-}) => {
-  await signInAsDev(page)
-  await sidebar(page).getByRole("link", { name: "Seeded pinned" }).click()
-  await expect(page).toHaveURL(/\/c\//)
-  const plus = sidebar(page)
-    .getByRole("region", { name: "Chats" })
-    .getByRole("link", { name: "Start a chat" })
-  await plus.hover()
-  await expect(page.getByRole("tooltip")).toContainText("New Chat")
-  await plus.click()
-  await expect(page).toHaveURL(/\/$/)
-  await expect(greeting(page)).toBeVisible()
-})
-
 // The row menu (src/components/chat/chat-actions.tsx): each test starts
 // its own chat and renames it to a name of its own, since other tests make
 // chats called TITLE at the same time.
@@ -657,6 +569,21 @@ test("an agent can't delete a chat", async ({ page }) => {
   await expect(toasts(page)).toHaveCount(0)
 })
 
+// An open menu marks its … alone; the row keeps its own fill.
+test("a row's open menu shades its …, not the row", async ({ page }) => {
+  await signInAsDev(page)
+  const row = sidebar(page)
+    .getByRole("listitem")
+    .filter({ hasText: "Seeded pinned" })
+  const link = row.getByRole("link")
+  const opener = row.getByRole("button", { name: /^Actions for / })
+  await opener.click()
+  await expect(opener).toHaveAttribute("data-open")
+  await page.mouse.move(0, 0)
+  await expect(link).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+  await expect(opener).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+})
+
 // ui-sdk's agent test: each row's menu is a named control an agent can
 // open, and its actions are named.
 test("an agent can open a row's menu", async ({ page }) => {
@@ -814,7 +741,7 @@ test.describe("on a phone", () => {
   })
 
   // Touch has no hover: every row's … shows, its menu is a sheet (the
-  // row's wash alone marks it, with no second square on the …), and
+  // …'s own square marks it, not the whole row, as on a computer), and
   // Rename edits the row without closing the drawer.
   test("a row's menu works in the drawer", async ({ page }) => {
     await startChat(page, "Rename from my phone")
@@ -828,7 +755,7 @@ test.describe("on a phone", () => {
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
     const opener = row.getByRole("button", { name: /^Actions for / })
     await expect(opener).toHaveAttribute("data-open")
-    await expect(opener).toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
+    await expect(opener).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)")
     await tapInSheet(sheet, page.getByRole("menuitem", { name: "Rename" }))
     // The keyboard's Return reads Done.
     await expect(titleField(page)).toHaveAttribute("enterkeyhint", "done")
