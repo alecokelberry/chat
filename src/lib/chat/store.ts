@@ -14,7 +14,7 @@ import {
   text,
 } from "drizzle-orm/sqlite-core"
 
-import type { Customize } from "@/lib/ai/style"
+import { toCustomize, type Customize } from "@/lib/ai/style"
 
 /** Better Auth's user table (migrations/0001_auth.sql makes it), named here
  *  so a chat can reference its owner and a reply can read the owner's
@@ -79,7 +79,7 @@ export async function getCustomize(
     .select({ style: user.responseStyle, custom: user.customInstructions })
     .from(user)
     .where(eq(user.id, userId))
-  return row ?? { style: "default", custom: "" }
+  return row === undefined ? { style: "default", custom: "" } : toCustomize(row)
 }
 
 /** Adds the chat, or moves it to the top: it just got a message.

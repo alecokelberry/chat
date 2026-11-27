@@ -51,6 +51,8 @@
 import { APICallError, simulateReadableStream } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 
+import { CUSTOM_LEAD, PRESET_LEAD } from "@/lib/ai/style"
+
 type LanguageModelV4StreamPart =
   Awaited<
     ReturnType<MockLanguageModelV4["doStream"]>
@@ -143,9 +145,9 @@ function backwards(message: string) {
 function styleOf(prompt: Prompt) {
   const system = prompt.find((message) => message.role === "system")
   const text = typeof system?.content === "string" ? system.content : ""
-  const preset = /Response style: (\w+)\./.exec(text)?.[1]
+  const preset = new RegExp(`${PRESET_LEAD}(\\w+)\\.`).exec(text)?.[1]
   if (preset !== undefined) return preset
-  const custom = /The user's preferences[^\n]*\n([^\n]*)/.exec(text)?.[1]
+  const custom = new RegExp(`${CUSTOM_LEAD}[^\\n]*\\n([^\\n]*)`).exec(text)?.[1]
   return custom === undefined ? "default" : `custom, "${custom}"`
 }
 

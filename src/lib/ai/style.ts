@@ -18,8 +18,24 @@ export const RESPONSE_STYLES = [
 
 export type ResponseStyle = (typeof RESPONSE_STYLES)[number]
 
+/** Each style's name, as Settings and its search show it. */
+export const STYLE_NAMES: Record<ResponseStyle, string> = {
+  default: "Default",
+  custom: "Custom",
+  concise: "Concise",
+  formal: "Formal",
+  tutor: "Tutor",
+  comprehensive: "Comprehensive",
+}
+
 /** The most of Custom's text kept: the archived Chat's limit. */
 export const CUSTOM_MAX = 1_500
+
+/** How a preset's line starts, then its name and a full stop. */
+export const PRESET_LEAD = "Response style: "
+
+/** How Custom's line starts; the user's words follow on the next line. */
+export const CUSTOM_LEAD = "The user's preferences for how you respond"
 
 const PRESETS: Record<Exclude<ResponseStyle, "default" | "custom">, string> = {
   concise:
@@ -33,19 +49,29 @@ const PRESETS: Record<Exclude<ResponseStyle, "default" | "custom">, string> = {
 }
 
 /** The user's choice as saved: a style and Custom's words. */
-export type Customize = { style: string; custom: string }
+export type Customize = { style: ResponseStyle; custom: string }
 
 export const isResponseStyle = (value: unknown): value is ResponseStyle =>
   RESPONSE_STYLES.some((style) => style === value)
+
+/** The user row's two fields as a Customize, where they enter the app: a
+ *  style this doesn't know is Default. */
+export const toCustomize = (row: {
+  style: string
+  custom: string
+}): Customize => ({
+  style: isResponseStyle(row.style) ? row.style : "default",
+  custom: row.custom,
+})
 
 /** The line a style adds to the instructions, or undefined for none. */
 export function styleInstruction({
   style,
   custom,
 }: Customize): string | undefined {
-  if (!isResponseStyle(style) || style === "default") return undefined
+  if (style === "default") return undefined
   if (style !== "custom") return PRESETS[style]
   const words = custom.trim().slice(0, CUSTOM_MAX)
   if (words === "") return undefined
-  return `The user's preferences for how you respond (follow them unless they conflict with the instructions above):\n${words}`
+  return `${CUSTOM_LEAD} (follow them unless they conflict with the instructions above):\n${words}`
 }

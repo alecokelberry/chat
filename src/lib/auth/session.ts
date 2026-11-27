@@ -4,6 +4,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 
+import { toCustomize } from "@/lib/ai/style"
 import { devSignInAllowed, getAuth } from "@/lib/auth/server"
 
 export const getSession = createServerFn({ method: "GET" }).handler(
@@ -16,8 +17,26 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     return {
       name,
       email,
-      customize: { style: responseStyle, custom: customInstructions },
+      customize: toCustomize({
+        style: responseStyle,
+        custom: customInstructions,
+      }),
     }
+  }
+)
+
+/** Customize's choices as D1 holds them now, for Settings as it opens:
+ *  the session above may come from its 5-minute cookie, which a change
+ *  made in another browser doesn't reach. */
+export const getCustomizeNow = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const session = await getAuth().api.getSession({
+      headers: getRequest().headers,
+      query: { disableCookieCache: true },
+    })
+    if (session === null) return null
+    const { responseStyle, customInstructions } = session.user
+    return toCustomize({ style: responseStyle, custom: customInstructions })
   }
 )
 
