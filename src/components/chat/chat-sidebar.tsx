@@ -8,6 +8,10 @@
 // each is a menu an agent can find by the row's name, and Rename edits
 // that row's title in place.
 //
+// The list scrolls up behind New Chat (it starts --spacing-list-overlap under the button and
+// fades over its top 56px, scroll-fade-y), so rows dim softly under the button's
+// shadow instead of ending at a hard edge.
+//
 // On a computer the column collapses to a rail from its toggle or ⌘B
 // (Ctrl+B elsewhere), remembered in a cookie (src/lib/sidebar.ts). The
 // list stays mounted but hidden in the rail, so expanding never builds
@@ -152,7 +156,7 @@ export function ChatSidebar({
           shortcut={phone === false}
           onToggle={toggle}
         />
-        <div className="px-2.5">
+        <div className="relative z-10 px-2.5">
           <NewChatLink />
         </div>
         {phone === false && <ChatList chats={chats} />}
@@ -182,7 +186,7 @@ export function ChatSidebar({
               >
                 <BrandMark className="size-5" />
               </div>
-              <SidebarHeader>
+              <SidebarHeader className="relative z-10">
                 <NewChatLink onClick={close} tooltip={false} />
               </SidebarHeader>
               <ChatList
@@ -259,9 +263,9 @@ function ChatList({
     <ScrollArea
       aria-label="Chat list"
       fade
-      className="flex-1 group-data-collapsed/sidebar:hidden"
+      className="-mt-list-overlap flex-1 fade-size-long group-data-collapsed/sidebar:hidden"
     >
-      <div className="pb-2">
+      <div className="pt-list-overlap pb-2">
         {groups.map((group) => (
           <SidebarGroup key={group.label} label={group.label}>
             {group.chats.map((chat) => (
