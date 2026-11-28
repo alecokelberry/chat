@@ -233,13 +233,36 @@ export async function expectNoHeldStart(page: Page) {
 
 /** Taps `item` in a sheet once it has finished sliding up, where the
  *  item is, as a finger would: Playwright's own tap scrolls it into view
- *  first, and the sheet's scroller reads that as a swipe. */
+ *  first, and the sheet's scroller reads that as a swipe. The sheet is
+ *  finished when none of its timed animations still run (the ones that
+ *  follow its scroll always do) and it sits at the same place for five
+ *  frames: ui-sdk writes `--drawer-progress` at the start of an open, so
+ *  reading it says nothing about where the sheet is. */
 export async function tapInSheet(sheet: Locator, item: Locator) {
   await expect
     .poll(() =>
-      sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
+      sheet.evaluate(
+        (el) =>
+          new Promise<boolean>((resolve) => {
+            const still = () =>
+              el
+                .getAnimations({ subtree: true })
+                .filter((animation) => animation.timeline === document.timeline)
+                .every((animation) => animation.playState === "finished")
+            let top = el.getBoundingClientRect().top
+            let frames = 0
+            const look = () => {
+              const next = el.getBoundingClientRect().top
+              frames = next === top && still() ? frames + 1 : 0
+              top = next
+              if (frames >= 5) resolve(true)
+              else requestAnimationFrame(look)
+            }
+            requestAnimationFrame(look)
+          })
+      )
     )
-    .toBe("1")
+    .toBe(true)
   const box = await item.boundingBox()
   if (box === null) throw new Error("The item has no box")
   await sheet
