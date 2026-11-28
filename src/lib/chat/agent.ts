@@ -47,6 +47,7 @@ import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
+import { ownerOf } from "@/lib/chat/id"
 import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
@@ -71,11 +72,9 @@ export class ChatAgent extends AIChatAgent<Env> {
   // The name (user id and chat id) goes to that user's own browser only.
   static options = { sendIdentityOnConnect: true }
 
-  /** The user and the chat, from the agent's name (src/lib/chat/route.ts):
-   *  `<user id>:<chat id>`. */
+  /** The user and the chat, from the agent's name (agentName). */
   private get owner(): ChatOwner {
-    const at = this.name.lastIndexOf(":")
-    return { userId: this.name.slice(0, at), id: this.name.slice(at + 1) }
+    return ownerOf(this.name)
   }
 
   /** Tells this chat's open tabs the list changed. An RPC method, for
