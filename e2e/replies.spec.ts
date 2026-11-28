@@ -61,9 +61,9 @@ test("a reply says who answered and how long it took, after a reload too", async
   await send(page, "Hello")
   const actions = page.getByRole("toolbar", { name: "Reply actions" })
   // The mock needs no waiting, so the server's clock says under a second.
-  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
+  await expect(actions).toContainText(/Super · <1s$/)
   await page.reload()
-  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
+  await expect(actions).toContainText(/Super · <1s$/)
 })
 
 test("a stopped reply says how long it ran before Stop", async ({ page }) => {
@@ -73,9 +73,9 @@ test("a stopped reply says how long it ran before Stop", async ({ page }) => {
   await expect(reply).toContainText("talking")
   await page.getByRole("button", { name: "Stop" }).click()
   const actions = page.getByRole("toolbar", { name: "Reply actions" })
-  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
+  await expect(actions).toContainText(/Super · (<1s|[1-9]\.\ds|0\.[1-9]s)$/)
   await page.reload()
-  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
+  await expect(actions).toContainText(/Super · (<1s|[1-9]\.\ds|0\.[1-9]s)$/)
 })
 
 test("answeredBy names the model, with tenths under ten seconds", () => {
