@@ -1,0 +1,46 @@
+# Redraws the screenshot baselines (e2e/screenshots.spec.ts) with CI's own
+# Chromium and commits them to the branch: run it from the Actions tab
+# (Run workflow, on the PR's branch) after a change meant to move pixels.
+# Baselines drawn anywhere else mismatch CI's text by a few pixels.
+#
+# A push made with the workflow's own token starts no new run, so the PR
+# would have no `verify` for its new head. It starts one itself: workflow
+# runs started by hand are the exception to that rule.
+name: screenshots
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  update:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+        with:
+          browser: true
+      - run: pnpm e2e e2e/screenshots.spec.ts --update-snapshots=all
+      - name: Commit the new baselines and start verify on them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- e2e/screenshots.spec.ts-snapshots \
+            && [ -z "$(git ls-files --others --exclude-standard e2e/screenshots.spec.ts-snapshots)" ]; then
+            echo "The baselines already match."; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add e2e/screenshots.spec.ts-snapshots
+          git commit -m "Redraw the screenshot baselines with CI's Chromium"
+          git push
+          gh workflow run verify.yml --ref "$GITHUB_REF_NAME"
