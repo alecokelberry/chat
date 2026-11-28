@@ -30,7 +30,7 @@ Every push to `main` deploys through Cloudflare Workers Builds, which runs `pnpm
 
 The Worker needs six secrets, live and for Previews, and a deploy fails while one is missing: `BETTER_AUTH_SECRET`, `SETUP_CODE`, `NVIDIA_API_KEY`, `AI_GATEWAY_URL` (the AI Gateway "chat"'s NVIDIA route, as in `.dev.vars` above), `AI_GATEWAY_TOKEN` (made on the gateway's Settings page, with Run permission) and `KEENABLE_API_KEY` (web search: keenable.ai's free plan, 100,000 searches a month, no card).
 
-Every push to another branch builds a Preview with `pnpm run deploy:preview`, and Workers Builds comments its address on the PR: `<branch>-chat.alecokelberry.workers.dev`. Previews share the `chat-preview` database, which gets the branch's migrations, and their own secrets, never the live ones. Each side has its own passkey, so your phone offers one at a time: live's belongs to `chat.alecokelberry.workers.dev`, and one passkey belonging to `alecokelberry.workers.dev` signs in on every Preview. Add each once (the setup code below, with `pnpm wrangler preview base-config secret put SETUP_CODE` and a Preview's address for a Preview). If the phone offers a passkey the server doesn't know, picking it deletes it from the phone.
+Every push to another branch builds a Preview with `pnpm run deploy:preview`, and Workers Builds comments its address on the PR: `<branch>-chat.alecokelberry.workers.dev`. Previews share the `chat-preview` database, which gets the branch's migrations, and their own secrets, never the live ones. Each side has its own passkey, so your phone offers one at a time: live's belongs to `chat.alecokelberry.workers.dev`, and one passkey belonging to `alecokelberry.workers.dev` signs in on every Preview. Add each once (the setup code below, with `pnpm wrangler preview base-config secret put SETUP_CODE` and a Preview's address for a Preview). Sign-in offers only the passkeys the server knows, so a stale one on the phone doesn't appear.
 
 To add a passkey while signed out (a new device), this sets a fresh setup code and opens `/setup` with it, without showing the code:
 
@@ -43,3 +43,16 @@ Afterwards, turn `/setup` off again by replacing the code with one nobody knows 
 ```bash
 openssl rand -hex 24 | tr -d '\n' | pnpm wrangler secret put SETUP_CODE
 ```
+
+## Backups
+
+`pnpm db:export` backs up the live D1 database to `backups/` (ignored, never committed; keep it somewhere private), and `pnpm db:export --local` the local one. The file is data only: the chat list, accounts, sessions and passkeys, settings, usage, and Search's copy of each message's text. It doesn't hold the chats' messages or attachments, which live in each chat's own agent (a Durable Object).
+
+D1 also keeps its own history for 7 days on the free plan (Time Travel), which is the way back from a bad write or migration. A backup is for anything older, or a database that's gone. Make a new database named `chat`, put its id in `wrangler.jsonc`'s `database_id`, then:
+
+```bash
+pnpm wrangler d1 migrations apply chat --remote
+pnpm wrangler d1 execute chat --remote --file backups/<file>.sql
+```
+
+The migrations make the tables, and as the rows go in, the triggers rebuild Search's index. Then deploy.
