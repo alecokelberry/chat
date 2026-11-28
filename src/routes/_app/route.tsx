@@ -22,8 +22,7 @@ import { ChatListProvider } from "@/components/chat/chat-list"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { DemoBar } from "@/components/ui/demo-bar"
 import { SkipLink } from "@/components/ui/skip-link"
-import { getSession } from "@/lib/auth/session"
-import { getChats } from "@/lib/chat/list"
+import { getApp } from "@/lib/chat/list"
 import {
   type DataState,
   parseDataState,
@@ -40,11 +39,13 @@ export const Route = createFileRoute("/_app")({
   }),
   search: { middlewares: [retainSearchParams(["data"])] },
   beforeLoad: async () => {
-    const user = await getSession()
-    if (user === null) throw redirect({ to: "/sign-in" })
-    return { user, sidebarCollapsed: isSidebarCollapsed() }
+    // The account and the chat list in one call, so a navigation or a
+    // refresh is one request. The loader only passes the list on.
+    const app = await getApp()
+    if (app === null) throw redirect({ to: "/sign-in" })
+    return { ...app, sidebarCollapsed: isSidebarCollapsed() }
   },
-  loader: () => getChats(),
+  loader: ({ context }) => context.chats,
   component: AppLayout,
 })
 
