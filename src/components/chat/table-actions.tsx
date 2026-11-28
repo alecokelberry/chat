@@ -40,8 +40,12 @@ export function Table({
     <div data-streamdown="table-wrapper" className="group/table relative">
       <div className="flex justify-end px-2 pt-2 opacity-0 transition-opacity duration-fast ease-standard group-hover/table:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
         <MessageToolbar aria-label="Table actions">
-          <CopyAction text={() => tableDataToTSV(data())} label="Copy table" />
-          <MessageAction label="Save as CSV" onClick={save}>
+          <CopyAction
+            text={() => tableDataToTSV(data())}
+            label="Copy table"
+            size="header"
+          />
+          <MessageAction label="Save as CSV" size="header" onClick={save}>
             <DownloadIcon aria-hidden />
           </MessageAction>
         </MessageToolbar>

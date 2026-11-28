@@ -58,3 +58,39 @@ test("a computer's popover has no bar", async ({ page }) => {
     await popover.evaluate((el) => getComputedStyle(el).userSelect)
   ).not.toBe("none")
 })
+
+test.describe("a tap right after a sheet closes", () => {
+  test.use({
+    viewport: { width: 390, height: 780 },
+    hasTouch: true,
+    isMobile: true,
+  })
+
+  // Native sheets hand the next tap to the page at once; ui-sdk's backdrop
+  // would eat it through the close animation (src/styles/app.css).
+  test("reaches the page, not the closing sheet's backdrop", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await modelPicker(page).tap()
+    await expect(page.locator('[data-slot="select-content"]')).toHaveAttribute(
+      "data-presentation",
+      "sheet"
+    )
+    const sidebar = await page
+      .getByRole("button", { name: "Open sidebar" })
+      .boundingBox()
+    if (sidebar === null) throw new Error("no sidebar button")
+    // Tap outside the sheet, on the dimmed page, then the sidebar button
+    // before the sheet has finished leaving. No actionability wait: a
+    // plain tap() would wait out the backdrop and hide the bug.
+    await page.touchscreen.tap(195, 60)
+    await page.touchscreen.tap(
+      sidebar.x + sidebar.width / 2,
+      sidebar.y + sidebar.height / 2
+    )
+    await expect(page.getByRole("dialog", { name: "Chats" })).toBeVisible({
+      timeout: 600,
+    })
+  })
+})

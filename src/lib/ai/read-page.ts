@@ -21,7 +21,7 @@ import { tool } from "ai"
 import { z } from "zod"
 
 import { mockRead } from "@/lib/ai/mock"
-import { KeenableError, SearchError } from "@/lib/ai/search"
+import { guarded, keenable, WebToolError } from "@/lib/ai/keenable"
 import {
   refusalFor,
   siteOf,
@@ -51,26 +51,17 @@ const KeenablePages = z.object({
   ),
 })
 
-async function keenable(
+async function fetchPage(
   url: string,
   abortSignal: AbortSignal | undefined
 ): Promise<Page> {
-  const signals = [AbortSignal.timeout(TIMEOUT_MS)]
-  if (abortSignal !== undefined) signals.push(abortSignal)
-  const response = await fetch("https://api.keenable.ai/v1/fetch", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": env.KEENABLE_API_KEY,
-    },
-    body: JSON.stringify({ urls: [url], content: { max_chars: PAGE_CHARS } }),
-    signal: AbortSignal.any(signals),
-  })
-  if (!response.ok) {
-    await response.body?.cancel()
-    throw new KeenableError(response.status)
-  }
-  return pageOf(KeenablePages.parse(await response.json()).results, url)
+  const json = await keenable(
+    "fetch",
+    { urls: [url], content: { max_chars: PAGE_CHARS } },
+    TIMEOUT_MS,
+    abortSignal
+  )
+  return pageOf(KeenablePages.parse(json).results, url)
 }
 
 /** The one page Keenable was asked for, at its own address if that's a
@@ -97,7 +88,7 @@ async function read(url: string, abortSignal: AbortSignal | undefined) {
   const page =
     env.MOCK_MODEL === "1"
       ? await mockRead(url, abortSignal)
-      : await keenable(url, abortSignal)
+      : await fetchPage(url, abortSignal)
   return {
     url: page.url,
     site: siteOf(page.url) ?? "",
@@ -119,30 +110,27 @@ export const readPage = (known: KnownAddresses) => {
     }),
     execute: async ({ url }, { abortSignal }) => {
       const refusal = refusalFor(url)
-      if (refusal !== null) throw new SearchError(refusal)
+      if (refusal !== null) throw new WebToolError(refusal)
       if (left <= 0)
         return {
           refused: `That's the ${READ_LIMIT} pages this reply can read. Answer from what you have.`,
         }
-      if (!known.has(url)) throw new SearchError(UNSEEN_ADDRESS)
+      if (!known.has(url)) throw new WebToolError(UNSEEN_ADDRESS)
       left -= 1
-      try {
-        const page = await read(url, abortSignal)
-        known.add(page.url)
-        known.add(page.content, page.site)
-        return page
-      } catch (error) {
-        if (abortSignal?.aborted === true) throw error
-        console.error(
-          "Read failed:",
-          error instanceof Error ? error.message : String(error)
-        )
-        throw new SearchError(
-          error instanceof KeenableError && error.status === 402
-            ? "This month's free web reads are used up."
-            : "The page couldn't be read."
-        )
-      }
+      return guarded(
+        "Read",
+        {
+          used: "This month's free web reads are used up.",
+          failed: "The page couldn't be read.",
+        },
+        abortSignal,
+        async () => {
+          const page = await read(url, abortSignal)
+          known.add(page.url)
+          known.add(page.content, page.site)
+          return page
+        }
+      )
     },
   })
 }

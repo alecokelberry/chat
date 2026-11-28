@@ -18,7 +18,7 @@ import {
   toast,
 } from "@ui-sdk/react/toast"
 
-import { usePhone } from "@/lib/phone"
+import { usePhone } from "@/lib/media"
 
 if (import.meta.env.MODE === "test" && typeof window !== "undefined") {
   Object.assign(window, { toast })

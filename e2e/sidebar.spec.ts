@@ -1,10 +1,12 @@
 import type { Page } from "@playwright/test"
 
 import {
+  closeDeleteToast,
   expect,
   expectNoHeldStart,
   greeting,
   recordStartTimes,
+  savedMessages,
   send,
   settled,
   showAllChats,
@@ -380,6 +382,31 @@ test("Open in new tab opens the chat in a new tab", async ({ page }) => {
   await expect(tab).toHaveURL(new RegExp(`${path}$`))
 })
 
+// In the Home Screen app a new tab is Safari, signed out (chat-actions.tsx),
+// so the item isn't there at all: not on screen, not to Tab, not to an
+// agent. Playwright can't install the app, so the media query says so.
+test("the Home Screen app leaves out Open in new tab", async ({ page }) => {
+  await page.addInitScript(() => {
+    const matchMedia = window.matchMedia.bind(window)
+    window.matchMedia = (query) =>
+      query === "(display-mode: standalone)"
+        ? matchMedia("all")
+        : matchMedia(query)
+  })
+  await startChat(page, "Installed app")
+  await rowMenu(page).click()
+  await expect(
+    menu(page).getByRole("menuitem", { name: "Rename" })
+  ).toBeVisible()
+  await expect(
+    menu(page).getByRole("menuitem", { name: "Open in new tab" })
+  ).toHaveCount(0)
+  const labels = await page.evaluate(() =>
+    window.agent.snapshot().map((entry) => entry.label)
+  )
+  expect(labels).not.toContain("Open in new tab")
+})
+
 test("the header's … menu pins and renames in the pill", async ({ page }) => {
   await startChat(page, "Header menu")
   const actions = page.getByRole("button", { name: "Chat actions" })
@@ -408,6 +435,27 @@ test("the header's … menu pins and renames in the pill", async ({ page }) => {
     menu(page).getByRole("menuitem", { name: "Unpin" })
   ).toBeVisible()
   await page.keyboard.press("Escape")
+})
+
+test("renaming the open chat loads the list once, as one call", async ({
+  page,
+}) => {
+  await startChat(page, "Count my loads")
+  const loads: string[] = []
+  page.on("request", (request) => {
+    // The layout's call (getApp) is the only GET server function this page
+    // makes: no Settings, Search or other page that has its own is opened.
+    if (request.method() === "GET" && request.url().includes("/_serverFn/"))
+      loads.push(request.url())
+  })
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  const name = unique("Counted once")
+  await page.keyboard.type(name)
+  await page.keyboard.press("Enter")
+  await expect(openRow(page).getByRole("link")).toHaveText(name)
+  await settled(page)
+  expect(loads).toHaveLength(1)
 })
 
 // Delete (chat-list.tsx): the row goes at once and a toast offers Undo;
@@ -440,16 +488,6 @@ async function deleteForGood(page: Page, path: string) {
   await page.reload()
   await expect(rowFor(page, path)).toHaveCount(0)
 }
-
-/** What the chat's agent holds, as the browser loads it: how many messages,
- *  or -1 while the agent is being wiped (it answers 500 until it is gone). */
-const savedMessages = (page: Page, id: string) =>
-  page.evaluate(async (id) => {
-    const response = await fetch(`/api/chats/${id}/get-messages`)
-    if (!response.ok) return -1
-    const messages: unknown[] = await response.json()
-    return messages.length
-  }, id)
 
 test("Delete hides the open chat at once, and Undo puts it back", async ({
   page,
@@ -494,13 +532,7 @@ test.describe("a chat wiped for good", () => {
     await expect(toasts(page)).toContainText("Chat deleted")
     // As if it timed out, without the wait. The delete succeeds, so no
     // toast says it failed: the agent's wipe once beat its own answer.
-    const deleted = page.waitForResponse(
-      (response) =>
-        response.url().includes("/_serverFn/") &&
-        response.request().method() === "POST"
-    )
-    await page.evaluate(() => window.toast.dismiss())
-    expect((await deleted).ok()).toBe(true)
+    await closeDeleteToast(page)
     // The wipe waits until the delete has answered: run at once, it can
     // end the agent before its answer leaves, and the delete then fails.
     expect(await savedMessages(page, id)).toBe(2)
@@ -635,11 +667,11 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(last).toHaveAttribute("aria-current", "page")
 
-  // Search lists New Chat and the recent 50, and ranks all 1,000 (only
-  // the rows in view render), so the oldest is a few letters away.
+  // Search lists its 7 actions and the recent 50, and ranks all 1,000
+  // (only the rows in view render), so the oldest is a few letters away.
   await page.keyboard.press("ControlOrMeta+k")
   const search = page.getByRole("dialog", { name: "Search" })
-  await expect(search.getByRole("option")).toHaveCount(51)
+  await expect(search.getByRole("option")).toHaveCount(57)
   await page
     .getByRole("combobox", { name: "Search chats" })
     .fill("seeded chat 995")

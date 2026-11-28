@@ -24,6 +24,22 @@ async function highlighted(reply: Locator) {
   )
 }
 
+test("math rendering loads only for a reply with math", async ({ page }) => {
+  const math: string[] = []
+  page.on("request", (request) => {
+    if (request.url().includes("reply-math")) math.push(request.url())
+  })
+  await signInAsDev(page)
+  await send(page, "Say hello")
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done."
+  )
+  expect(math).toHaveLength(0)
+  await send(page, "Show me some markdown")
+  await expect(page.locator(".katex").first()).toBeVisible()
+  expect(math.length).toBeGreaterThan(0)
+})
+
 test("a reply renders markdown, code and math, without raw syntax while it streams", async ({
   page,
 }) => {
@@ -186,7 +202,12 @@ test("code copies and folds, and a table copies and saves", async ({
   await expect(reply).toContainText("Done.", { timeout: 15_000 })
   await expect(reply.getByRole("button", { name: "Show more" })).toHaveCount(0)
   const codeActions = reply.getByRole("toolbar", { name: "Code actions" })
-  await codeActions.getByRole("button", { name: "Copy code" }).click()
+  // Grok's sizes: code's Copy is 24px with a 16px glyph, a table's 28px
+  // with a 20px glyph.
+  const copyCode = codeActions.getByRole("button", { name: "Copy code" })
+  expect((await copyCode.boundingBox())?.width).toBe(24)
+  expect((await copyCode.locator("svg").first().boundingBox())?.width).toBe(16)
+  await copyCode.click()
   await expect(
     codeActions.getByRole("button", { name: "Copied" })
   ).toBeVisible()
@@ -198,7 +219,10 @@ test("code copies and folds, and a table copies and saves", async ({
   const table = reply.locator('[data-streamdown="table-wrapper"]')
   await table.hover()
   const tableActions = table.getByRole("toolbar", { name: "Table actions" })
-  await tableActions.getByRole("button", { name: "Copy table" }).click()
+  const copyTable = tableActions.getByRole("button", { name: "Copy table" })
+  expect((await copyTable.boundingBox())?.width).toBe(28)
+  expect((await copyTable.locator("svg").first().boundingBox())?.width).toBe(20)
+  await copyTable.click()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     "Name\tValue\nalpha\t1"
   )
