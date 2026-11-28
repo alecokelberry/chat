@@ -9,9 +9,11 @@
 // never touched: this is only the copy that goes to the model. Pure, so
 // unit tests check it in Node.
 //
-// First, a long chat is fitted to HISTORY_BUDGET (fitHistory). Its size is
-// counted in characters, about four to a token: each text and each
-// document's text by its length, and each image as IMAGE_COST. Thinking and
+// A long chat is fitted to HISTORY_BUDGET (fitHistory), after its images
+// are made what the chosen model takes, so it counts what is really sent.
+// Its size is counted in characters, about four to a token: each text and
+// each document's text by its length, and each image as IMAGE_COST (an
+// "[image: name]" for a model that can't see is just its text). Thinking and
 // tool calls don't count, since pruneMessages drops every old one. The
 // instructions aren't part of the chat, so they always go. The last
 // question, with all its files, and anything after it always go whole.
@@ -46,7 +48,7 @@ export async function modelMessages(
 ): Promise<ModelMessage[]> {
   return pruneMessages({
     messages: await convertToModelMessages(
-      fitHistory(messages).map((message) => imagesFor(message, seesImages)),
+      fitHistory(messages.map((message) => imagesFor(message, seesImages))),
       {
         convertDataPart: (part) =>
           isDocument(part)

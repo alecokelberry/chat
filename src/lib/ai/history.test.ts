@@ -163,3 +163,35 @@ it.prop([chats, budgets])("fitting twice changes nothing", (chat, budget) => {
   const fitted = fitHistory(chat, budget)
   expect(fitHistory(fitted, budget)).toEqual(fitted)
 })
+
+test("images count at what the model is sent", async () => {
+  const photo: Part = {
+    type: "file",
+    mediaType: "image/jpeg",
+    filename: "photo.jpg",
+    url: "data:image/jpeg;base64,AAAA",
+  }
+  // 30 photos would be over budget as images, but not as "[image: …]".
+  const chat: UIMessage[] = [
+    question("q1", "The first question"),
+    { id: "a1", role: "assistant", parts: [{ type: "text", text: "Yes." }] },
+    {
+      id: "q2",
+      role: "user",
+      parts: [
+        ...Array(30).fill(photo),
+        { type: "text", text: "Which is best?" },
+      ],
+    },
+    {
+      id: "a2",
+      role: "assistant",
+      parts: [{ type: "text", text: "The third." }],
+    },
+    question("q3", "Why?"),
+  ]
+  const sent = async (seesImages: boolean) =>
+    JSON.stringify(await modelMessages(chat, seesImages))
+  expect(await sent(false)).toContain("The first question")
+  expect(await sent(true)).not.toContain("The first question")
+})
