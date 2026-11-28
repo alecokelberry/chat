@@ -63,8 +63,9 @@ describe("streaming", () => {
     expect(prepareMarkdown(table, true)).toBe(table)
   })
 
-  test("holds back nothing in a finished reply", () => {
+  test("holds back nothing when nothing is half-written", () => {
     expect(prepareMarkdown("plain words", true)).toBe("plain words")
+    expect(prepareMarkdown("so $x$", true)).toBe("so $$x$$")
   })
 })
 
@@ -80,13 +81,12 @@ describe("for any reply", () => {
     }
   })
 
-  it.prop([fc.string({ unit: fc.constantFrom(..."ab $\\()[]|-:".split("")) })])(
-    "keeps a fenced block's lines exactly",
-    (body) => {
-      const lines = body.split("\n").filter((line) => !/^\s*[`~]/.test(line))
-      const code = lines.join("\n")
-      const out = prepareMarkdown(`\`\`\`\n${code}\n\`\`\``)
-      expect(out).toBe(`\`\`\`\n${code}\n\`\`\``)
-    }
-  )
+  it.prop([
+    fc.string({ unit: fc.constantFrom(..."ab $\\()[]|-:\n".split("")) }),
+  ])("keeps a fenced block's lines exactly", (body) => {
+    // No backtick or tilde in the alphabet, so nothing closes the fence.
+    const code = body
+    const out = prepareMarkdown(`\`\`\`\n${code}\n\`\`\``)
+    expect(out).toBe(`\`\`\`\n${code}\n\`\`\``)
+  })
 })
