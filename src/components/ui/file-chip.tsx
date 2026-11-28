@@ -41,18 +41,23 @@ function FileChip({
 
 /** A file's name on one line, giving way in the middle so its last TAIL
  *  characters stay; the Library's rows use it too. */
-function FileName({ name, className }: { name: string; className?: string }) {
-  const long = name.length > TAIL * 2
-  return (
-    <span className={cn("flex min-w-0 text-foreground", className)}>
-      {long ? (
-        <>
-          <span className="truncate">{name.slice(0, -TAIL)}</span>
-          <span className="shrink-0">{name.slice(-TAIL)}</span>
-        </>
-      ) : (
+function FileName({ name }: { name: string }) {
+  if (name.length <= TAIL * 2)
+    return (
+      <span className="flex min-w-0 text-sm font-medium text-foreground">
         <span className="truncate">{name}</span>
-      )}
+      </span>
+    )
+  // Read whole, not as the two pieces it's drawn in.
+  return (
+    <span className="flex min-w-0 text-sm font-medium text-foreground">
+      <span className="sr-only">{name}</span>
+      <span aria-hidden className="truncate">
+        {name.slice(0, -TAIL)}
+      </span>
+      <span aria-hidden className="shrink-0">
+        {name.slice(-TAIL)}
+      </span>
     </span>
   )
 }

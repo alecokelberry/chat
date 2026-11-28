@@ -8,7 +8,7 @@
 // (indexMessages, src/lib/chat/message-index.ts), so one path keeps both
 // up to date and indexes an older chat whole. Rows belong to their chat's
 // row in the chat list, so deleting a chat (or its user) deletes them too.
-import { and, desc, eq, lt, or } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/d1"
 import {
   foreignKey,
@@ -130,25 +130,32 @@ export function attachmentsOf(messages: readonly UIMessage[]): AttachmentRow[] {
 /** A statement for D1: its SQL and what to bind. */
 export type Statement = { sql: string; params: unknown[] }
 
-/** The statements that bring the chat's rows up to `ids`, every message
- *  it holds, run in indexMessages' batch: drop the rows of messages it no
- *  longer holds, and of `changedIds`' parts that are gone or now hold
- *  another file (another name, kind or size), then add `rows`, the changed
- *  messages' attachments. An unchanged attachment keeps its row (and its
- *  seq). A row is a few names and numbers, so one statement holds them
- *  all, well under D1's 2 MB for a bound value. */
+/** The statements that bring the chat's rows up to `messages`, the whole
+ *  chat, run in indexMessages' batch: drop the rows of messages it no
+ *  longer holds, and of `changed` messages' parts that are gone or now
+ *  hold another file (another name, kind or size), then add `changed`'s
+ *  attachments. An unchanged attachment keeps its row (and its seq). A
+ *  row is a few names and numbers, so one statement holds them all, well
+ *  under D1's 2 MB for a bound value. */
 export function attachmentStatements(
   { userId, id }: ChatOwner,
-  ids: string,
-  changedIds: string,
-  rows: readonly AttachmentRow[]
+  messages: readonly UIMessage[],
+  changed: readonly UIMessage[]
 ): Statement[] {
-  const json = JSON.stringify(rows)
+  const changedIds = new Set(changed.map((message) => message.id))
+  // From the whole chat, since a question's time is on the reply after it.
+  const rows = JSON.stringify(
+    attachmentsOf(messages).filter((row) => changedIds.has(row.messageId))
+  )
   return [
     {
       sql: `delete from attachment where userId = ?1 and chatId = ?2
         and messageId not in (select value from json_each(?3))`,
-      params: [userId, id, ids],
+      params: [
+        userId,
+        id,
+        JSON.stringify(messages.map((message) => message.id)),
+      ],
     },
     {
       sql: `delete from attachment where userId = ?1 and chatId = ?2
@@ -159,7 +166,7 @@ export function attachmentStatements(
           and value ->> 'name' = attachment.name
           and value ->> 'kind' = attachment.kind
           and value ->> 'size' = attachment.size)`,
-      params: [userId, id, changedIds, json],
+      params: [userId, id, JSON.stringify([...changedIds]), rows],
     },
     // `where true` tells SQLite the upsert's ON CONFLICT isn't the
     // SELECT's. The chat's start stands in for a time the chat doesn't
@@ -173,7 +180,7 @@ export function attachmentStatements(
             (select createdAt from chat where userId = ?1 and id = ?2))
         from json_each(?3) where true
         on conflict do nothing`,
-      params: [userId, id, json],
+      params: [userId, id, rows],
     },
   ]
 }
@@ -190,25 +197,14 @@ export type LibraryItem = {
   at: number
 }
 
-/** Where the Library is in its list: the last item it has. */
-export type LibraryCursor = { at: number; seq: number }
-
 /** How many items one page of the Library holds. */
 export const LIBRARY_PAGE = 60
 
-/** One page of the user's attachments, newest first, after `cursor`. */
+/** The first page of the user's attachments, newest first. */
 export async function listAttachments(
   d1: D1Database,
-  userId: string,
-  cursor?: LibraryCursor
+  userId: string
 ): Promise<LibraryItem[]> {
-  const after =
-    cursor === undefined
-      ? undefined
-      : or(
-          lt(attachment.at, cursor.at),
-          and(eq(attachment.at, cursor.at), lt(attachment.seq, cursor.seq))
-        )
   return drizzle(d1)
     .select({
       seq: attachment.seq,
@@ -221,14 +217,16 @@ export async function listAttachments(
       at: attachment.at,
     })
     .from(attachment)
-    .where(and(eq(attachment.userId, userId), after))
+    .where(eq(attachment.userId, userId))
     .orderBy(desc(attachment.at), desc(attachment.seq))
     .limit(LIBRARY_PAGE)
 }
 
 /** Where the browser gets an image the Library shows: from its chat's
- *  agent (src/lib/chat/agent.ts, fileResponse), behind the chats' door.
- *  `v` is the row's seq, so the browser can keep it for good: a changed
- *  file is a new row. */
+ *  agent (ChatAgent.onRequest, src/lib/chat/agent.ts), behind the chats'
+ *  door, by its message and part. `v` is the row's seq, which the server
+ *  doesn't read: it makes the address change with the file (a changed
+ *  file is a new row, and seq is never reused), so the browser can keep
+ *  what it got for good. */
 export const fileUrl = (item: LibraryItem) =>
   `/api/chats/${item.chatId}/files/${item.messageId}/${item.part}?v=${item.seq}`

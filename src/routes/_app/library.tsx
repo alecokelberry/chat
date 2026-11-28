@@ -5,6 +5,8 @@
 // heading, then the files. Each row shows the image (from its chat's
 // agent, src/lib/chat/library.ts's fileUrl) or a document's icon, its name
 // and kind, and how long ago it was sent, and opens the chat it came from.
+// A chat being deleted takes its files with it at once, and Undo brings
+// them back, as in the sidebar's list.
 // The list comes from the attachment index (getLibrary); as the page opens
 // it has a few chats the index doesn't hold yet index themselves, as Search
 // does, and loads the list again if any did, so older chats fill in.
@@ -19,9 +21,10 @@ import {
 } from "@tanstack/react-router"
 import { FileTextIcon, ImageOffIcon } from "lucide-react"
 
+import { useChatList } from "@/components/chat/chat-list"
 import { Button } from "@/components/ui/button"
 import { FileName } from "@/components/ui/file-chip"
-import { groupChats } from "@/lib/chat/groups"
+import { groupByDay } from "@/lib/chat/groups"
 import { fileUrl, type LibraryItem } from "@/lib/chat/library"
 import { getLibrary, indexOlderChats } from "@/lib/chat/list"
 import { relativeTime } from "@/lib/chat/relative-time"
@@ -49,6 +52,11 @@ const useInBrowser = () =>
 function Library() {
   const { data } = useSearch({ from: "/_app" })
   const items = previewLibrary(Route.useLoaderData(), data)
+  // Only the files of chats in the list: a chat being deleted leaves it
+  // at once, with Undo in its toast, before the server deletes it.
+  const { chats } = useChatList()
+  const listed = new Set(chats.map((chat) => chat.id))
+  const shown = items.filter((item) => listed.has(item.chatId))
   const router = useRouter()
   useEffect(() => {
     void indexOlderChats().then((indexed) => {
@@ -63,7 +71,7 @@ function Library() {
     >
       <div className="mx-auto w-full max-w-composer pt-2 md:pt-12">
         <h1 className="px-3 pb-4 text-base font-medium">Library</h1>
-        {items.length === 0 ? <Empty /> : <Files items={items} />}
+        {shown.length === 0 ? <Empty /> : <Files items={shown} />}
       </div>
     </main>
   )
@@ -85,22 +93,13 @@ function Files({ items }: { items: LibraryItem[] }) {
   const inBrowser = useInBrowser()
   if (!inBrowser) return null
   const now = Date.now()
-  const groups = groupChats(
-    items.map((item) => ({
-      item,
-      pinned: false,
-      updatedAt: item.at,
-      createdAt: item.at,
-    })),
-    now
-  )
-  return groups.map((group) => (
+  return groupByDay(items, (item) => item.at, now).map((group) => (
     <section key={group.label} aria-label={group.label} className="pb-3">
       <h2 className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">
         {group.label}
       </h2>
       <ul className="flex flex-col gap-px">
-        {group.chats.map(({ item }) => (
+        {group.items.map((item) => (
           <li key={item.seq}>
             <Row item={item} now={now} />
           </li>

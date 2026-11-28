@@ -1,7 +1,12 @@
 import { fc, it } from "@fast-check/vitest"
 import { expect } from "vitest"
 
-import { groupChats, sortChats, type ChatSort } from "@/lib/chat/groups"
+import {
+  groupByDay,
+  groupChats,
+  sortChats,
+  type ChatSort,
+} from "@/lib/chat/groups"
 
 // Runs in America/New_York (vitest.config.ts), so the days around a
 // daylight saving change, 23 and 25 hours long, are in range.
@@ -101,5 +106,20 @@ it.prop([world])(
       expect(chat[key]).toBeGreaterThanOrEqual(next[key])
       if (chat[key] === next[key]) expect(chat.id).toBeLessThan(next.id)
     }
+  }
+)
+
+it.prop([world])(
+  "puts anything dated in exactly one group, by the same calendar days",
+  ([at, chats, key]) => {
+    const groups = groupByDay(chats, (chat) => chat[key], at)
+    for (const group of groups)
+      for (const chat of group.items)
+        expect(group.label).toBe(
+          expectedGroup({ ...chat, pinned: false }, at, key)
+        )
+    expect(
+      groups.flatMap((group) => group.items).toSorted((a, b) => a.id - b.id)
+    ).toEqual(chats)
   }
 )

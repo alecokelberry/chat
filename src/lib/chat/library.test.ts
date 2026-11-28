@@ -36,12 +36,10 @@ const isInput = (value: unknown): value is SQLInputValue =>
 /** Brings the chat's rows up to `messages`, `changed` being the ones whose
  *  attachments are written, as indexMessages does. */
 function index(messages: UIMessage[], changed = messages) {
-  const changedIds = new Set(changed.map((message) => message.id))
   const statements = attachmentStatements(
     { userId: "u", id: "c" },
-    JSON.stringify(messages.map((message) => message.id)),
-    JSON.stringify([...changedIds]),
-    attachmentsOf(messages).filter((row) => changedIds.has(row.messageId))
+    messages,
+    changed
   )
   for (const { sql, params } of statements)
     db.prepare(sql).run(...params.filter(isInput))
