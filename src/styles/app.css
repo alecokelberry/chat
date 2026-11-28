@@ -518,12 +518,13 @@
 }
 
 /* A phone sheet with a text field (Search): nearly the height the page
-   shows, above the keyboard (ui-sdk sets --visual-viewport-height on the
-   sheet's viewport and lifts the sheet by the keyboard's height), clear
-   of the notch by 1rem. */
+   shows, above the keyboard, clear of the notch by 1rem. ui-sdk sets
+   --available-height on every sheet to the room above the keyboard (it
+   follows the keyboard as it rises), so one calc fits it; 100dvh stands in
+   where a sheet isn't open. */
 @utility sheet-tall {
   height: calc(
-    var(--visual-viewport-height, 100dvh) - env(safe-area-inset-top) - 1rem
+    var(--available-height, 100dvh) - env(safe-area-inset-top) - 1rem
   );
 }
 
