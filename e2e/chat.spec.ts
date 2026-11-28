@@ -325,3 +325,17 @@ test("offline, Send waits and a line says so; the draft stays, and online again 
   await expect(questions(page)).toHaveCount(2)
   await expect(replies(page).last()).toContainText("Done.")
 })
+
+test("a page that loads online never shows the offline line, even if navigator.onLine says false", async ({
+  page,
+}) => {
+  // iOS (the Simulator) can report false on a page that loaded fine: only
+  // the browser's offline event counts.
+  await page.addInitScript(() =>
+    Object.defineProperty(Navigator.prototype, "onLine", { get: () => false })
+  )
+  await signInAsDev(page)
+  await page.getByRole("textbox", { name: "Message" }).fill("Still sends")
+  await expect(page.getByText("Offline. Reconnecting…")).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Send" })).toBeEnabled()
+})
