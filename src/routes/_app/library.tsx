@@ -162,6 +162,14 @@ function Library() {
   // from before a switch. Shown at once; the order needs the list loaded
   // again.
   const [view, setView] = useState(() => libraryLook().view)
+  // The pressed tab at once, as ui-sdk asks; its link then loads the list,
+  // and Back or a link from elsewhere brings the address's tab back.
+  const [tab, setTab] = useState(query.tab)
+  const [shownTab, setShownTab] = useState(query.tab)
+  if (query.tab !== shownTab) {
+    setShownTab(query.tab)
+    setTab(query.tab)
+  }
   const shown = useMemo(() => previewLibrary(items, data), [items, data])
   const navigate = useNavigate({ from: Route.fullPath })
   const router = useRouter()
@@ -178,7 +186,13 @@ function Library() {
     >
       <div className="mx-auto w-full max-w-composer pt-2 md:pt-12">
         <h1 className="px-3 pb-4 text-base font-medium">Library</h1>
-        <Tabs value={query.tab}>
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            const picked = oneOf(LIBRARY_TABS, value)
+            if (picked !== undefined) setTab(picked)
+          }}
+        >
           <TabsList aria-label="Show" className="mx-3 mb-3">
             {LIBRARY_TABS.map((tab) => (
               <TabsTab
@@ -198,7 +212,7 @@ function Library() {
               </TabsTab>
             ))}
           </TabsList>
-          <TabsPanel value={query.tab}>
+          <TabsPanel value={tab}>
             <div className="flex items-center justify-end gap-2 px-3 pb-3">
               <NameSearch
                 name={query.name}
