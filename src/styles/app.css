@@ -73,6 +73,7 @@
   --text-xs--letter-spacing: 0.01em;
   --text-label: 0.8125rem; /* sidebar section labels, 13/20: Grok's */
   --text-label--line-height: 1.25rem;
+  --text-label--letter-spacing: 0.0085em; /* between xs and sm, like its size */
   --text-sm: 0.875rem;
   --text-sm--line-height: 1.25rem;
   --text-sm--letter-spacing: 0.0071em;
