@@ -48,6 +48,8 @@ test("a / that isn't at the start opens nothing", async ({ page }) => {
   await expect(list(page)).toHaveCount(0)
   await field(page).fill(" /")
   await expect(list(page)).toHaveCount(0)
+  await field(page).fill("/ ")
+  await expect(list(page)).toHaveCount(0)
 })
 
 test("Escape closes the list and keeps the text", async ({ page }) => {
@@ -72,4 +74,17 @@ test("a model with nothing typed after it sends as usual afterwards", async ({
   await expect(
     page.getByRole("article", { name: "Reply" }).last()
   ).toContainText("nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
+})
+
+test("text already after the /word stays when the model is picked", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await field(page).fill(" hello")
+  await page.keyboard.press("Home")
+  await page.keyboard.type("/lightning")
+  await expect(field(page)).toHaveValue("/lightning hello")
+  await page.keyboard.press("Enter")
+  await expect(picker(page)).toContainText("Lightning")
+  await expect(field(page)).toHaveValue(/^\s?hello$/)
 })

@@ -149,7 +149,7 @@ export function Composer({
             insert: () => "",
           },
         ]}
-        onSelect={(key) => onModelChange(key)}
+        onSelect={onModelChange}
       >
         <form
           ref={setPill}
