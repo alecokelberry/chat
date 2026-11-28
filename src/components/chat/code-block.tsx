@@ -66,7 +66,8 @@ function Block(props: ComponentProps<typeof defaultComponents.code>) {
           <CopyAction
             text={code.replace(/\n$/, "")}
             label="Copy code"
-            size="code"
+            size="edit"
+            glyph="size-4"
           />
         </MessageToolbar>
       )}

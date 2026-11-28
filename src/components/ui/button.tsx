@@ -52,9 +52,6 @@ const buttonVariants = cva(
         // touch area (40px on touch screens).
         action:
           "size-5 after:absolute after:-inset-2 pointer-coarse:after:-inset-2.5 [&_svg:not([class*='size-'])]:size-3.5",
-        // The Copy in a code card's header (Grok's): a 24px pill, 16px
-        // glyph, a 32px invisible touch area (40px on touch screens).
-        code: "size-6 after:absolute after:-inset-1 pointer-coarse:after:-inset-2 [&_svg:not([class*='size-'])]:size-4",
         // Grok's header buttons (a chat's …): a 28px pill, 20px glyph, a
         // 40px invisible touch area.
         header:
