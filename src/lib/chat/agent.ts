@@ -37,10 +37,10 @@
 // as the send moves it up). Search also asks it to index itself whole
 // (indexAll) when it opens, for a chat from before the index.
 //
-// The Library (src/routes/_app/library.tsx) shows a question's image by
+// The Library (src/routes/_app/library.tsx) shows a question's file by
 // asking for it here, at /api/chats/<id>/files/<message id>/<part>: the
-// agent answers with the image's bytes, from the data URL the chat keeps,
-// and the browser may keep it for good (the Library's address for a file
+// agent answers with an image's bytes, from the data URL the chat keeps,
+// or a document's text, and the browser may keep it for good (the Library's address for a file
 // changes when the file does, src/lib/chat/library.ts).
 //
 // A private chat (its id says so, src/lib/chat/id.ts) keeps nothing past
@@ -71,6 +71,7 @@ import { lastModel } from "@/lib/ai/models"
 import { devBuild } from "@/lib/dev/dev-build"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
+import { isDocument } from "@/lib/chat/documents"
 import { isPrivateChat, ownerOf } from "@/lib/chat/id"
 import { PRIVATE_CHECK_EVERY, privateChatLeft } from "@/lib/chat/private-wipe"
 import { indexMessages } from "@/lib/chat/message-index"
@@ -99,6 +100,27 @@ const FILE_PATH = /\/files\/([^/]+)\/(\d{1,3})$/
 
 /** An inline image (the only kind a question keeps): its type and bytes. */
 const IMAGE_URL = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.*)$/s
+
+/** A question's part as a file: an image's bytes, or a document's text
+ *  (what the chat kept of it), else 404. The browser may keep it for
+ *  good: the Library's address changes with the file. */
+function fileResponse(found: UIMessage["parts"][number] | undefined) {
+  const headers = {
+    "Cache-Control": "private, max-age=31536000, immutable",
+    "X-Content-Type-Options": "nosniff",
+  }
+  if (found !== undefined && isDocument(found))
+    return new Response(found.data.text, {
+      headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+    })
+  const image = found?.type === "file" ? IMAGE_URL.exec(found.url) : null
+  if (image === null) return new Response(null, { status: 404 })
+  const [, type = "", base64 = ""] = image
+  // Node's Buffer (nodejs_compat) decodes natively, inside the 10 ms.
+  return new Response(Buffer.from(base64, "base64"), {
+    headers: { ...headers, "Content-Type": type },
+  })
+}
 
 export class ChatAgent extends AIChatAgent<Env> {
   // The name (user id and chat id) goes to that user's own browser only.
@@ -208,8 +230,8 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  send came in. */
   private indexed = true
 
-  /** A question's image for the Library, or 404 for anything else; any
-   *  other request goes on to the SDK. In dev and e2e builds only,
+  /** A question's file for the Library (fileResponse); any other
+   *  request goes on to the SDK. In dev and e2e builds only,
    *  /api/chats/<id>/wipe-pending answers whether a delete's wipe is still
    *  to come, so a test can tell it has come due without guessing at the
    *  time. */
@@ -218,25 +240,17 @@ export class ChatAgent extends AIChatAgent<Env> {
     if (devBuild && path.endsWith("/wipe-pending")) return this.wipePending()
     const file = FILE_PATH.exec(path)
     if (file === null) return super.onRequest(request)
-    return this.imageResponse(file)
+    return this.partResponse(file)
   }
 
-  /** The image a question's part holds, from FILE_PATH's match, or 404. */
-  private imageResponse(file: RegExpExecArray) {
+  /** The file a question's part holds, from FILE_PATH's match, or 404. */
+  private partResponse(file: RegExpExecArray) {
     const [, messageId = "", part = ""] = file
-    const found = this.messages.find((message) => message.id === messageId)
-      ?.parts[Number(part)]
-    const image = found?.type === "file" ? IMAGE_URL.exec(found.url) : null
-    if (image === null) return new Response(null, { status: 404 })
-    const [, type = "", base64 = ""] = image
-    // Node's Buffer (nodejs_compat) decodes natively, inside the 10 ms.
-    return new Response(Buffer.from(base64, "base64"), {
-      headers: {
-        "Content-Type": type,
-        "Cache-Control": "private, max-age=31536000, immutable",
-        "X-Content-Type-Options": "nosniff",
-      },
-    })
+    return fileResponse(
+      this.messages.find((message) => message.id === messageId)?.parts[
+        Number(part)
+      ]
+    )
   }
 
   /** Whether a delete's wipe is still to come (dev and e2e builds). */

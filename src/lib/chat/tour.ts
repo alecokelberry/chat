@@ -178,6 +178,8 @@ const PACKING_LIST = {
 
 const PACKED = `You can attach files with the **+** in the composer, paste them, or drop them anywhere on the page: up to 4 a question, photos, PDFs and text files. Photos go to models that can see them (Super, Nano Omni); a PDF's or text file's words go to every model. Tap a photo above a question to see it full size.
 
+Every file you attach also lands in the **Library**, under New Chat: flip through your photos full size, read a file, download either, or jump back to the chat it came from.
+
 Your list covers the essentials. Two things I'd add:
 
 - **Microspikes** if you go before April: the upper trail can be icy.

@@ -44,6 +44,11 @@ const buttonVariants = cva(
         // on the muted fill, an image filling it or a document's icon,
         // name and kind; hover lifts the fill a step.
         tile: "aspect-square w-full flex-col gap-1 overflow-hidden rounded-xl border-border bg-muted p-2 text-center font-normal whitespace-normal text-foreground hover:bg-secondary-hover active:bg-secondary-active [&_svg:not([class*='size-'])]:size-6 [&>img]:absolute [&>img]:inset-0 [&>img]:size-full [&>img]:object-cover",
+        // A tile's ⋯ (Library Grid), over its image: a translucent
+        // raised fill; with a mouse it shows only while the tile
+        // (group/file) is hovered or focused, or its menu is open.
+        overlay:
+          "bg-popover/80 text-foreground group-focus-within/file:opacity-100 group-hover/file:opacity-100 hover:bg-popover data-open:opacity-100 pointer-fine:opacity-0",
         // Floats over the thread (jump to latest): a translucent raised
         // circle.
         float:
