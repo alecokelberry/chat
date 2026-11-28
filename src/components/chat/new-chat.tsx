@@ -12,7 +12,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { CircleDashedIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Toggle } from "@/components/ui/toggle"
+import { PillToggle } from "@/components/ui/toggle"
 import {
   Tooltip,
   TooltipContent,
@@ -107,7 +107,7 @@ function PrivateToggle({ pressed }: { pressed: boolean }) {
       <Tooltip type="label">
         <TooltipTrigger
           render={
-            <Toggle
+            <PillToggle
               pressed={pressed}
               onPressedChange={(on) =>
                 void navigate({ to: on ? "/private" : "/" })
