@@ -151,10 +151,14 @@ export async function settled(page: Page) {
  *  in e2e/seed.sql), so tests in parallel never see each other's chats,
  *  and opens a new chat. It asks the dev sign-in endpoint directly, the
  *  way Playwright's auth docs sign in through an API: e2e/sign-in.spec.ts
- *  tests the button itself. */
-export async function signInAsDev(page: Page) {
+ *  tests the button itself. `as` picks another twin: one past the
+ *  workers' (e2e/screenshots.spec.ts) starts with no chats at all. */
+export async function signInAsDev(
+  page: Page,
+  as = String(test.info().parallelIndex)
+) {
   const response = await page.request.post("/api/auth/dev-sign-in", {
-    data: { as: String(test.info().parallelIndex) },
+    data: { as },
     // Better Auth refuses a POST without its own origin.
     headers: { origin: BASE_URL },
   })
