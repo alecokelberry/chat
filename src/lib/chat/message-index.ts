@@ -89,11 +89,35 @@ export function wordsOf(message: UIMessage) {
 
 const db = (d1: D1Database) => drizzle(d1)
 
+/** The most JSON one statement carries: D1 refuses a bound value or row of
+ *  about 2 MB, so a chat of many long messages is written in several. */
+const JSON_MAX = 200_000
+
+/** `rows` as JSON lists of at most `max` characters each (a row longer than
+ *  that alone, none holds more than TEXT_MAX of text plus its escapes). */
+export function jsonChunks<Row>(rows: readonly Row[], max = JSON_MAX) {
+  const chunks: string[] = []
+  let current: string[] = []
+  let size = 2
+  for (const row of rows) {
+    const json = JSON.stringify(row)
+    if (current.length > 0 && size + json.length + 1 > max) {
+      chunks.push(`[${current.join(",")}]`)
+      current = []
+      size = 2
+    }
+    current.push(json)
+    size += json.length + 1
+  }
+  if (current.length > 0) chunks.push(`[${current.join(",")}]`)
+  return chunks
+}
+
 /** Brings the chat's text in the index up to `messages`, the whole chat:
  *  drops what it no longer holds, then writes `changed` (the turn's
  *  question and reply, or every message), and with `whole` marks the chat
- *  indexed (src/lib/chat/store.ts). Two or three statements whatever the
- *  chat's length, the message list sent as JSON. If the chat's row is gone
+ *  indexed (src/lib/chat/store.ts). A few statements, the message list sent as
+ *  JSON, in pieces when a chat's text is long. If the chat's row is gone
  *  (deleted mid-reply), the write fails and nothing changes. */
 export async function indexMessages(
   d1: D1Database,
@@ -103,7 +127,7 @@ export async function indexMessages(
   whole: boolean
 ) {
   const ids = JSON.stringify(messages.map((message) => message.id))
-  const rows = JSON.stringify(
+  const rows = jsonChunks(
     changed
       .map((message) => ({ id: message.id, text: wordsOf(message) }))
       .filter((row) => row.text !== "")
@@ -120,15 +144,17 @@ export async function indexMessages(
     // An unchanged message is left alone, so its index entry isn't
     // rewritten. `where true` tells SQLite the upsert's ON CONFLICT isn't
     // the SELECT's.
-    d1
-      .prepare(
-        `insert into message_text (userId, chatId, messageId, text)
+    ...rows.map((json) =>
+      d1
+        .prepare(
+          `insert into message_text (userId, chatId, messageId, text)
         select ?1, ?2, value ->> 'id', value ->> 'text'
         from json_each(?3) where true
         on conflict (userId, chatId, messageId) do update
         set text = excluded.text where text is not excluded.text`
-      )
-      .bind(userId, id, rows),
+        )
+        .bind(userId, id, json)
+    ),
     ...(whole
       ? [
           d1
