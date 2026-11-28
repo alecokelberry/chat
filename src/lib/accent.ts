@@ -101,7 +101,10 @@ export function savedAccent(text: string | null): SavedAccent | null {
 
 /** Saves `pick` in this browser and applies it; the default pink clears
  *  it, so the page goes back to app.css's own. */
-export function saveAccent(pick: string) {
+export function saveAccent(color: string) {
+  // One spelling, so Pink is the default however it's typed, and the
+  // saved pick passes savedAccent's check.
+  const pick = color.toLowerCase()
   const colors = accentColors(pick)
   const isDefault = pick === DEFAULT_ACCENT
   try {

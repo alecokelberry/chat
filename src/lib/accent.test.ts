@@ -1,8 +1,25 @@
 import { fc, it } from "@fast-check/vitest"
 import { wcagContrast } from "culori/fn"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 
-import { accentColors, INK, PRESETS, savedAccent } from "@/lib/accent"
+import {
+  accentColors,
+  INK,
+  PRESETS,
+  saveAccent,
+  savedAccent,
+} from "@/lib/accent"
+
+// saveAccent's two edges, the browser's storage and <html>'s style, as
+// plain stand-ins: this runs in Node.
+const storage = new Map<string, string>()
+vi.stubGlobal("localStorage", {
+  setItem: (key: string, value: string) => storage.set(key, value),
+  removeItem: (key: string) => storage.delete(key),
+})
+vi.stubGlobal("document", {
+  documentElement: { style: { setProperty() {}, removeProperty() {} } },
+})
 
 const HEX = /^#[0-9a-f]{6}$/
 
@@ -57,6 +74,13 @@ describe("savedAccent", () => {
   test("reads back what was saved", () => {
     const saved = { pick: "#2f7bf5", ...accentColors("#2f7bf5") }
     expect(savedAccent(JSON.stringify(saved))).toEqual(saved)
+  })
+
+  test("a pick saves in lowercase, and Pink however it's typed clears it", () => {
+    saveAccent("#2F7BF5")
+    expect(savedAccent(storage.get("accent") ?? null)?.pick).toBe("#2f7bf5")
+    saveAccent("#EC4899")
+    expect(storage.has("accent")).toBe(false)
   })
 
   test("anything else is no choice: the default pink", () => {
