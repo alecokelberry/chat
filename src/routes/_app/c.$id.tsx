@@ -18,7 +18,12 @@ import {
 } from "@tanstack/react-router"
 import { EllipsisIcon } from "lucide-react"
 
-import { Chat, type FirstMessage } from "@/components/chat/chat"
+import {
+  Chat,
+  ChatHeaderBar,
+  ChatPage,
+  type FirstMessage,
+} from "@/components/chat/chat"
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
 import { useChatList, type ChatRef } from "@/components/chat/chat-list"
 import { NotFoundPage } from "@/components/error-page"
@@ -60,18 +65,12 @@ function ChatScreen() {
   // Not an id a chat can have: the not-found page, inside the shell.
   if (!CHAT_ID.test(id)) return <NotFoundPage />
   return (
-    // No top pad: the header floats over the thread, whose own pad sets
-    // where the last question rests (message-scroller.tsx).
-    <main
-      id="main"
-      tabIndex={-1}
-      className="flex min-h-0 flex-1 flex-col safe-area pt-0 outline-hidden"
-    >
+    <ChatPage>
       {chat !== undefined && <ChatHeader key={id} chat={chat} />}
       <Suspense>
         <RoutedChat key={id} id={id} />
       </Suspense>
-    </main>
+    </ChatPage>
   )
 }
 
@@ -80,9 +79,7 @@ function ChatHeader({ chat }: { chat: ChatRef }) {
   const [renaming, setRenaming] = useState(false)
   const actions = useRef<HTMLButtonElement>(null)
   return (
-    // Taps go through to the page and the phone's sidebar button, 88px
-    // clear of the pill on either side.
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-10 box-content flex h-header items-center justify-center px-22 pt-safe md:bg-linear-to-b md:from-background md:from-60%">
+    <ChatHeaderBar>
       {renaming ? (
         <HeaderTitleEdit>
           <RenameField
@@ -106,7 +103,7 @@ function ChatHeader({ chat }: { chat: ChatRef }) {
           <ChatMenuContent chat={chat} onRename={() => setRenaming(true)} />
         </Menu>
       </div>
-    </header>
+    </ChatHeaderBar>
   )
 }
 

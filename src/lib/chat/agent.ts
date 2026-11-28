@@ -41,10 +41,11 @@
 // A private chat (its id says so, src/lib/chat/id.ts) keeps nothing past
 // its page: it never touches the chat list, Lightning's title, Search's
 // index or the Library's, though its replies still count in Usage. Once a
-// browser connects, a durable alarm checks every minute: with no socket
-// open and none closed in the last half minute, the agent wipes itself
-// (destroy). The half minute lets a dropped socket reconnect without losing
-// the chat; the alarm, rather than the close alone, means a close the agent
+// browser connects, a durable alarm checks every minute
+// (src/lib/chat/private-wipe.ts): with no socket open and none closed in
+// the last half minute (a time kept in storage, so it outlives an
+// eviction), the agent wipes itself (destroy). The half minute lets a
+// dropped socket reconnect without losing the chat; the alarm, rather than the close alone, means a close the agent
 // never hears (an evicted object) still ends it within a couple of minutes.
 //
 // Each reply's metadata records who answered and how long it took, from
@@ -65,6 +66,7 @@ import { lastModel } from "@/lib/ai/models"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { isPrivateChat, ownerOf } from "@/lib/chat/id"
+import { PRIVATE_CHECK_EVERY, privateChatLeft } from "@/lib/chat/private-wipe"
 import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
@@ -84,13 +86,6 @@ const textOf = (message: UIMessage | undefined) =>
  *  answer to reach the Worker first. The scheduler rounds the due time
  *  down to a whole second, so 2 waits 1 to 2 seconds. */
 const WIPE_AFTER = 2
-
-/** Seconds between a private chat's checks for an open page. */
-const PRIVATE_CHECK_EVERY = 60
-
-/** Milliseconds a private chat waits after a socket closes for a
- *  reconnect before it may wipe itself. */
-const PRIVATE_GRACE = 30_000
 
 /** A Library request for a question's file: its message id and part. */
 const FILE_PATH = /\/files\/([^/]+)\/(\d{1,3})$/
@@ -112,8 +107,10 @@ export class ChatAgent extends AIChatAgent<Env> {
     return isPrivateChat(this.owner.id)
   }
 
-  /** When a private chat's socket last closed (0: not since it woke). */
-  private lastClose = 0
+  /** Where a private chat keeps when its socket last closed: in storage,
+   *  not memory, so the grace outlives an eviction between the close and
+   *  the alarm. None means no close was ever heard. */
+  private static readonly LAST_CLOSE = "private-last-close"
 
   override async onConnect(connection: Connection, ctx: ConnectionContext) {
     // Idempotent: a reconnect, or a second tab, keeps the one alarm.
@@ -128,7 +125,8 @@ export class ChatAgent extends AIChatAgent<Env> {
     reason: string,
     wasClean: boolean
   ) {
-    this.lastClose = Date.now()
+    if (this.isPrivate)
+      this.ctx.storage.kv.put(ChatAgent.LAST_CLOSE, Date.now())
     return super.onClose(connection, code, reason, wasClean)
   }
 
@@ -138,7 +136,8 @@ export class ChatAgent extends AIChatAgent<Env> {
     const open = [...this.getConnections()].some(
       (connection) => connection.readyState === WebSocket.OPEN
     )
-    if (open || Date.now() - this.lastClose < PRIVATE_GRACE) return
+    const lastClose = this.ctx.storage.kv.get<number>(ChatAgent.LAST_CLOSE)
+    if (!privateChatLeft(open, lastClose, Date.now())) return
     await this.destroy()
   }
 

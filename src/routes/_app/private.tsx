@@ -9,7 +9,12 @@
 import { Suspense, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
-import { Chat, type FirstMessage } from "@/components/chat/chat"
+import {
+  Chat,
+  ChatHeaderBar,
+  ChatPage,
+  type FirstMessage,
+} from "@/components/chat/chat"
 import { NewChat } from "@/components/chat/new-chat"
 import { HeaderTitle } from "@/components/ui/header-title"
 import { handOffFiles } from "@/lib/chat/attachments"
@@ -35,18 +40,13 @@ function PrivateChat() {
       />
     )
   return (
-    // As a saved chat's page (src/routes/_app/c.$id.tsx) lays it out.
-    <main
-      id="main"
-      tabIndex={-1}
-      className="flex min-h-0 flex-1 flex-col safe-area pt-0 outline-hidden"
-    >
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 box-content flex h-header items-center justify-center px-22 pt-safe md:bg-linear-to-b md:from-background md:from-60%">
+    <ChatPage>
+      <ChatHeaderBar>
         <HeaderTitle>Private chat</HeaderTitle>
-      </header>
+      </ChatHeaderBar>
       <Suspense>
         <Chat id={id} firstMessage={first} isPrivate />
       </Suspense>
-    </main>
+    </ChatPage>
   )
 }

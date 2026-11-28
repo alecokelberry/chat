@@ -13,6 +13,11 @@ import { CircleDashedIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Toggle } from "@/components/ui/toggle"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Composer, type ComposerHandle } from "@/components/chat/composer"
 import { DEFAULT_MODEL, type ModelKey } from "@/lib/ai/models"
 import type { AttachmentPart } from "@/lib/chat/attachments"
@@ -91,21 +96,30 @@ export function NewChat({
 }
 
 /** Private, at the top right: a ui-sdk Toggle, pressed on /private. Its
- *  name ("Private chat") holds its words and stays the same either way,
- *  as ui-sdk asks, so a screen reader announces the pressed state. On a
- *  phone it shares the header row with the sidebar button. */
+ *  tooltip ("Private chat") names it (type "label", so it isn't heard
+ *  twice): the name holds its word and stays the same either way, as
+ *  ui-sdk asks, so a screen reader announces the pressed state. On a phone
+ *  it shares the header row with the sidebar button. */
 function PrivateToggle({ pressed }: { pressed: boolean }) {
   const navigate = useNavigate()
   return (
     <div className="absolute end-4 top-0 z-10 box-content flex h-header items-center pt-safe">
-      <Toggle
-        aria-label="Private chat"
-        pressed={pressed}
-        onPressedChange={(on) => void navigate({ to: on ? "/private" : "/" })}
-      >
-        <CircleDashedIcon aria-hidden />
-        Private
-      </Toggle>
+      <Tooltip type="label">
+        <TooltipTrigger
+          render={
+            <Toggle
+              pressed={pressed}
+              onPressedChange={(on) =>
+                void navigate({ to: on ? "/private" : "/" })
+              }
+            />
+          }
+        >
+          <CircleDashedIcon aria-hidden />
+          Private
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Private chat</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

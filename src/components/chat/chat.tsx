@@ -20,7 +20,14 @@
 // rest. In dev, ?data= shows made-up messages instead
 // (src/lib/dev/worst-case.ts) and Send, Retry and Edit do nothing, so a
 // preview never writes to a chat.
-import { memo, useEffect, useMemo, useRef, useState } from "react"
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import { useRouter, useSearch } from "@tanstack/react-router"
 import { useAgent } from "agents/react"
 import { useAgentChat } from "@cloudflare/ai-chat/react"
@@ -32,6 +39,32 @@ import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { questionParts, takeHandedOffFiles } from "@/lib/chat/attachments"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
+
+/** A chat's page: the thread fills it, under a header that floats over it.
+ *  No top pad: the header floats over the thread, whose own pad sets where
+ *  the last question rests (message-scroller.tsx). */
+export function ChatPage({ children }: { children: ReactNode }) {
+  return (
+    <main
+      id="main"
+      tabIndex={-1}
+      className="flex min-h-0 flex-1 flex-col safe-area pt-0 outline-hidden"
+    >
+      {children}
+    </main>
+  )
+}
+
+/** The header over a chat: its title pill centered, which taps go through
+ *  to the page and the phone's sidebar button 88px clear of on either
+ *  side, and a gradient fading the thread under it on a computer. */
+export function ChatHeaderBar({ children }: { children: ReactNode }) {
+  return (
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-10 box-content flex h-header items-center justify-center px-22 pt-safe md:bg-linear-to-b md:from-background md:from-60%">
+      {children}
+    </header>
+  )
+}
 
 /** A question's metadata: its model and the browser's time zone. */
 const sentWith = (model: ModelKey) => ({

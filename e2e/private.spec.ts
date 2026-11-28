@@ -4,16 +4,20 @@ import type { Page } from "@playwright/test"
 
 import {
   expect,
+  findWords,
   greeting,
+  madeUpWord,
   pick,
   pickModel,
   questions,
   replies,
   send,
   settled,
+  showAllChats,
   sidebar,
   signInAsDev,
   test,
+  tokensOf,
   unique,
 } from "./session"
 
@@ -33,9 +37,9 @@ const SMALL = "e2e/fixtures/small.jpg"
 const privateToggle = (page: Page) =>
   page.getByRole("button", { name: "Private chat" })
 
-/** A made-up word of letters only, that no other test sends. */
-const madeUpWord = () =>
-  `zq${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`
+/** The chat list's rows. */
+const chatRows = (page: Page) =>
+  sidebar(page).getByRole("group", { name: "Chat list" }).getByRole("link")
 
 /** Turns private on from a new chat. */
 async function goPrivate(page: Page) {
@@ -50,6 +54,8 @@ test("a private chat answers, then never reaches the list, Search or the Library
   page,
 }) => {
   await signInAsDev(page)
+  await showAllChats(page)
+  const rows = await chatRows(page).count()
   await goPrivate(page)
   const word = madeUpWord()
   const hidden = `${unique("secret").replace(" ", "-")}.jpg`
@@ -67,9 +73,6 @@ test("a private chat answers, then never reaches the list, Search or the Library
   await expect(
     page.getByRole("heading", { name: "Private chat" })
   ).toBeVisible()
-  await expect(
-    sidebar(page).getByRole("link", { name: /Private/ })
-  ).toHaveCount(0)
 
   // New Chat leaves it for a normal chat, which sends the same word and
   // another file.
@@ -88,19 +91,13 @@ test("a private chat answers, then never reaches the list, Search or the Library
   await send(page, `Saved ${word}`)
   await expect(replies(page)).toHaveText([/Done\.$/])
 
+  // The list gains the saved chat's row, and only that one.
+  await expect(chatRows(page)).toHaveCount(rows + 1)
+
   // Search finds the saved chat's line only.
+  await findWords(page, word)
   const search = page.getByRole("dialog", { name: "Search" })
   const messages = search.getByRole("group", { name: "Messages" })
-  await expect(async () => {
-    if ((await search.count()) === 0)
-      await page.keyboard.press("ControlOrMeta+k")
-    const field = page.getByRole("combobox", { name: "Search chats" })
-    await field.fill("")
-    await field.fill(word)
-    await expect(messages.getByRole("option")).not.toHaveCount(0, {
-      timeout: 2000,
-    })
-  }).toPass()
   await expect(messages.getByRole("option")).toHaveCount(1)
   await expect(messages.getByRole("option")).toContainText("Saved")
   await page.keyboard.press("Escape")
@@ -148,35 +145,12 @@ test("the toggle shows on a new chat only, not on a saved one", async ({
 
 test("Usage counts a private chat's reply", async ({ page }) => {
   await signInAsDev(page)
-  const settings = page.getByRole("dialog", { name: "Settings" })
-  // Other tests on this worker chat as its Dev too, so this checks the
-  // count grows, not what it is.
-  const tokens = async () => {
-    await sidebar(page)
-      .getByRole("button", { name: "Dev", exact: true })
-      .click()
-    await page.getByRole("menuitem", { name: "Settings" }).click()
-    await settings
-      .getByRole("tablist", { name: "Settings" })
-      .getByRole("tab", { name: "Usage" })
-      .click()
-    const usage = settings.getByRole("tabpanel", { name: "Usage" })
-    await expect(usage.locator('[aria-busy="false"]')).toBeVisible()
-    const row = usage
-      .getByRole("list", { name: "Tokens by model" })
-      .getByRole("listitem")
-      .filter({ hasText: "Nano Omni" })
-    const text = (await row.count()) === 0 ? "0" : await row.innerText()
-    await page.keyboard.press("Escape")
-    await expect(settings).toBeHidden()
-    return Number(/([\d,]+) tokens?$/.exec(text)?.[1]?.replaceAll(",", "") ?? 0)
-  }
-  const before = await tokens()
+  const before = await tokensOf(page, "Nano Omni")
   await goPrivate(page)
   await pickModel(page, "Nano Omni")
   await send(page, unique("Count me privately"))
   await expect(replies(page)).toHaveText([/Done\.$/])
   await expect(async () => {
-    expect(await tokens()).toBeGreaterThan(before)
+    expect(await tokensOf(page, "Nano Omni")).toBeGreaterThan(before)
   }).toPass()
 })
