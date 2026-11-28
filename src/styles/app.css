@@ -453,6 +453,19 @@
   --keyboard-inset: 0px !important;
 }
 
+/* A tap just after a sheet closes goes to the page under it, as on a native
+   sheet. ui-sdk keeps a closing sheet's full-screen viewport and its
+   backdrop taking pointer events through the whole close animation, which
+   swallowed the next tap. The sheet itself is inert by then. */
+:is([data-slot="menu-viewport"], [data-slot="select-viewport"]):has(
+  [data-ending-style]
+) {
+  pointer-events: none !important;
+  &::backdrop {
+    pointer-events: none !important;
+  }
+}
+
 /* A phone sheet's fill, carried 48rem past its bottom edge, so a drag up
    past its open height shows more sheet, never the page. ui-sdk moves a
    phone sheet with native scrolling, and iOS's own bounce can stretch it
