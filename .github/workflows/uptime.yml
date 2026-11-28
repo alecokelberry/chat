@@ -1,5 +1,5 @@
 # Checks live once an hour: loads the sign-in page and fails unless it
-# answers 200 with the app's own words in it. A failed scheduled run makes
+# answers exactly 200 with its own title. A failed scheduled run makes
 # GitHub email Alec (the default notification for failed workflows), so
 # he hears that live is down without opening it. Free on a public repo,
 # and it needs no secret.
@@ -24,15 +24,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      # Three tries, 20 s apart, so one blip doesn't send an email.
+      # Three tries, 20 s apart, so one blip doesn't send an email. The
+      # page must answer exactly 200 with its title, which comes from
+      # pageTitle("Sign in") in src/routes/sign-in.tsx: change both
+      # together.
       - name: Load live's sign-in page
         run: |
           for try in 1 2 3; do
-            if curl --silent --show-error --fail --max-time 15 \
-              https://chat.alecokelberry.workers.dev/sign-in \
-              | grep --quiet "Sign in with passkey"; then
+            code=$(curl --silent --show-error --max-time 15 \
+              --output page.html --write-out '%{http_code}' \
+              https://chat.alecokelberry.workers.dev/sign-in || true)
+            if [ "$code" = 200 ] && grep --quiet "<title>Sign in – Chat</title>" page.html; then
               echo "Live is up (try $try)."; exit 0
             fi
-            echo "Try $try failed."; sleep 20
+            echo "Try $try failed (status ${code:-none})."
+            [ "$try" -lt 3 ] && sleep 20
           done
           echo "Live didn't serve its sign-in page." >&2; exit 1
