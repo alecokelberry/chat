@@ -14,7 +14,8 @@
 // question's images inline (only as data URLs, so the server never fetches
 // a link a message names), or, for a model that can't see them, as
 // "[image: name]" in their place; its PDFs and text files as text
-// (src/lib/chat/documents.ts); and old thinking and old pages left out.
+// (src/lib/chat/documents.ts); old thinking and old pages left out; and a
+// long chat fitted to a size budget, its oldest turns dropped first.
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 //
@@ -50,7 +51,8 @@ import { mockModel } from "@/lib/ai/mock"
 import { styleInstruction, type Customize } from "@/lib/ai/style"
 import { lastModel, lastTimeZone, LIGHTNING } from "@/lib/ai/models"
 import { READ_LIMIT, readPage } from "@/lib/ai/read-page"
-import { SEARCH_LIMIT, SearchError, webSearch } from "@/lib/ai/search"
+import { WebToolError } from "@/lib/ai/keenable"
+import { SEARCH_LIMIT, webSearch } from "@/lib/ai/search"
 import { failWhenSilent, SilentModelError } from "@/lib/ai/silence"
 import { knownAddresses } from "@/lib/ai/web-address"
 import { isDocument } from "@/lib/chat/documents"
@@ -185,7 +187,7 @@ function instructions(now: Date, timeZone: string, customize: Customize) {
  *  the log, never the request (it holds the chat). A failed search
  *  passes through here too, already logged, and the reply goes on. */
 export function replyError(error: unknown): string {
-  if (error instanceof SearchError) return error.message
+  if (error instanceof WebToolError) return error.message
   const cause = RetryError.isInstance(error) ? error.lastError : error
   const status = APICallError.isInstance(cause) ? cause.statusCode : undefined
   console.error(

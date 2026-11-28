@@ -49,7 +49,9 @@ function Dialog(props: React.ComponentProps<typeof DialogPrimitive>) {
   return <DialogPrimitive presentation="auto" {...props} />
 }
 
-/** `wide`: 960px wide and its full height from md, for a list with a
+/** `full`: the whole screen on the page's own background, no panel, for
+ *  a viewer (pass `presentation="dialog"` so a phone gets it too).
+ *  `wide`: 960px wide and its full height from md, for a list with a
  *  preview beside it, so the preview has room whatever the list holds.
  *  `fit`: a phone's sheet as tall as what it holds, not nearly the
  *  screen (it holds no text field, so the keyboard never lifts it). */
@@ -58,18 +60,23 @@ function DialogContent({
   children,
   wide = false,
   fit = false,
+  full = false,
   ...props
 }: React.ComponentProps<typeof DialogContentPrimitive> & {
   wide?: boolean
   fit?: boolean
+  full?: boolean
 }) {
   return (
     <>
       <DialogBackdropPrimitive className="fixed inset-0 bg-overlay transition-opacity duration-pane ease-standard data-ending-style:opacity-0 data-starting-style:opacity-0 data-[presentation=sheet]:hidden" />
       <DialogContentPrimitive
         className={cn(
-          "flex flex-col overflow-hidden border border-border-strong bg-popover text-popover-foreground outline-hidden",
-          "data-[presentation=dialog]:fixed data-[presentation=dialog]:inset-x-4 data-[presentation=dialog]:top-dialog-top data-[presentation=dialog]:mx-auto data-[presentation=dialog]:max-h-dialog-height data-[presentation=dialog]:max-w-dialog data-[presentation=dialog]:rounded-overlay data-[presentation=dialog]:shadow-dialog",
+          full
+            ? "fixed inset-0 flex flex-col overflow-hidden bg-background pt-safe pb-safe text-foreground outline-hidden"
+            : "flex flex-col overflow-hidden border border-border-strong bg-popover text-popover-foreground outline-hidden",
+          !full &&
+            "data-[presentation=dialog]:fixed data-[presentation=dialog]:inset-x-4 data-[presentation=dialog]:top-dialog-top data-[presentation=dialog]:mx-auto data-[presentation=dialog]:max-h-dialog-height data-[presentation=dialog]:max-w-dialog data-[presentation=dialog]:rounded-overlay data-[presentation=dialog]:shadow-dialog",
           fit
             ? "data-[presentation=sheet]:max-h-dialog-height"
             : "data-[presentation=sheet]:sheet-tall",

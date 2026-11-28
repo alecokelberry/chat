@@ -5,6 +5,9 @@ import { useNavigate } from "@tanstack/react-router"
 
 import { authClient } from "@/lib/auth/client"
 
+/** What an agent is told before it signs the user out. */
+export const SIGN_OUT_CONFIRM = "Signs you out on this device"
+
 export function useSignOut() {
   const navigate = useNavigate()
   return async function signOut() {

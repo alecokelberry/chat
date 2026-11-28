@@ -7,7 +7,7 @@
 // nav keeps the sections whose name or settings hold what's typed
 // (src/lib/settings/sections.ts), and the first of them shows; with none,
 // it says so. Each section's page is its own component below: Account
-// (who's signed in, Sign Out), Appearance (the theme, code wrapping) and
+// (who's signed in, Sign Out), Appearance (the theme, the accent color, code wrapping) and
 // Customize (the response style, src/lib/ai/style.ts) and Usage (each
 // model's share of the tokens used, all time: src/lib/chat/usage.ts). The
 // look is src/components/ui/settings.tsx and src/components/ui/usage.tsx.
@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 
 import type { Account } from "@/components/chat/account-menu"
+import { AccentPicker } from "@/components/ui/accent-picker"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useCodeWrap } from "@/components/ui/preferences"
@@ -67,7 +68,7 @@ import {
 } from "@/lib/ai/style"
 import { authClient } from "@/lib/auth/client"
 import { getCustomizeNow } from "@/lib/auth/session"
-import { useSignOut } from "@/lib/auth/use-sign-out"
+import { SIGN_OUT_CONFIRM, useSignOut } from "@/lib/auth/use-sign-out"
 import { getUsage } from "@/lib/chat/list"
 import { initialsOf } from "@/lib/settings/initials"
 import {
@@ -171,7 +172,7 @@ export function Settings({
 function AccountPage({ account }: { account: Account }) {
   const signOut = useSignOut()
   return (
-    <SettingsCard label="Account">
+    <SettingsCard>
       <SettingsRow
         leading={
           <Avatar>
@@ -184,7 +185,7 @@ function AccountPage({ account }: { account: Account }) {
         <Button
           variant="outline"
           size="sm"
-          data-agent-confirm="Signs you out on this device"
+          data-agent-confirm={SIGN_OUT_CONFIRM}
           onClick={signOut}
         >
           Sign Out
@@ -195,13 +196,21 @@ function AccountPage({ account }: { account: Account }) {
 }
 
 /** The theme, with the same sun-and-moon button the sign-in page has (the
- *  account menu's Theme does the same), and whether code wraps. */
+ *  account menu's Theme does the same), the accent color, and whether
+ *  code wraps. */
 function AppearancePage() {
   const [wrap, setWrap] = useCodeWrap()
   return (
-    <SettingsCard label="Appearance">
+    <SettingsCard>
       <SettingsRow name="Theme" description="Switch light and dark">
         <ThemeToggle />
+      </SettingsRow>
+      <SettingsRow
+        name="Accent color"
+        description="Send button, New Chat and selection"
+        className="flex-col items-stretch"
+      >
+        <AccentPicker />
       </SettingsRow>
       <SettingsField
         name="Wrap long code blocks"
@@ -293,7 +302,7 @@ function CustomizePage({ saved }: { saved: Customize }) {
   useEffect(() => () => saveTypedLater(), [])
 
   return (
-    <SettingsCard label="Customize">
+    <SettingsCard>
       <SettingsRow
         name="Customize Chat's response"
         description="Personalize how Chat responds to you"

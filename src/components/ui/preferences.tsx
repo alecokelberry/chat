@@ -30,6 +30,7 @@ import { CHAT_SORTS, type ChatSort } from "@/lib/chat/groups"
 import {
   createColorScheme,
   createLocalStorage,
+  createPointerKind,
   createPreference,
 } from "@ui-sdk/core"
 /* oxlint-enable no-restricted-imports */
@@ -322,8 +323,19 @@ function useChatsSection() {
   }
 }
 
+/** The device's main pointer, from the `pointer` and `hover` media
+ *  features. It isn't a saved choice, but ui-sdk reads it the same way. */
+const pointerKind = createPointerKind()
+
+/** Whether the main pointer is a finger (a phone or a tablet). False on the
+ *  server and in the first render, which hydrates against it. */
+function useCoarsePointer() {
+  return usePreference(pointerKind).pointer === "coarse"
+}
+
 export {
   AppPreferences,
+  useCoarsePointer,
   useChatsSection,
   THEME_COLOR_SCRIPT,
   useCodeWrap,
