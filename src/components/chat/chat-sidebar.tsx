@@ -266,7 +266,11 @@ export function ChatSidebar({
         </SidebarDrawer>
         {children}
       </div>
-      <SearchDialog controller={search} onPick={close} />
+      <SearchDialog
+        controller={search}
+        onPick={close}
+        tools={{ settings, toggleSidebar: () => toggle(false) }}
+      />
       <SettingsDialog
         controller={settings}
         account={account}

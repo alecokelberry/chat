@@ -1,7 +1,7 @@
 // The sidebar's chats, as server functions: the signed-in pages' layout
-// (src/routes/_app/route.tsx) loads them on the server on first load and
-// asks again on client navigation or when the open chat says the list
-// changed. The row and header menus (src/components/chat/chat-actions.tsx)
+// (src/routes/_app/route.tsx) loads them with the account, in one call
+// (getApp), on the server on first load and asks again on client navigation
+// or when the open chat says the list changed. The row and header menus (src/components/chat/chat-actions.tsx)
 // rename, pin and delete through them: each checks its input with zod and
 // touches only the signed-in user's own chat. A rename or pin then has the
 // chat's agent tell its open tabs (on any device) to load the list again;
@@ -23,6 +23,7 @@ import { drizzle } from "drizzle-orm/d1"
 import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
+import { accountOf } from "@/lib/auth/session"
 import { agentName, CHAT_ID } from "@/lib/chat/id"
 import { listAttachments } from "@/lib/chat/library"
 import { LIBRARY_ORDERS, LIBRARY_TABS } from "@/lib/chat/library-items"
@@ -47,9 +48,18 @@ async function userId(): Promise<string | null> {
   return session?.user.id ?? null
 }
 
-export const getChats = createServerFn({ method: "GET" }).handler(async () => {
-  const user = await userId()
-  return user === null ? [] : listChats(env.DB, user)
+/** What the signed-in layout needs, in one call: the account and its chat
+ *  list, or null for no one signed in. Each navigation and each list
+ *  refresh is this one request, not a session check and then a list. */
+export const getApp = createServerFn({ method: "GET" }).handler(async () => {
+  const session = await getAuth().api.getSession({
+    headers: getRequest().headers,
+  })
+  if (session === null) return null
+  return {
+    user: accountOf(session.user),
+    chats: await listChats(env.DB, session.user.id),
+  }
 })
 
 export const getUsage = createServerFn({ method: "GET" }).handler(async () => {

@@ -19,6 +19,7 @@ import {
   useDialogShortcut,
   type DialogController,
 } from "@/components/ui/dialog"
+import type { ActionTools } from "@/components/chat/search-chats"
 import { SidebarSearchTrigger } from "@/components/ui/sidebar"
 
 const SEARCH_SHORTCUT = "mod+k"
@@ -78,10 +79,13 @@ export function SearchButton({
 export function SearchDialog({
   controller,
   onPick,
+  tools,
 }: {
   controller: DialogController
   /** A chat was picked from it. */
   onPick?: () => void
+  /** What its actions need from the shell. */
+  tools: ActionTools
 }) {
   const content = useRef<HTMLDivElement>(null)
   useDialogShortcut(controller, SEARCH_SHORTCUT, content, "Search", () =>
@@ -98,6 +102,7 @@ export function SearchDialog({
         controller={controller}
         content={content}
         onPick={onPick}
+        tools={tools}
       />
     )
   )

@@ -9,6 +9,7 @@ import {
   replies,
   send,
   signInAsDev,
+  sidebar,
   tapInSheet,
   test,
 } from "./session"
@@ -529,4 +530,71 @@ test("an agent can search and open a chat", async ({ page }) => {
   expect(searched.ok, searched.error?.message).toBe(true)
   await expect(page).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
   await expect(dialog(page)).toHaveCount(0)
+})
+
+// The palette's other actions (search-chats.tsx's ACTIONS), found by
+// typing and run with Enter, each closing Search.
+test.describe("actions", () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+
+  async function run(page: Page, typed: string, name: string) {
+    await page.keyboard.press("ControlOrMeta+k")
+    await field(page).fill(typed)
+    const action = dialog(page).getByRole("option", { name, exact: true })
+    await expect(action).toBeVisible()
+    await expect(dialog(page).getByRole("option").first()).toHaveText(
+      new RegExp(`^${name}`)
+    )
+    await page.keyboard.press("Enter")
+    await expect(dialog(page)).toHaveCount(0)
+  }
+
+  test("Change theme flips light and dark like the Theme button", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const html = page.locator("html")
+    const before = await html.getAttribute("data-color-scheme")
+    await run(page, "theme", "Change theme")
+    await expect(html).not.toHaveAttribute("data-color-scheme", before ?? "")
+  })
+
+  test("Open settings opens Settings", async ({ page }) => {
+    await signInAsDev(page)
+    await run(page, "settings", "Open settings")
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible()
+  })
+
+  test("Toggle sidebar collapses the rail and back", async ({ page }) => {
+    await signInAsDev(page)
+    await expect(sidebar(page)).not.toHaveAttribute("data-collapsed")
+    await run(page, "toggle", "Toggle sidebar")
+    await expect(sidebar(page)).toHaveAttribute("data-collapsed")
+    await run(page, "toggle", "Toggle sidebar")
+    await expect(sidebar(page)).not.toHaveAttribute("data-collapsed")
+  })
+
+  test("Feature tour opens the tour chat", async ({ page }) => {
+    await signInAsDev(page)
+    await run(page, "tour", "Feature tour")
+    await expect(page).toHaveURL(/\/c\//)
+  })
+
+  test("Sign out lands on /sign-in", async ({ page }) => {
+    await signInAsDev(page)
+    await run(page, "sign out", "Sign out")
+    await expect(page).toHaveURL(/\/sign-in$/)
+  })
+
+  test("a phone's palette has no Toggle sidebar", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await signInAsDev(page)
+    await page.keyboard.press("ControlOrMeta+k")
+    await expect(
+      dialog(page).getByRole("option", { name: "Change theme" })
+    ).toBeVisible()
+    await expect(
+      dialog(page).getByRole("option", { name: "Toggle sidebar" })
+    ).toHaveCount(0)
+  })
 })

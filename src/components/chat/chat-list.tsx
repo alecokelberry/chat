@@ -48,6 +48,19 @@ export function useChatList(): ChatList {
   return list
 }
 
+const ListChangedContext = createContext<(() => Promise<void>) | null>(null)
+
+/** Loads the list again because the open chat's agent said it changed. A
+ *  write this tab made is about to load it itself, so then this does
+ *  nothing: one request, not two. Stable, so the chat screen doesn't
+ *  re-render when the list does. */
+export function useListChanged() {
+  const listChanged = use(ListChangedContext)
+  if (listChanged === null)
+    throw new Error("useListChanged outside ChatListProvider")
+  return listChanged
+}
+
 type Change = Pick<ChatSummary, "id"> & Partial<ChatSummary>
 
 /** How long a change that no load has confirmed stays shown, in case
@@ -108,6 +121,11 @@ export function ChatListProvider({
   )
   const [changes, setChanges] = useState<Change[]>([])
   const router = useRouter()
+  const writing = useRef(0)
+  const listChanged = useCallback(
+    () => (writing.current > 0 ? Promise.resolve() : router.invalidate()),
+    [router]
+  )
   const chats = useMemo(() => applyChanges(listed, changes), [listed, changes])
   // A change goes once a load has it, or its chat is gone (adjusting state
   // while rendering, as React's docs suggest, so no frame shows both).
@@ -141,13 +159,20 @@ export function ChatListProvider({
       ])
       const timer = setTimeout(drop, SHOWN_FOR)
       timers.current.add(timer)
+      // While a write is out, the open chat's announcement of it waits for
+      // this load instead of making a second one (useListChanged).
+      writing.current += 1
       try {
-        await write()
-      } catch {
-        drop()
-        toast.error(failed)
+        try {
+          await write()
+        } catch {
+          drop()
+          toast.error(failed)
+        }
+        await router.invalidate()
+      } finally {
+        writing.current -= 1
       }
-      await router.invalidate()
     },
     [router]
   )
@@ -208,5 +233,9 @@ export function ChatListProvider({
     [change, router]
   )
   const list = useMemo(() => ({ chats, ...actions }), [chats, actions])
-  return <ChatListContext value={list}>{children}</ChatListContext>
+  return (
+    <ChatListContext value={list}>
+      <ListChangedContext value={listChanged}>{children}</ListChangedContext>
+    </ChatListContext>
+  )
 }

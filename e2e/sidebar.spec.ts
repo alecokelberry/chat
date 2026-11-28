@@ -410,6 +410,27 @@ test("the header's … menu pins and renames in the pill", async ({ page }) => {
   await page.keyboard.press("Escape")
 })
 
+test("renaming the open chat loads the list once, as one call", async ({
+  page,
+}) => {
+  await startChat(page, "Count my loads")
+  const loads: string[] = []
+  page.on("request", (request) => {
+    // The layout's call (getApp) is the only GET server function this page
+    // makes: no Settings, Search or other page that has its own is opened.
+    if (request.method() === "GET" && request.url().includes("/_serverFn/"))
+      loads.push(request.url())
+  })
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  const name = unique("Counted once")
+  await page.keyboard.type(name)
+  await page.keyboard.press("Enter")
+  await expect(openRow(page).getByRole("link")).toHaveText(name)
+  await settled(page)
+  expect(loads).toHaveLength(1)
+})
+
 // Delete (chat-list.tsx): the row goes at once and a toast offers Undo;
 // the chat is deleted for good only once the toast closes without it.
 /** The toasts showing, not the ones on their way out. */
@@ -635,12 +656,11 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(last).toHaveAttribute("aria-current", "page")
 
-  // Search lists its actions (New Chat, Library) and the recent 50, and
-  // ranks all 1,000 (only the rows in view render), so the oldest is a
-  // few letters away.
+  // Search lists its 7 actions and the recent 50, and ranks all 1,000
+  // (only the rows in view render), so the oldest is a few letters away.
   await page.keyboard.press("ControlOrMeta+k")
   const search = page.getByRole("dialog", { name: "Search" })
-  await expect(search.getByRole("option")).toHaveCount(52)
+  await expect(search.getByRole("option")).toHaveCount(57)
   await page
     .getByRole("combobox", { name: "Search chats" })
     .fill("seeded chat 995")
