@@ -38,12 +38,16 @@ export function stoppedMetadata(metadata: unknown, now: number) {
   }
 }
 
-/** "Super · 4.2s", "Ultra · 12s", or undefined until the model is known. */
+/** "Super · 4.2s", "Ultra · 12s", "Super · <1s", or undefined until the model is known. */
 export function answeredBy(metadata: unknown): string | undefined {
   const name = MODELS.find((m) => m.key === field(metadata, "model"))?.name
   if (name === undefined) return undefined
   const ms = field(metadata, "ms")
   if (typeof ms !== "number" || !(ms > 0)) return name
+  // The Worker's clock moves only while it waits on something, so a reply
+  // that needed no waiting (the mock's) reads as 0.0s: "<1s", not a
+  // false-looking zero.
+  if (ms < 1000) return `${name} · <1s`
   const tenths = Math.round(ms / 100) / 10
   const seconds = tenths < 10 ? tenths.toFixed(1) : Math.round(tenths)
   return `${name} · ${seconds}s`

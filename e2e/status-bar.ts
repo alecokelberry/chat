@@ -1,26 +1,30 @@
-// What color iOS 26 gives the status bar, worked out in the page the way
-// WebKit does it, so a test can check the bar without an iPhone. WebKit
-// (LocalFrameView::fixedContainerEdges, Page::updateFixedContainerEdges)
-// colors the bar from the fixed or sticky element at the top edge's middle,
-// 4px in, or from the page's background when there's none. It looks again
+// What color iOS 26 gives the status bar and Safari's bottom toolbar,
+// worked out in the page the way WebKit does it, so a test can check the
+// bars without an iPhone. WebKit (LocalFrameView::fixedContainerEdges,
+// Page::updateFixedContainerEdges) colors each from the fixed or sticky
+// element at its edge's middle, 4px in (the top edge for the status bar,
+// the bottom one for the toolbar), or from the page's background when
+// there's none. It looks again
 // only when a fixed or sticky element is added or removed, never when colors
 // change, and once the edge has a color a full-screen element, a dimming
 // backdrop or a side drawer keeps that color instead of taking its own.
 // Nothing new is taken while anything in the top layer shows (a popover or
 // a modal dialog, wherever it sits), and a strip in the top layer doesn't
 // count: measured in the Simulator's Home Screen app on iOS 27.2.
-// watchStatusBar installs that model; statusBar reads its answer.
+// watchStatusBar installs that model; statusBar and bottomBar read its
+// answers.
 import type { Page } from "@playwright/test"
 
 declare global {
   interface Window {
     statusBar?: () => string
+    bottomBar?: () => string
   }
 }
 
 /** Installs the model before the page's own scripts. Each frame it checks
  *  whether the set of fixed and sticky elements changed, and only then
- *  samples the top edge again, as WebKit does. */
+ *  samples the edges again, as WebKit does. */
 export async function watchStatusBar(page: Page) {
   await page.addInitScript(() => {
     const NEARLY_TRANSPARENT = 0.1
@@ -116,14 +120,17 @@ export async function watchStatusBar(page: Page) {
       return Number(style.zIndex) < 0 ? "hidden" : "viewport"
     }
 
-    /** The element under the top edge's middle, as WebKit's first hit test
+    type Edge = "top" | "bottom"
+
+    /** The element under an edge's middle, as WebKit's first hit test
      *  finds it: ignoring pointer-events. */
-    function hit() {
+    function hit(side: Edge) {
       const sheet = document.createElement("style")
       sheet.textContent = "* { pointer-events: auto !important }"
       document.head.appendChild(sheet)
       const width = Math.min(innerWidth, document.documentElement.clientWidth)
-      const el = document.elementFromPoint(width / 2, MARGIN)
+      const y = side === "top" ? MARGIN : innerHeight - MARGIN
+      const el = document.elementFromPoint(width / 2, y)
       sheet.remove()
       return el
     }
@@ -132,9 +139,9 @@ export async function watchStatusBar(page: Page) {
 
     /** The first fixed or sticky container up from the hit, and the one
      *  background color on the way, if there's only one. */
-    function find() {
+    function find(side: Edge) {
       const colors = new Set<string>()
-      for (let el = hit(); el !== null; el = el.parentElement) {
+      for (let el = hit(side); el !== null; el = el.parentElement) {
         const type = kind(el)
         const own = type === "hidden" ? "" : primaryBackground(el)
         if (own !== "") colors.add(own)
@@ -153,7 +160,10 @@ export async function watchStatusBar(page: Page) {
         : getComputedStyle(document.body).backgroundColor
     }
 
-    let edge: { color: string; el: Element } | null = null
+    const edges: Record<Edge, { color: string; el: Element } | null> = {
+      top: null,
+      bottom: null,
+    }
     let fixed = new Set<Element>()
 
     /** Whether something in the top layer is drawn and visible. */
@@ -165,8 +175,9 @@ export async function watchStatusBar(page: Page) {
       )
     }
 
-    function sample() {
-      const found = find()
+    function sample(side: Edge) {
+      const edge = edges[side]
+      const found = find(side)
       if (!found) {
         // Page::updateFixedContainerEdges keeps the last element's color
         // while it's still drawn and visible.
@@ -176,18 +187,18 @@ export async function watchStatusBar(page: Page) {
           last.isConnected &&
           last.getClientRects().length > 0 &&
           getComputedStyle(last).visibility === "visible"
-        if (!kept) edge = null
+        if (!kept) edges[side] = null
         return
       }
       const prefersExisting = found.type !== "candidate"
       if (prefersExisting && edge) {
-        edge = { color: edge.color, el: found.el }
+        edges[side] = { color: edge.color, el: found.el }
         return
       }
       // A transparent edge falls back to a snapshot of its pixels; here,
       // the color of the element under the point.
       const color = found.background === "" ? "snapshot" : found.background
-      edge = { color, el: found.el }
+      edges[side] = { color, el: found.el }
     }
 
     function fixedSet() {
@@ -204,16 +215,25 @@ export async function watchStatusBar(page: Page) {
       const changed =
         next.size !== fixed.size || [...next].some((el) => !fixed.has(el))
       fixed = next
-      if (changed && !topLayerShows()) sample()
+      if (changed && !topLayerShows()) {
+        sample("top")
+        sample("bottom")
+      }
       requestAnimationFrame(tick)
     }
     addEventListener("DOMContentLoaded", () => requestAnimationFrame(tick))
 
-    window.statusBar = () => edge?.color ?? pageBackground()
+    window.statusBar = () => edges.top?.color ?? pageBackground()
+    window.bottomBar = () => edges.bottom?.color ?? pageBackground()
   })
 }
 
 /** The status bar's color now, as rgb(). */
 export function statusBar(page: Page) {
   return page.evaluate(() => window.statusBar?.() ?? "")
+}
+
+/** Safari's bottom toolbar's color now, as rgb(). */
+export function bottomBar(page: Page) {
+  return page.evaluate(() => window.bottomBar?.() ?? "")
 }

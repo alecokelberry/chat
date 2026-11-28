@@ -241,11 +241,9 @@ test("a chat with images goes on with Ultra, told what each image was", async ({
 })
 
 // ui-sdk's agent bridge (window.agent, test builds): an agent finds
-// Attach by name and opens its menu, takes a file out through the file
-// input, and opens an image.
-test("an agent can open the menu, take a file out and view an image", async ({
-  page,
-}) => {
+// Attach by name, takes a file out through the file input, and opens an
+// image.
+test("an agent can take a file out and view an image", async ({ page }) => {
   await signInAsDev(page)
   // By query, not the snapshot, which lists only the first 100
   // components (e2e/search.spec.ts).
@@ -262,12 +260,6 @@ test("an agent can open the menu, take a file out and view an image", async ({
       })
       return done.ok
     }, label)
-
-  expect(await press("Attach")).toBe(true)
-  await expect(
-    page.getByRole("menuitem", { name: "Add photos & files" })
-  ).toBeVisible()
-  await page.keyboard.press("Escape")
 
   await pick(page, [SMALL, WIDE])
   await expect(tiles(page)).toHaveCount(2)

@@ -237,13 +237,36 @@ export async function expectNoHeldStart(page: Page) {
 
 /** Taps `item` in a sheet once it has finished sliding up, where the
  *  item is, as a finger would: Playwright's own tap scrolls it into view
- *  first, and the sheet's scroller reads that as a swipe. */
+ *  first, and the sheet's scroller reads that as a swipe. The sheet is
+ *  finished when none of its timed animations still run (the ones that
+ *  follow its scroll always do) and it sits at the same place for five
+ *  frames: ui-sdk writes `--drawer-progress` at the start of an open, so
+ *  reading it says nothing about where the sheet is. */
 export async function tapInSheet(sheet: Locator, item: Locator) {
   await expect
     .poll(() =>
-      sheet.evaluate((el) => el.style.getPropertyValue("--drawer-progress"))
+      sheet.evaluate(
+        (el) =>
+          new Promise<boolean>((resolve) => {
+            const still = () =>
+              el
+                .getAnimations({ subtree: true })
+                .filter((animation) => animation.timeline === document.timeline)
+                .every((animation) => animation.playState === "finished")
+            let top = el.getBoundingClientRect().top
+            let frames = 0
+            const look = () => {
+              const next = el.getBoundingClientRect().top
+              frames = next === top && still() ? frames + 1 : 0
+              top = next
+              if (frames >= 5) resolve(true)
+              else requestAnimationFrame(look)
+            }
+            requestAnimationFrame(look)
+          })
+      )
     )
-    .toBe("1")
+    .toBe(true)
   const box = await item.boundingBox()
   if (box === null) throw new Error("The item has no box")
   await sheet
@@ -268,6 +291,51 @@ export async function pickModel(page: Page, name: string) {
  *  fresh on a rerun. */
 export const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
 
+/** A made-up word of letters only, that no other test sends: for Search,
+ *  whose index splits `unique`'s ids at their digits. */
+export const madeUpWord = () =>
+  `zq${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`
+
+/** Opens Search and types `text` until a message match shows: the
+ *  chat's words reach the index just after its reply ends. */
+export async function findWords(page: Page, text: string) {
+  const dialog = page.getByRole("dialog", { name: "Search" })
+  const field = page.getByRole("combobox", { name: "Search chats" })
+  const messages = dialog.getByRole("group", { name: "Messages" })
+  await expect(async () => {
+    if ((await dialog.count()) === 0)
+      await page.keyboard.press("ControlOrMeta+k")
+    await field.fill("")
+    await field.fill(text)
+    await expect(messages.getByRole("option")).not.toHaveCount(0, {
+      timeout: 2000,
+    })
+  }).toPass()
+}
+
+/** The tokens Settings › Usage counts toward a model, read the way a
+ *  person does (account menu, Settings, Usage), then closed again. Other
+ *  tests on a worker chat as its Dev too, so compare it, don't pin it. */
+export async function tokensOf(page: Page, model: string) {
+  const settings = page.getByRole("dialog", { name: "Settings" })
+  await sidebar(page).getByRole("button", { name: "Dev", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Settings" }).click()
+  await settings
+    .getByRole("tablist", { name: "Settings" })
+    .getByRole("tab", { name: "Usage" })
+    .click()
+  const usage = settings.getByRole("tabpanel", { name: "Usage" })
+  await expect(usage.locator('[aria-busy="false"]')).toBeVisible()
+  const row = usage
+    .getByRole("list", { name: "Tokens by model" })
+    .getByRole("listitem")
+    .filter({ hasText: model })
+  const text = (await row.count()) === 0 ? "0" : await row.innerText()
+  await page.keyboard.press("Escape")
+  await expect(settings).toBeHidden()
+  return Number(/([\d,]+) tokens?$/.exec(text)?.[1]?.replaceAll(",", "") ?? 0)
+}
+
 /** Sends a message the way a person does: once the last reply is over. The
  *  composer ignores Enter while a reply streams (Send is Stop then), and a
  *  reply's last word shows before its stream has ended, so on a slow
@@ -281,7 +349,15 @@ export async function send(page: Page, text: string) {
     page.getByRole("button", { name: "Stop", exact: true })
   ).toHaveCount(0)
   await message.fill(text)
-  await page.keyboard.press("Enter")
+  // On a touch screen Return starts a new line (composer.tsx): Send sends.
+  const touch = await page.evaluate(
+    () => matchMedia("(pointer: coarse)").matches
+  )
+  if (touch) {
+    await page.getByRole("button", { name: "Send", exact: true }).click()
+  } else {
+    await page.keyboard.press("Enter")
+  }
   await expect(message).toHaveValue("")
 }
 
@@ -307,13 +383,43 @@ type AgentBridge = {
   >
 }
 
-/** Attaches files with + › Add photos & files. */
+/** Attaches files with +, which opens the picker. */
 export async function pick(
   page: Page,
   files: Parameters<FileChooser["setFiles"]>[0]
 ) {
-  await page.getByRole("button", { name: "Attach" }).click()
   const chooser = page.waitForEvent("filechooser")
-  await page.getByRole("menuitem", { name: "Add photos & files" }).click()
+  await page.getByRole("button", { name: "Attach" }).click()
   await (await chooser).setFiles(files)
 }
+
+/** Closes the "Chat deleted" toast, as if it timed out, which is when the
+ *  delete is sent, and waits for the delete to have worked. */
+export async function closeDeleteToast(page: Page) {
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/_serverFn/") &&
+      response.request().method() === "POST"
+  )
+  await page.evaluate(() => window.toast.dismiss())
+  expect((await deleted).ok()).toBe(true)
+}
+
+/** What the chat's agent holds, as the browser loads it: how many messages,
+ *  or -1 while the agent is being wiped (it answers 500 until it is gone). */
+export const savedMessages = (page: Page, id: string) =>
+  page.evaluate(async (id) => {
+    const response = await fetch(`/api/chats/${id}/get-messages`)
+    if (!response.ok) return -1
+    const messages: unknown[] = await response.json()
+    return messages.length
+  }, id)
+
+/** Whether a delete's wipe of the chat is still to come (dev and e2e
+ *  builds only: src/lib/chat/agent.ts). */
+export const wipePending = (page: Page, id: string) =>
+  page.evaluate(async (id) => {
+    const response = await fetch(`/api/chats/${id}/wipe-pending`)
+    const pending: boolean = await response.json()
+    return pending
+  }, id)
