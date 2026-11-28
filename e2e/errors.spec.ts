@@ -49,6 +49,16 @@ for (const path of ["/nope", "/c/not-a-chat", NO_SUCH_CHAT]) {
   })
 }
 
+test("a chat just started never flashes Not found", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, "Hello")
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done.",
+    { timeout: 15_000 }
+  )
+  await expect(page.getByRole("heading", { name: "Not found." })).toHaveCount(0)
+})
+
 test.describe("a page that throws", () => {
   // What the faked 500s cause: the failed requests, what they throw, and the
   // error page's own log of it.
