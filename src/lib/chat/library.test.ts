@@ -9,11 +9,10 @@ import { beforeEach, expect, test } from "vitest"
 import {
   attachmentsOf,
   attachmentStatements,
-  LIBRARY_PAGE,
   listAttachments,
   type AttachmentRow,
-  type LibraryQuery,
 } from "@/lib/chat/library"
+import { LIBRARY_PAGE, type LibraryQuery } from "@/lib/chat/library-items"
 
 // The Library's rows against a real SQLite: D1 is SQLite, so the app's own
 // migrations run in Node's built-in SQLite, and its statements run there

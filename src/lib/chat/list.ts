@@ -24,11 +24,8 @@ import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
 import { agentName, CHAT_ID } from "@/lib/chat/id"
-import {
-  LIBRARY_ORDERS,
-  LIBRARY_TABS,
-  listAttachments,
-} from "@/lib/chat/library"
+import { listAttachments } from "@/lib/chat/library"
+import { LIBRARY_ORDERS, LIBRARY_TABS } from "@/lib/chat/library-items"
 import { searchMessages } from "@/lib/chat/message-index"
 import {
   deleteChatRow,

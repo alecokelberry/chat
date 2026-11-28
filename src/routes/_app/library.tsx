@@ -61,7 +61,7 @@ import {
   type LibraryOrder,
   type LibraryQuery,
   type LibraryTab,
-} from "@/lib/chat/library"
+} from "@/lib/chat/library-items"
 import { getLibrary, indexOlderChats, NAME_MAX } from "@/lib/chat/list"
 import { relativeTime } from "@/lib/chat/relative-time"
 import { previewLibrary } from "@/lib/dev/worst-case"

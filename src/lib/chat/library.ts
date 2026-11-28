@@ -1,4 +1,5 @@
-// The Library's index: a D1 row per attachment of a question (an image or
+// The Library's index (what the browser needs of it is in
+// src/lib/chat/library-items.ts, which imports no Drizzle): a D1 row per attachment of a question (an image or
 // a document, src/lib/chat/attachments.ts), across all of a user's chats,
 // for the Library page (src/routes/_app/library.tsx). The files themselves
 // stay inside their chat's agent; a row holds only what the page lists
@@ -21,6 +22,14 @@ import {
 import type { UIMessage } from "ai"
 
 import { isDocument } from "@/lib/chat/documents"
+import {
+  ATTACHMENT_KINDS,
+  LIBRARY_PAGE,
+  type AttachmentKind,
+  type LibraryItem,
+  type LibraryQuery,
+  type LibraryTab,
+} from "@/lib/chat/library-items"
 import { field } from "@/lib/field"
 import { chat, type ChatOwner } from "@/lib/chat/store"
 
@@ -37,7 +46,7 @@ export const attachment = sqliteTable(
     /** The part's place among its question's parts. */
     part: integer().notNull(),
     name: text().notNull(),
-    kind: text({ enum: ["image", "pdf", "text"] }).notNull(),
+    kind: text({ enum: ATTACHMENT_KINDS }).notNull(),
     /** Bytes for an image, characters for a document. */
     size: integer().notNull(),
     /** When its question was sent (epoch ms). */
@@ -57,8 +66,6 @@ export const attachment = sqliteTable(
     }).onDelete("cascade"),
   ]
 )
-
-export type AttachmentKind = (typeof attachment.$inferSelect)["kind"]
 
 /** What a question's attachment puts in its row. `at` is null when the
  *  chat doesn't say when it was sent, and the chat's start stands in. */
@@ -185,40 +192,6 @@ export function attachmentStatements(
   ]
 }
 
-/** A file the Library lists. */
-export type LibraryItem = {
-  seq: number
-  chatId: string
-  messageId: string
-  part: number
-  name: string
-  kind: AttachmentKind
-  size: number
-  at: number
-}
-
-/** Where the Library is in its list: the last item it has. */
-export type LibraryCursor = { at: number; seq: number }
-
-/** The Library's tabs: every file, images, or documents. */
-export const LIBRARY_TABS = ["all", "images", "files"] as const
-export type LibraryTab = (typeof LIBRARY_TABS)[number]
-
-export const LIBRARY_ORDERS = ["newest", "oldest"] as const
-export type LibraryOrder = (typeof LIBRARY_ORDERS)[number]
-
-/** What the Library shows: a tab, a part of a file name, an order, and
- *  where the next page starts. */
-export type LibraryQuery = {
-  tab: LibraryTab
-  name: string
-  order: LibraryOrder
-  cursor?: LibraryCursor
-}
-
-/** How many items one page of the Library holds. */
-export const LIBRARY_PAGE = 60
-
 /** A to Z as a to z, and nothing else, as SQLite's lower() does. */
 const foldAscii = (text: string) =>
   text.replaceAll(/[A-Z]/g, (letter) => letter.toLowerCase())
@@ -278,12 +251,3 @@ export async function listAttachments<Result>(
     )
     .limit(LIBRARY_PAGE)
 }
-
-/** Where the browser gets an image the Library shows: from its chat's
- *  agent (ChatAgent.onRequest, src/lib/chat/agent.ts), behind the chats'
- *  door, by its message and part. `v` is the row's seq, which the server
- *  doesn't read: it makes the address change with the file (a changed
- *  file is a new row, and seq is never reused), so the browser can keep
- *  what it got for good. */
-export const fileUrl = (item: LibraryItem) =>
-  `/api/chats/${item.chatId}/files/${item.messageId}/${item.part}?v=${item.seq}`
