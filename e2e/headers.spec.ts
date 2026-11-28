@@ -45,6 +45,22 @@ test("every script on a page carries the response's nonce", async ({
   expect(new Set(nonces)).toEqual(new Set([nonce]))
 })
 
+test("hashed files are cached for a year, unhashed ones are not", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/sign-in")
+  const src = await page
+    .locator("script[src^='/assets/']")
+    .first()
+    .getAttribute("src")
+  expect(src).not.toBeNull()
+  const hashed = (await request.get(src ?? "")).headers()
+  expect(hashed["cache-control"]).toBe("public, max-age=31536000, immutable")
+  const icon = (await request.get("/icon.svg")).headers()
+  expect(icon["cache-control"]).not.toContain("immutable")
+})
+
 test.describe(() => {
   // The browser logs what it blocks.
   test.use({ allowedProblems: [/Content Security Policy/] })

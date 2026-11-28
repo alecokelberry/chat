@@ -1,7 +1,7 @@
 // Search's dialog and list (search.tsx opens it; this loads apart so the
 // first load doesn't carry it): Grok's command palette, "Search or type an
 // action". The list is ui-sdk's Command over Chat's actions (New Chat, its
-// keys on the right) and the chat list the layout already has
+// keys on the right, and Library) and the chat list the layout already has
 // (chat-list.tsx). With nothing typed it shows the actions, New Chat
 // highlighted, then under Chats the 50 most recently active, each with a
 // chat icon and how long ago on the right (1d, 2d). Tab moves the
@@ -38,6 +38,7 @@ import {
 import type { UIMessage } from "ai"
 import {
   EllipsisIcon,
+  LibraryIcon,
   MessageCircleIcon,
   PencilIcon,
   PlusIcon,
@@ -109,6 +110,13 @@ const ACTIONS = [
     to: "/",
     shortcut: NEW_CHAT_SHORTCUT,
     icon: PlusIcon,
+  },
+  {
+    value: "action:library",
+    label: "Library",
+    to: "/library",
+    shortcut: undefined,
+    icon: LibraryIcon,
   },
 ] as const
 
@@ -614,7 +622,9 @@ function ActionResult({
       ) : (
         <CommandMatchText text={item.label} query={query} />
       )}
-      <KbdKeys shortcut={action.shortcut} className="ms-3 flex-none!" />
+      {action.shortcut !== undefined && (
+        <KbdKeys shortcut={action.shortcut} className="ms-3 flex-none!" />
+      )}
     </CommandItem>
   )
 }

@@ -21,6 +21,7 @@ import { env } from "cloudflare:workers"
 import { tool } from "ai"
 import { z } from "zod"
 
+import { guarded, keenable } from "@/lib/ai/keenable"
 import { mockSearch } from "@/lib/ai/mock"
 import { siteOf, type KnownAddresses } from "@/lib/ai/web-address"
 
@@ -67,41 +68,20 @@ function toResults(
   })
 }
 
-async function keenable(query: string, abortSignal: AbortSignal | undefined) {
-  const signals = [AbortSignal.timeout(TIMEOUT_MS)]
-  if (abortSignal !== undefined) signals.push(abortSignal)
-  const response = await fetch("https://api.keenable.ai/v1/search", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": env.KEENABLE_API_KEY,
-    },
-    body: JSON.stringify({
+async function search(query: string, abortSignal: AbortSignal | undefined) {
+  const json = await keenable(
+    "search",
+    {
       query,
       max_results: RESULTS,
       snippet_max_length: SNIPPET_CHARS,
       disable_cards: true,
-    }),
-    signal: AbortSignal.any(signals),
-  })
-  if (!response.ok) {
-    await response.body?.cancel()
-    throw new KeenableError(response.status)
-  }
-  return toResults(KeenableResults.parse(await response.json()).results)
+    },
+    TIMEOUT_MS,
+    abortSignal
+  )
+  return toResults(KeenableResults.parse(json).results)
 }
-
-/** Keenable's answer when it isn't a 2xx (402: the month's free
- *  allowance is used up). */
-export class KeenableError extends Error {
-  constructor(readonly status: number) {
-    super(`Keenable answered ${status}`)
-  }
-}
-
-/** Why a search or a read found nothing, as the model and the chat read
- *  it. */
-export class SearchError extends Error {}
 
 /** The webSearch tool for one reply: past SEARCH_LIMIT calls, even ones
  *  made at once in a single step, it refuses without asking Keenable. A
@@ -125,28 +105,25 @@ export const webSearch = (known: KnownAddresses) => {
           refused: `That's the ${SEARCH_LIMIT} searches this reply can make. Answer from what you have.`,
         }
       left -= 1
-      try {
-        const results: SearchResult[] =
-          env.MOCK_MODEL === "1"
-            ? await mockSearch(query, abortSignal)
-            : await keenable(query, abortSignal)
-        for (const { url, site, title, snippet } of results) {
-          known.add(url)
-          known.add(`${title}\n${snippet}`, site)
+      return guarded(
+        "Search",
+        {
+          used: "This month's free web searches are used up.",
+          failed: "The web search failed, so nothing was found.",
+        },
+        abortSignal,
+        async () => {
+          const results: SearchResult[] =
+            env.MOCK_MODEL === "1"
+              ? await mockSearch(query, abortSignal)
+              : await search(query, abortSignal)
+          for (const { url, site, title, snippet } of results) {
+            known.add(url)
+            known.add(`${title}\n${snippet}`, site)
+          }
+          return { results }
         }
-        return { results }
-      } catch (error) {
-        if (abortSignal?.aborted === true) throw error
-        console.error(
-          "Search failed:",
-          error instanceof Error ? error.message : String(error)
-        )
-        throw new SearchError(
-          error instanceof KeenableError && error.status === 402
-            ? "This month's free web searches are used up."
-            : "The web search failed, so nothing was found."
-        )
-      }
+      )
     },
   })
 }
