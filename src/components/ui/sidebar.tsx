@@ -279,7 +279,7 @@ function SidebarGroup({
     >
       <h2
         id={id}
-        className="mx-1 ps-2.25 pe-3 pt-2.5 pb-1 text-xs font-medium text-sidebar-muted select-none"
+        className="mx-1 ps-2.25 pe-3 pt-2.5 pb-1 text-label font-medium text-sidebar-muted select-none"
       >
         {label}
       </h2>
@@ -317,7 +317,7 @@ function SidebarSection({
         <h2 className="flex min-w-0">
           <CollapsibleTrigger
             id={id}
-            className="group/section flex h-8 items-center gap-1 rounded-md ps-2.25 pe-1.5 text-sm text-sidebar-muted ring-sidebar-ring outline-hidden select-none hover:text-sidebar-foreground focus-visible:ring-2"
+            className="group/section flex h-8 items-center gap-1 rounded-md ps-2.25 pe-1.5 text-label font-medium text-sidebar-muted ring-sidebar-ring outline-hidden select-none hover:text-sidebar-foreground focus-visible:ring-2"
           >
             {label}
             <ChevronDownIcon
@@ -409,7 +409,7 @@ function SidebarRowEdit({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const sidebarRowVariants = cva(
-  "flex h-10 w-full press items-center rounded-item py-1.5 text-base font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden select-none no-touch-callout focus-visible:ring-2",
+  "flex h-10 w-full press items-center rounded-item py-1.5 text-sm font-normal whitespace-nowrap text-ink-secondary ring-sidebar-ring outline-hidden select-none no-touch-callout focus-visible:ring-2",
   {
     variants: {
       variant: {
@@ -429,7 +429,7 @@ const sidebarRowVariants = cva(
         // with the chat rows' wash, and the avatar dims to 75%. In the rail, the avatar alone in a
         // 36px circle.
         account:
-          "gap-2 rounded-item px-2 font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-sidebar-accent hover:text-foreground active:bg-sidebar-accent active:text-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>[data-slot=avatar]_*]:text-xs [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
+          "gap-2 rounded-item px-2 text-base font-medium text-muted-foreground group-data-collapsed/sidebar:size-9 group-data-collapsed/sidebar:gap-0 group-data-collapsed/sidebar:rounded-full group-data-collapsed/sidebar:p-1.25 hover:bg-sidebar-accent hover:text-foreground active:bg-sidebar-accent active:text-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-foreground [&>[data-slot=avatar]]:size-6.5 [&>[data-slot=avatar]]:transition-opacity [&>[data-slot=avatar]]:duration-fast [&>[data-slot=avatar]]:ease-standard hover:[&>[data-slot=avatar]]:opacity-75 [&>[data-slot=avatar]_*]:text-xs [&>span:last-child]:truncate [&>span:last-child]:text-foreground group-data-collapsed/sidebar:[&>span:last-child]:hidden",
         // A chat: its title only, 12px in and 8px at the end (36px while
         // its … shows), fading out at the end instead of an ellipsis. The
         // open chat (the link's aria-current) keeps the hover's wash and

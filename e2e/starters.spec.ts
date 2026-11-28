@@ -55,3 +55,26 @@ test("an agent can see the starters and use one", async ({ page }) => {
     "What's in the news today?"
   )
 })
+
+// The one-line composer sits at the middle of the space under the header
+// whatever is under it, with the starters shown.
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+]) {
+  test(`the starters leave the composer centered at ${viewport.width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport)
+    await signInAsDev(page)
+    await expect(page.getByRole("list", { name: "Starters" })).toBeVisible()
+    const form = await page.locator("form").boundingBox()
+    const main = await page.locator("main").boundingBox()
+    expect(form).not.toBeNull()
+    expect(main).not.toBeNull()
+    if (form === null || main === null) return
+    const above = form.y - main.y
+    const below = main.y + main.height - (form.y + form.height)
+    expect(Math.abs(above - below)).toBeLessThan(2)
+  })
+}
