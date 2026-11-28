@@ -89,7 +89,7 @@ import { marksOf } from "@/lib/chat/match-marks"
 import { nextSection } from "@/lib/chat/next-section"
 import { relativeTime } from "@/lib/chat/relative-time"
 import type { ChatSummary } from "@/lib/chat/store"
-import { usePhone } from "@/lib/phone"
+import { usePhone } from "@/lib/media"
 
 const toItem = (chat: ChatSummary): CommandDataItem => ({
   value: chat.id,

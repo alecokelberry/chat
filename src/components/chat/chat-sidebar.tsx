@@ -90,7 +90,7 @@ import {
 } from "@/components/ui/tooltip"
 import { groupChats, isChatSort, sortChats } from "@/lib/chat/groups"
 import type { Customize } from "@/lib/ai/style"
-import { usePhone } from "@/lib/phone"
+import { usePhone } from "@/lib/media"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
 import type { ChatSummary } from "@/lib/chat/store"
 
