@@ -303,13 +303,12 @@ type AgentBridge = {
   >
 }
 
-/** Attaches files with + › Add photos & files. */
+/** Attaches files with +, which opens the picker. */
 export async function pick(
   page: Page,
   files: Parameters<FileChooser["setFiles"]>[0]
 ) {
-  await page.getByRole("button", { name: "Attach" }).click()
   const chooser = page.waitForEvent("filechooser")
-  await page.getByRole("menuitem", { name: "Add photos & files" }).click()
+  await page.getByRole("button", { name: "Attach" }).click()
   await (await chooser).setFiles(files)
 }
