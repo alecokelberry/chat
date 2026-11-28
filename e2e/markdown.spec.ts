@@ -24,6 +24,22 @@ async function highlighted(reply: Locator) {
   )
 }
 
+test("math rendering loads only for a reply with math", async ({ page }) => {
+  const math: string[] = []
+  page.on("request", (request) => {
+    if (request.url().includes("reply-math")) math.push(request.url())
+  })
+  await signInAsDev(page)
+  await send(page, "Say hello")
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done."
+  )
+  expect(math).toHaveLength(0)
+  await send(page, "Show me some markdown")
+  await expect(page.locator(".katex").first()).toBeVisible()
+  expect(math.length).toBeGreaterThan(0)
+})
+
 test("a reply renders markdown, code and math, without raw syntax while it streams", async ({
   page,
 }) => {

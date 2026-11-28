@@ -6,7 +6,11 @@
 // reply into blocks and re-parses only the last, and closes what's still
 // half-written (an open fence, bold, a formula) so raw syntax never
 // flashes. Its code plugin highlights with Shiki, loading each language
-// the first time it's used; its math plugin renders with KaTeX.
+// the first time it's used; its math plugin renders with KaTeX, and loads
+// (with its CSS, reply-math.ts) the first time a reply has math: a saved
+// chat without any doesn't download it. A reply that's still arriving
+// shows what comes before its first formula until the plugin is there,
+// and a finished one waits for it, so raw TeX never shows.
 // prepareMarkdown first rewrites math to the form remark-math reads and
 // names each fence's language for its label.
 //
@@ -23,11 +27,8 @@
 // isn't used: it lays out each burst at once and fades its words in, so
 // lines still jump in bursts and its caret would sit past the shown
 // words.
-import "katex/dist/katex.min.css"
-
-import { useMemo } from "react"
+import { use, useEffect, useMemo, useState } from "react"
 import { createCodePlugin } from "@streamdown/code"
-import { math } from "@streamdown/math"
 import { Streamdown } from "streamdown"
 
 import { Code } from "@/components/chat/code-block"
@@ -37,12 +38,10 @@ import { useSmoothText } from "@/lib/chat/smooth-text"
 import { whenIdle } from "@/lib/idle"
 import { cn } from "@/lib/utils"
 
-const plugins = {
-  code: createCodePlugin({
-    themes: ["github-light-high-contrast", "github-dark-default"],
-  }),
-  math,
-}
+const code = createCodePlugin({
+  themes: ["github-light-high-contrast", "github-dark-default"],
+})
+const plugins = { code }
 const components = { code: Code, table: Table }
 
 // Shiki (its module, engine and both themes) and TypeScript's highlighter,
@@ -52,13 +51,51 @@ const components = { code: Code, table: Table }
 // the shared downloads are done. In the iOS Simulator, with the cache off,
 // it took the first markdown reply's worst frame from 44 ms to 32 ms.
 whenIdle(() =>
-  plugins.code.highlight({
+  code.highlight({
     code: "",
     language: "typescript",
-    themes: plugins.code.getThemes(),
+    themes: code.getThemes(),
   })
 )
 const linkSafety = { enabled: false }
+
+type Plugins = {
+  code: typeof code
+  math?: (typeof import("@streamdown/math"))["math"]
+}
+let withMath: Plugins | undefined
+let loading: Promise<Plugins> | undefined
+
+/** The plugins with math, loading it once. */
+function loadMath() {
+  loading ??= import("@/components/chat/reply-math").then(({ math }) => {
+    withMath = { code, math }
+    return withMath
+  })
+  return loading
+}
+
+/** prepareMarkdown writes all math as `$$`. */
+const hasMath = (markdown: string) => markdown.includes("$$")
+
+/** The plugins for `markdown`, and what of it can show now: with math the
+ *  plugin isn't loaded for yet, a streaming reply stops before its first
+ *  formula and a finished one waits (Suspense, in thread.tsx). */
+function usePlugins(markdown: string, live: boolean) {
+  const needed = hasMath(markdown)
+  const [, loaded] = useState(0)
+  useEffect(() => {
+    if (needed && withMath === undefined)
+      void loadMath().then(() => loaded((n) => n + 1))
+  }, [needed])
+  if (!needed) return { plugins, markdown }
+  if (withMath !== undefined) return { plugins: withMath, markdown }
+  if (!live) return { plugins: use(loadMath()), markdown }
+  return {
+    plugins,
+    markdown: markdown.slice(0, markdown.indexOf("$$")).trimEnd(),
+  }
+}
 
 export default function Reply({
   text,
@@ -75,10 +112,11 @@ export default function Reply({
   const shown = useSmoothText(text, { streaming, stopped })
   // Stopped: settled at once, though the stream takes a moment to close.
   const live = !stopped && (streaming || !shown.done)
-  const markdown = useMemo(
+  const prepared = useMemo(
     () => prepareMarkdown(shown.text, live),
     [shown.text, live]
   )
+  const { plugins, markdown } = usePlugins(prepared, live)
   return (
     <div className={cn("typeset typeset-docs", live && "stream-caret")}>
       <Streamdown
