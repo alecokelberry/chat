@@ -32,6 +32,12 @@
 // as the send moves it up). Search also asks it to index itself whole
 // (indexAll) when it opens, for a chat from before the index.
 //
+// The Library (src/routes/_app/library.tsx) shows a question's image by
+// asking for it here, at /api/chats/<id>/files/<message id>/<part>: the
+// agent answers with the image's bytes, from the data URL the chat keeps,
+// and the browser may keep it for good (the Library's address for a file
+// changes when the file does, src/lib/chat/library.ts).
+//
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
 // model thought, from its first thought to the end of its last (or to
@@ -42,6 +48,7 @@ import {
   type OnChatMessageOptions,
 } from "@cloudflare/ai-chat"
 import type { UIMessage } from "ai"
+import { Buffer } from "node:buffer"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
@@ -67,6 +74,12 @@ const textOf = (message: UIMessage | undefined) =>
  *  answer to reach the Worker first. The scheduler rounds the due time
  *  down to a whole second, so 2 waits 1 to 2 seconds. */
 const WIPE_AFTER = 2
+
+/** A Library request for a question's file: its message id and part. */
+const FILE_PATH = /\/files\/([^/]+)\/(\d{1,3})$/
+
+/** An inline image (the only kind a question keeps): its type and bytes. */
+const IMAGE_URL = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.*)$/s
 
 export class ChatAgent extends AIChatAgent<Env> {
   // The name (user id and chat id) goes to that user's own browser only.
@@ -122,6 +135,27 @@ export class ChatAgent extends AIChatAgent<Env> {
   /** Whether Search's index held all the chat's words when this turn's
    *  send came in. */
   private indexed = true
+
+  /** A question's image for the Library, or 404 for anything else; any
+   *  other request goes on to the SDK. */
+  override async onRequest(request: Request) {
+    const file = FILE_PATH.exec(new URL(request.url).pathname)
+    if (file === null) return super.onRequest(request)
+    const [, messageId = "", part = ""] = file
+    const found = this.messages.find((message) => message.id === messageId)
+      ?.parts[Number(part)]
+    const image = found?.type === "file" ? IMAGE_URL.exec(found.url) : null
+    if (image === null) return new Response(null, { status: 404 })
+    const [, type = "", base64 = ""] = image
+    // Node's Buffer (nodejs_compat) decodes natively, inside the 10 ms.
+    return new Response(Buffer.from(base64, "base64"), {
+      headers: {
+        "Content-Type": type,
+        "Cache-Control": "private, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
+    })
+  }
 
   /** What deleteChat's schedule runs. */
   async wipe() {
