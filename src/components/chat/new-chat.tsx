@@ -102,16 +102,20 @@ export function NewChat({
  *  it shares the header row with the sidebar button. */
 function PrivateToggle({ pressed }: { pressed: boolean }) {
   const navigate = useNavigate()
+  // Pressed at once, as ui-sdk asks, not only once the other page is in:
+  // each page mounts its own toggle, so this starts from the page's state.
+  const [on, setOn] = useState(pressed)
   return (
     <div className="absolute end-4 top-0 z-10 box-content flex h-header items-center pt-safe">
       <Tooltip type="label">
         <TooltipTrigger
           render={
             <PillToggle
-              pressed={pressed}
-              onPressedChange={(on) =>
-                void navigate({ to: on ? "/private" : "/" })
-              }
+              pressed={on}
+              onPressedChange={(next) => {
+                setOn(next)
+                void navigate({ to: next ? "/private" : "/" })
+              }}
             />
           }
         >
