@@ -8,6 +8,8 @@
 // With nothing saved the app follows the device, live; the one Theme
 // button saves an override only while it differs from the device, so
 // switching back to what the device shows follows it again (nextTheme).
+// The accent color's pre-paint script is here too, so the first load
+// doesn't carry its color math (src/lib/accent.ts).
 import { createIsomorphicFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 
@@ -50,3 +52,21 @@ export function saveTheme(theme: Theme) {
   // oxlint-disable-next-line unicorn/no-document-cookie -- one value; the Cookie Store API isn't in Safari before 18.4
   document.cookie = themeCookie(theme)
 }
+
+/** Where the accent color is kept (src/lib/accent.ts): its pick and the
+ *  light and dark colors it becomes. */
+export const ACCENT_KEY = "accent"
+
+/** Runs in the head before the first paint: the saved accent's two colors
+ *  onto <html>, as --accent-light and --accent-dark, which app.css's
+ *  --send reads. Only six-digit hex gets through to the style. */
+export const ACCENT_SCRIPT = `(() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(${JSON.stringify(ACCENT_KEY)}) || "null")
+    const hex = /^#[0-9a-f]{6}$/
+    if (!saved || !hex.test(saved.light) || !hex.test(saved.dark)) return
+    const style = document.documentElement.style
+    style.setProperty("--accent-light", saved.light)
+    style.setProperty("--accent-dark", saved.dark)
+  } catch {}
+})()`
