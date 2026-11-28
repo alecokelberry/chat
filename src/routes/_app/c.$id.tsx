@@ -28,7 +28,15 @@
 // the title in the pill. In dev, ?data= shows made-up messages instead
 // (src/lib/dev/worst-case.ts) and Send, Retry and Edit do nothing, so a
 // preview never writes to a chat.
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from "react"
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   createFileRoute,
   useLocation,
@@ -40,7 +48,11 @@ import { useAgentChat } from "@cloudflare/ai-chat/react"
 import { EllipsisIcon } from "lucide-react"
 
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
-import { useChatList, type ChatRef } from "@/components/chat/chat-list"
+import {
+  useChatList,
+  useListChanged,
+  type ChatRef,
+} from "@/components/chat/chat-list"
 import { NotFoundPage } from "@/components/error-page"
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
@@ -50,7 +62,11 @@ import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { toast } from "@/components/ui/toast"
-import { questionParts, takeHandedOffFiles } from "@/lib/chat/attachments"
+import {
+  questionParts,
+  takeHandedOffFiles,
+  type AttachmentPart,
+} from "@/lib/chat/attachments"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 import { pageTitle } from "@/lib/utils"
@@ -69,12 +85,9 @@ const sentWith = (model: ModelKey) => ({
 
 export const Route = createFileRoute("/_app/c/$id")({
   ssr: "data-only",
-  loader: async ({ params, parentMatchPromise }) => {
-    const { loaderData: chats } = await parentMatchPromise
-    return {
-      title: chats?.find((chat) => chat.id === params.id)?.title ?? null,
-    }
-  },
+  loader: ({ params, context }) => ({
+    title: context.chats.find((chat) => chat.id === params.id)?.title ?? null,
+  }),
   head: ({ params, loaderData }) => ({
     meta: [
       {
@@ -149,12 +162,13 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   const firstMessage = useLocation({ select: (l) => l.state.firstMessage })
   const [isNew] = useState(firstMessage !== undefined)
   const router = useRouter()
+  const listChanged = useListChanged()
   const { data } = Route.useSearch()
   const agent = useAgent({
     agent: "ChatAgent",
     basePath: `api/chats/${id}`,
     onMessage: (event) => {
-      if (event.data === CHATS_CHANGED) void router.invalidate()
+      if (event.data === CHATS_CHANGED) void listChanged()
       if (event.data === CHAT_DELETED) void router.navigate({ to: "/" })
     },
   })
@@ -202,6 +216,20 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   // isStreaming also covers a reply another tab started.
   const previewing = previewEnabled && data !== undefined
   const shown = useMemo(() => previewMessages(messages, data), [messages, data])
+  // Stable, so the thread's past questions don't re-render as a reply
+  // streams (thread.tsx).
+  const onEdit = useCallback(
+    (messageId: string, text: string, attachments: AttachmentPart[]) => {
+      if (previewing) return
+      setStopped(false)
+      void sendMessage({
+        parts: questionParts(text, attachments),
+        messageId,
+        metadata: sentWith(model),
+      })
+    },
+    [previewing, sendMessage, model]
+  )
   const busy = status === "submitted" || status === "streaming" || isStreaming
   return (
     <>
@@ -219,15 +247,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
         }}
         model={model}
         onModelChange={setModel}
-        onEdit={(messageId, text, attachments) => {
-          if (previewing) return
-          setStopped(false)
-          void sendMessage({
-            parts: questionParts(text, attachments),
-            messageId,
-            metadata: sentWith(model),
-          })
-        }}
+        onEdit={onEdit}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
           the thread's text; 16px in on a computer. */}

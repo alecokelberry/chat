@@ -6,11 +6,16 @@
 // iOS rasterizes soft); only the hidden one is scaled and turned.
 import { MoonIcon, SunIcon } from "lucide-react"
 
-function ThemeIcon() {
+import { cn } from "@/lib/utils"
+
+function ThemeIcon({ className }: { className?: string }) {
   return (
     <span
       data-slot="theme-icon"
-      className="grid *:col-start-1 *:row-start-1 *:transition-spin"
+      className={cn(
+        "grid *:col-start-1 *:row-start-1 *:transition-spin",
+        className
+      )}
     >
       <SunIcon
         aria-hidden

@@ -7,21 +7,30 @@ import { getRequest } from "@tanstack/react-start/server"
 import { toCustomize } from "@/lib/ai/style"
 import { devSignInAllowed, getAuth } from "@/lib/auth/server"
 
+/** The account a page shows: name, email and Customize's choices. */
+export function accountOf(user: {
+  name: string
+  email: string
+  responseStyle: string
+  customInstructions: string
+}) {
+  const { name, email, responseStyle, customInstructions } = user
+  return {
+    name,
+    email,
+    customize: toCustomize({
+      style: responseStyle,
+      custom: customInstructions,
+    }),
+  }
+}
+
 export const getSession = createServerFn({ method: "GET" }).handler(
   async () => {
     const session = await getAuth().api.getSession({
       headers: getRequest().headers,
     })
-    if (session === null) return null
-    const { name, email, responseStyle, customInstructions } = session.user
-    return {
-      name,
-      email,
-      customize: toCustomize({
-        style: responseStyle,
-        custom: customInstructions,
-      }),
-    }
+    return session === null ? null : accountOf(session.user)
   }
 )
 

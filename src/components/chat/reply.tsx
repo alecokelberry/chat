@@ -46,13 +46,28 @@ const components = { code: Code, table: Table }
 
 // Shiki (its module, engine and both themes) and TypeScript's highlighter,
 // the most common language, start while idle, so a first TypeScript block
-// doesn't build them mid-reply. Another language still builds its own
-// highlighter on first use (@streamdown/code keeps one per language), but
-// the shared downloads are done. In the iOS Simulator, with the cache off,
-// it took the first markdown reply's worst frame from 44 ms to 32 ms.
+// doesn't build them mid-reply. The warm-up tokenizes a short sample, not
+// an empty string: Shiki's regex engine compiles each grammar rule the
+// first time a line reaches it, and that compiling, not the download, was
+// most of the first block's freeze. The sample touches the rules most code
+// does (keywords, types, strings, numbers, comments, calls, arrows,
+// templates). Another language still builds its own highlighter on first
+// use (@streamdown/code keeps one per language), but the shared downloads
+// are done.
+const WARM_UP = `// Warm-up sample
+import { useState } from "react"
+export interface User { id: number; name?: string }
+export async function load<T extends User>(id: number): Promise<T | null> {
+  const res = await fetch(\`/api/\${id}\`, { method: "GET" })
+  if (!res.ok) return null
+  const items: string[] = [1, 2.5, 0xff].map((n) => String(n))
+  return (await res.json()) as T
+}
+class Box { private v = 0; get value() { return this.v } }
+`
 whenIdle(() =>
   code.highlight({
-    code: "",
+    code: WARM_UP,
     language: "typescript",
     themes: code.getThemes(),
   })
