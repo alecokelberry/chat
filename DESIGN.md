@@ -23,7 +23,7 @@ Every value is a named token in `src/styles/app.css` (`:root`, its `dark` varian
 
 Semantic tokens only; no `dark:` color overrides. Everything is near-monochrome except:
 
-- **Pink** (`send`): the send button, New Chat's plus (Grok's is blue), the sign-in pill's go circle and selection, nothing else. Focus is the stock gray `ring`, for keyboard focus only.
+- **Accent** (`send`, pink unless Settings › Appearance picks another): the send button, New Chat's plus (Grok's is blue), the sign-in pill's go circle and selection, nothing else. Each choice is a light and a dark color that keep 3:1 against the send button's ink (`src/lib/accent.ts`). Focus is the stock gray `ring`, for keyboard focus only.
 - **Status** (`destructive`): the shell's own feedback, never data. A success or warning color comes back with the first feature that needs one.
 
 ## Type
