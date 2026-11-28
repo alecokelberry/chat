@@ -67,7 +67,7 @@ import {
 } from "@/lib/ai/style"
 import { authClient } from "@/lib/auth/client"
 import { getCustomizeNow } from "@/lib/auth/session"
-import { useSignOut } from "@/lib/auth/use-sign-out"
+import { SIGN_OUT_CONFIRM, useSignOut } from "@/lib/auth/use-sign-out"
 import { getUsage } from "@/lib/chat/list"
 import { initialsOf } from "@/lib/settings/initials"
 import {
@@ -171,7 +171,7 @@ export function Settings({
 function AccountPage({ account }: { account: Account }) {
   const signOut = useSignOut()
   return (
-    <SettingsCard label="Account">
+    <SettingsCard>
       <SettingsRow
         leading={
           <Avatar>
@@ -184,7 +184,7 @@ function AccountPage({ account }: { account: Account }) {
         <Button
           variant="outline"
           size="sm"
-          data-agent-confirm="Signs you out on this device"
+          data-agent-confirm={SIGN_OUT_CONFIRM}
           onClick={signOut}
         >
           Sign Out
@@ -199,7 +199,7 @@ function AccountPage({ account }: { account: Account }) {
 function AppearancePage() {
   const [wrap, setWrap] = useCodeWrap()
   return (
-    <SettingsCard label="Appearance">
+    <SettingsCard>
       <SettingsRow name="Theme" description="Switch light and dark">
         <ThemeToggle />
       </SettingsRow>
@@ -293,7 +293,7 @@ function CustomizePage({ saved }: { saved: Customize }) {
   useEffect(() => () => saveTypedLater(), [])
 
   return (
-    <SettingsCard label="Customize">
+    <SettingsCard>
       <SettingsRow
         name="Customize Chat's response"
         description="Personalize how Chat responds to you"

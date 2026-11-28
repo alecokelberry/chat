@@ -24,6 +24,7 @@ import {
 import type { UIMessage } from "ai"
 
 import { isDocument } from "@/lib/chat/documents"
+import { attachmentStatements } from "@/lib/chat/library"
 import { MATCH_END, MATCH_START } from "@/lib/chat/match-marks"
 import { chat, type ChatOwner } from "@/lib/chat/store"
 
@@ -113,7 +114,8 @@ export function jsonChunks<Row>(rows: readonly Row[], max = JSON_MAX) {
   return chunks
 }
 
-/** Brings the chat's text in the index up to `messages`, the whole chat:
+/** Brings the chat's text in the index, and its files in the Library's
+ *  (src/lib/chat/library.ts), up to `messages`, the whole chat:
  *  drops what it no longer holds, then writes `changed` (the turn's
  *  question and reply, or every message), and with `whole` marks the chat
  *  indexed (src/lib/chat/store.ts). A few statements, the message list sent as
@@ -133,7 +135,7 @@ export async function indexMessages(
       .filter((row) => row.text !== "")
   )
   // Raw D1 statements: Drizzle's builder can't say "not in json_each",
-  // nor an upsert from a SELECT. One batch, so both or neither apply.
+  // nor an upsert from a SELECT. One batch, so all or none apply.
   await d1.batch([
     d1
       .prepare(
@@ -154,6 +156,9 @@ export async function indexMessages(
         set text = excluded.text where text is not excluded.text`
         )
         .bind(userId, id, json)
+    ),
+    ...attachmentStatements({ userId, id }, messages, changed).map(
+      ({ sql, params }) => d1.prepare(sql).bind(...params)
     ),
     ...(whole
       ? [

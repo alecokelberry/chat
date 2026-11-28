@@ -181,6 +181,30 @@ test("Shift+Enter starts a new line and Enter sends", async ({ page }) => {
   )
 })
 
+// A phone's keyboard has no Shift+Return, so on a touch screen Return
+// starts a new line and Send sends (createPointerKind's coarse pointer).
+test.describe("on a touch screen", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  })
+
+  test("Return starts a new line and Send sends", async ({ page }) => {
+    await signInAsDev(page)
+    const message = page.getByRole("textbox", { name: "Message" })
+    await message.fill("First line")
+    await message.press("Enter")
+    await page.keyboard.type("Second line")
+    await expect(message).toHaveValue("First line\nSecond line")
+    await expect(page).toHaveURL(/\/$/)
+
+    await page.getByRole("button", { name: "Send", exact: true }).tap()
+    await expect(page).toHaveURL(/\/c\//)
+    await expect(questions(page)).toHaveText(["First line\nSecond line"])
+  })
+})
+
 test("an empty message doesn't send", async ({ page }) => {
   await signInAsDev(page)
   const message = page.getByRole("textbox", { name: "Message" })

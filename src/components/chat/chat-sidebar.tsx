@@ -1,7 +1,7 @@
 // The signed-in shell: the sidebar beside the page. From md up it's a
 // column; on a phone it's a drawer from the start edge, opened from a
 // header above the page, and it closes when you pick a row. It holds New
-// Chat, the chat list, pinned chats first, then grouped by the browser's
+// Chat, Library (src/routes/_app/library.tsx), the chat list, pinned chats first, then grouped by the browser's
 // own day (src/lib/chat/groups.ts), newest first (a chat without a title
 // yet shows "New chat"), and the account row at the bottom
 // (account-menu.tsx). Each row has its own … menu (chat-actions.tsx), so
@@ -38,7 +38,7 @@ import {
   type ReactNode,
 } from "react"
 import { Link, ScriptOnce, useNavigate } from "@tanstack/react-router"
-import { EllipsisIcon, PlusIcon } from "lucide-react"
+import { EllipsisIcon, LibraryIcon, PlusIcon } from "lucide-react"
 
 import { AccountMenu, type Account } from "@/components/chat/account-menu"
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
@@ -90,7 +90,7 @@ import {
 } from "@/components/ui/tooltip"
 import { groupChats, isChatSort, sortChats } from "@/lib/chat/groups"
 import type { Customize } from "@/lib/ai/style"
-import { usePhone } from "@/lib/phone"
+import { usePhone } from "@/lib/media"
 import { saveSidebarCollapsed } from "@/lib/sidebar"
 import type { ChatSummary } from "@/lib/chat/store"
 
@@ -196,8 +196,9 @@ export function ChatSidebar({
         <div className="mb-1 hidden ps-3 group-data-collapsed/sidebar:flex">
           <SearchButton controller={search} tooltipSide="right" />
         </div>
-        <div className="relative z-10 px-2.5">
+        <div className="relative z-10 flex flex-col gap-1 px-2.5">
           <NewChatLink />
+          <LibraryLink tooltip={collapsed} />
         </div>
         {phone === false && <ChatList chats={chats} />}
         <SidebarFooter>
@@ -244,6 +245,9 @@ export function ChatSidebar({
               <SidebarHeader className="relative z-10">
                 <NewChatLink onClick={close} tooltip={false} />
               </SidebarHeader>
+              <div className="relative z-10 px-2.5">
+                <LibraryLink onClick={close} tooltip={false} />
+              </div>
               <ChatList
                 chats={chats}
                 limit={opened ? undefined : FIRST_SCREEN}
@@ -262,7 +266,11 @@ export function ChatSidebar({
         </SidebarDrawer>
         {children}
       </div>
-      <SearchDialog controller={search} onPick={close} />
+      <SearchDialog
+        controller={search}
+        onPick={close}
+        tools={{ settings, toggleSidebar: () => toggle(false) }}
+      />
       <SettingsDialog
         controller={settings}
         account={account}
@@ -296,6 +304,33 @@ function NewChatLink({
       <NewChatGlyph />
       <span>New Chat</span>
     </NewChatTooltip>
+  )
+}
+
+/** The Library's row under New Chat; named by a tooltip in the rail. */
+function LibraryLink({
+  onClick,
+  tooltip,
+}: {
+  onClick?: () => void
+  tooltip: boolean
+}) {
+  return (
+    <Tooltip disabled={!tooltip}>
+      <TooltipTrigger
+        render={
+          <SidebarRow
+            variant="nav"
+            render={<Link to="/library" />}
+            onClick={onClick}
+          />
+        }
+      >
+        <LibraryIcon aria-hidden />
+        <span>Library</span>
+      </TooltipTrigger>
+      <TooltipContent side="right">Library</TooltipContent>
+    </Tooltip>
   )
 }
 

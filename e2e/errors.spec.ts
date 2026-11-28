@@ -80,8 +80,8 @@ test.describe("a page that throws", () => {
     )
     await page
       .getByRole("navigation", { name: "Chats" })
-      .getByRole("link")
-      .nth(1)
+      .locator('a[href^="/c/"]')
+      .first()
       .click()
     await expect(
       page.getByRole("heading", { name: "Something went wrong." })
