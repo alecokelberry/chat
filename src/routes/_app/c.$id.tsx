@@ -16,6 +16,8 @@
 // A new chat's composer takes focus as it opens: the first send came from
 // the new-chat page's composer (Enter, or Send, which Safari doesn't focus),
 // so typing can go on.
+// A chat that isn't in that list, and wasn't started in this tab, shows
+// Not found: a deleted chat's link, or an id nothing has.
 // The tab is titled after the chat, from the list the layout loaded, so it
 // follows a rename or the model naming it once the list loads again.
 // A reload (or a second tab) while a reply streams picks it up where it is:
@@ -90,8 +92,17 @@ export const Route = createFileRoute("/_app/c/$id")({
 function ChatScreen() {
   const { id } = Route.useParams()
   const chat = useChatList().chats.find((listed) => listed.id === id)
-  // Not an id a chat can have: the not-found page, inside the shell.
-  if (!CHAT_ID.test(id)) return <NotFoundPage />
+  // A chat this tab just started isn't in the list until its first
+  // message lands, so remember it was new.
+  const startedHere = useRef<string>(null)
+  const starting = useLocation({
+    select: (l) => l.state.firstMessage !== undefined,
+  })
+  if (starting) startedHere.current = id
+  // Not an id a chat can have, or a chat that isn't in the list (deleted,
+  // or never there): the not-found page, inside the shell.
+  if (!CHAT_ID.test(id) || (chat === undefined && startedHere.current !== id))
+    return <NotFoundPage />
   return (
     // No top pad: the header floats over the thread, whose own pad sets
     // where the last question rests (message-scroller.tsx).

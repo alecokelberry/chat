@@ -32,14 +32,18 @@ test("New Chat's tooltip shows ⌘J as keycaps", async ({ page }) => {
   await expect(newChat).toHaveAttribute("aria-keyshortcuts", /\+J$/)
 })
 
-for (const path of ["/nope", "/c/not-a-chat"]) {
+// A well-formed id no chat has: a deleted chat's link.
+const NO_SUCH_CHAT = "/c/6f1c2b9e-3d4a-4e5f-8a7b-0c9d1e2f3a4b"
+
+for (const path of ["/nope", "/c/not-a-chat", NO_SUCH_CHAT]) {
   test(`${path} shows not found inside the shell`, async ({ page }) => {
     await signInAsDev(page)
     await page.goto(path)
     await expect(
       page.getByRole("heading", { name: "Not found." })
     ).toBeVisible()
-    await expect(page).toHaveTitle("Not found – Chat")
+    if (path !== NO_SUCH_CHAT)
+      await expect(page).toHaveTitle("Not found – Chat")
     await expect(page.getByRole("navigation", { name: "Chats" })).toBeVisible()
     await page.getByRole("main").getByRole("link", { name: "New Chat" }).click()
     await expect(greeting(page)).toBeVisible()
