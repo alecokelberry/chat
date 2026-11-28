@@ -49,7 +49,7 @@ openssl rand -hex 24 | tr -d '\n' | pnpm wrangler secret put SETUP_CODE
 Look here, in this order:
 
 1. **Issues**: the Worker's Issues page in the Cloudflare dashboard (Workers & Pages › chat › Issues) groups its failures, each with a stack trace and when it last happened.
-2. **Logs**: the Worker's Observability tab holds every request's log lines and trace for 7 days.
+2. **Logs**: the Worker's Observability tab holds every request's log lines and trace for 7 days (3 until Dec 1). Past 0.5 GB a day, shared with Issues, nothing is recorded until 00:00 UTC, so a gap in the logs can mean the cap was reached.
 3. **AI Gateway**: AI › AI Gateway › chat › Logs shows each NVIDIA request with its status, tokens and time, for a reply that failed or hung.
 4. **Workers Builds**: Workers & Pages › chat › Deployments › Builds holds each deploy's build log, for a deploy that failed.
-5. **The hourly check**: the uptime workflow's runs in GitHub's Actions tab show when live last answered.
+5. **The hourly check** (planned, #235): once it lands, its runs in GitHub's Actions tab show when live last answered.
