@@ -100,9 +100,8 @@ export const Route = createFileRoute("/_app/library")({
   }),
   // The order comes from the saved look; a change saves it and loads again.
   loader: async ({ deps }) => {
-    const { view, order } = libraryLook()
-    const query: Query = { ...deps, order }
-    return { query, view, items: await getLibrary({ data: query }) }
+    const query: Query = { ...deps, order: libraryLook().order }
+    return { query, items: await getLibrary({ data: query }) }
   },
   component: Library,
 })
@@ -152,9 +151,12 @@ const useInBrowser = () =>
 
 function Library() {
   const { data } = useSearch({ from: "/_app" })
-  const { query, view: savedView, items } = Route.useLoaderData()
-  // Shown at once; the order needs the list loaded again.
-  const [view, setView] = useState(savedView)
+  const { query, items } = Route.useLoaderData()
+  // From the cookie as the page mounts (the request's on the server, the
+  // browser's own after), not the loader's data, which Back may serve
+  // from before a switch. Shown at once; the order needs the list loaded
+  // again.
+  const [view, setView] = useState(() => libraryLook().view)
   const shown = useMemo(() => previewLibrary(items, data), [items, data])
   const navigate = useNavigate({ from: Route.fullPath })
   const router = useRouter()

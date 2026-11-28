@@ -180,6 +180,13 @@ test("Grid shows the files as squares, List as rows, after a reload too", async 
   const line = await row(page, photo).boundingBox()
   expect(line?.width).toBeGreaterThan((line?.height ?? 0) * 4)
 
+  // Back from a chat, without a reload, still the view last picked.
+  await row(page, photo).click()
+  await expect(page).toHaveURL(/\/c\//)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/library$/)
+  await expect(list).toHaveAttribute("aria-pressed", "true")
+
   await grid.click()
   await page.reload()
   await expect(grid).toHaveAttribute("aria-pressed", "true")
