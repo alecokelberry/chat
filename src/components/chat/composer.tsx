@@ -1,6 +1,9 @@
-// The composer: where a message is written and sent. Enter sends and
-// Shift+Enter starts a new line (ui-sdk's submit shortcut); an empty
-// message doesn't send. While a reply streams, Send becomes Stop. The
+// The composer: where a message is written and sent. With a mouse and
+// keyboard, Enter sends and Shift+Enter starts a new line (ui-sdk's submit
+// shortcut). On a touch screen Return starts a new line and Send sends, as
+// in iMessage and ChatGPT, since the iPhone keyboard has no Shift+Return
+// (useCoarsePointer, from the pointer media feature). An empty message
+// doesn't send. While a reply streams, Send becomes Stop. The
 // model picker beside Send chooses who answers the message (the chat holds
 // the choice, so an edited question is answered by it too).
 //
@@ -45,6 +48,7 @@ import {
 import { ArrowUpIcon, CheckIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useCoarsePointer } from "@/components/ui/preferences"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Tooltip,
@@ -72,6 +76,12 @@ import {
 import { cn } from "@/lib/utils"
 import { DEFAULT_MODEL, MODELS, modelOf, type ModelKey } from "@/lib/ai/models"
 import type { AttachmentPart } from "@/lib/chat/attachments"
+
+/** Enter sends with a mouse and keyboard; on a touch screen nothing does,
+ *  so Return starts a new line and Send sends. */
+function useSubmitShortcut() {
+  return useCoarsePointer() ? undefined : "enter"
+}
 
 /** What a parent can do to the composer: put words in it (a starter). */
 export type ComposerHandle = { fill: (text: string) => void }
@@ -111,6 +121,7 @@ export function Composer({
         current?.element === el ? current : textFieldAdapter(el)
       )
   }, [])
+  const submitShortcut = useSubmitShortcut()
   // Read once: it's about the moment this composer appears.
   const focusAtMount = useRef(focusOnMount)
   useEffect(() => {
@@ -182,7 +193,7 @@ export function Composer({
               placeholder="Ask anything…"
               rows={1}
               autoResize
-              submitShortcut="enter"
+              submitShortcut={submitShortcut}
               value={text}
               onValueChange={setText}
             />
