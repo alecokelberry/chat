@@ -182,7 +182,7 @@ export function ChatSidebar({
     return () => cancelAnimationFrame(frame)
   }, [instant])
   return (
-    <div className="sticky top-0 flex h-dvh bg-background text-foreground">
+    <div className="sticky top-0 flex keyboard-fit h-dvh bg-background text-foreground">
       <Sidebar aria-label="Chats" collapsed={collapsed} instant={instant}>
         <SidebarToggle
           collapsed={collapsed}
