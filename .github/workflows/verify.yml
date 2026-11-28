@@ -113,6 +113,15 @@ jobs:
           SPECS: ${{ steps.specs.outputs.list }}
         # SPECS is a space-separated list of paths, split on purpose.
         run: pnpm e2e --repeat-each=3 --reporter=github,list $SPECS
+      # What a failed screenshot test drew (its *-actual.png), to look at or
+      # to copy over a baseline (e2e/screenshots.spec.ts).
+      - if: failure() && steps.specs.outputs.list != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: burn-in-test-results
+          path: test-results
+          retention-days: 3
+          if-no-files-found: ignore
 
   report:
     needs: e2e
