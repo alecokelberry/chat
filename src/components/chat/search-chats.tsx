@@ -4,8 +4,8 @@
 // keys on the right) and the chat list the layout already has
 // (chat-list.tsx). The actions are New Chat, Change theme, Open settings,
 // Feature tour, Toggle sidebar (not on a phone, which has a drawer) and Sign
-// out; the first is a link, the rest run from onAction. With nothing typed it shows the actions, New Chat
-// highlighted, then under Chats the 50 most recently active, each with a
+// out; the first is a link, the rest run from onAction. With nothing
+// typed it shows the actions, New Chat highlighted, then under Chats the 50 most recently active, each with a
 // chat icon and how long ago on the right (1d, 2d). Tab moves the
 // highlight to the next section's first row, Shift+Tab back. Typing ranks
 // the actions and every chat by title with Command's fuzzy filter, a
