@@ -3,7 +3,8 @@
 # The checks run side by side, so a PR waits for the slowest one, not all
 # of them in a row:
 #
-#   check ──────────┐  format, lint, types, knip, audit, build, worker size
+#   check ──────────┐  format, lint, types, knip, audit, build, worker size,
+#                   │  D1 backup
 #   unit ───────────┤  Vitest (pnpm test)
 #   e2e 1/3 ────────┤  Playwright, a third of the tests each, on the
 #   e2e 2/3 ────────┤  mock model
@@ -47,6 +48,8 @@ jobs:
       - run: pnpm exec knip
       - run: pnpm build
       - run: node scripts/worker-size.mjs
+      # The backup still works: a new virtual table once broke it (#234).
+      - run: pnpm exec wrangler d1 migrations apply chat --local && pnpm db:export --local
 
   unit:
     runs-on: ubuntu-latest
