@@ -116,13 +116,18 @@ test("an image opens full screen, pages round the others, downloads and opens it
   await signInAsDev(page)
   const tag = unique("v").slice(2)
   const [first, second] = [`Arch-${tag}.jpg`, `Bridge-${tag}.jpg`]
+  // A third image the search leaves out, so the count below holds only
+  // once the searched list is in: before it, a list of just these two
+  // passes at once, and the search then starts the list over, closing
+  // the viewer the test just opened.
   await pick(page, [
     { name: first, mimeType: "image/jpeg", buffer: readFileSync(SMALL) },
     { name: second, mimeType: "image/jpeg", buffer: readFileSync(SMALL) },
+    { name: "Canyon.jpg", mimeType: "image/jpeg", buffer: readFileSync(SMALL) },
   ])
   await expect(
     page.getByRole("list", { name: "Attached files" }).locator("img")
-  ).toHaveCount(2)
+  ).toHaveCount(3)
   await page.getByRole("textbox", { name: "Message" }).fill(unique("Two"))
   await page.keyboard.press("Enter")
   await expect(replies(page)).toHaveText([/Done\.$/])
