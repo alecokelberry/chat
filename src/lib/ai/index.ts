@@ -10,10 +10,11 @@
 // second refusal ends the reply with an error the chat shows with Retry.
 // When NVIDIA goes quiet for 30 s, before the first word or between two,
 // the reply ends with an error and Retry too (src/lib/ai/silence.ts).
-// A question's images go to the model inline (only as data URLs, so the
-// server never fetches a link a message names), or, for a model that can't
-// see them, as "[image: name]" in their place. Its PDFs and text files
-// reach every model as text (src/lib/chat/documents.ts).
+// The chat goes to the model as src/lib/ai/history.ts makes it: a
+// question's images inline (only as data URLs, so the server never fetches
+// a link a message names), or, for a model that can't see them, as
+// "[image: name]" in their place; its PDFs and text files as text
+// (src/lib/chat/documents.ts); and old thinking and old pages left out.
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 //
@@ -36,7 +37,6 @@ import { env } from "cloudflare:workers"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import {
   APICallError,
-  convertToModelMessages,
   wrapLanguageModel,
   generateText,
   isStepCount,
@@ -45,15 +45,15 @@ import {
   type UIMessage,
 } from "ai"
 
+import { modelMessages } from "@/lib/ai/history"
 import { mockModel } from "@/lib/ai/mock"
 import { styleInstruction, type Customize } from "@/lib/ai/style"
-import { documentPrompt, isDocument } from "@/lib/chat/documents"
 import { lastModel, lastTimeZone, LIGHTNING } from "@/lib/ai/models"
 import { READ_LIMIT, readPage } from "@/lib/ai/read-page"
 import { SEARCH_LIMIT, SearchError, webSearch } from "@/lib/ai/search"
 import { failWhenSilent, SilentModelError } from "@/lib/ai/silence"
 import { knownAddresses } from "@/lib/ai/web-address"
-import { isImagePart } from "@/lib/chat/attachments"
+import { isDocument } from "@/lib/chat/documents"
 
 /** How long NVIDIA may send nothing before a reply ends. NVIDIA's first
  *  word normally comes within a second (docs/nvidia.md); the mock's limit
@@ -96,15 +96,7 @@ export async function streamReply(
   return streamText({
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages), customize),
-    messages: await convertToModelMessages(
-      messages.map((message) => imagesFor(message, chosen.seesImages)),
-      {
-        convertDataPart: (part) =>
-          isDocument(part)
-            ? { type: "text", text: documentPrompt(part.data) }
-            : undefined,
-      }
-    ),
+    messages: await modelMessages(messages, chosen.seesImages),
     tools: { webSearch: webSearch(known), readPage: readPage(known) },
     // At most one step per search or read, and one more to answer.
     stopWhen: isStepCount(SEARCH_LIMIT + READ_LIMIT + 1),
@@ -123,24 +115,6 @@ export async function streamReply(
     maxOutputTokens: 16_384,
     providerOptions: { nvidia: { chat_template_kwargs: chosen.chatTemplate } },
   })
-}
-
-/** A message's images as the model takes them: inline, for a model
- *  that sees images, or "[image: name]" in each one's place for one that
- *  doesn't, so a chat with images goes on after a switch to Ultra. Only
- *  inline images (data URLs, src/lib/chat/attachments.ts) count: any other
- *  file part, like a link the AI SDK would fetch from the server, is
- *  dropped. */
-function imagesFor(message: UIMessage, seesImages: boolean): UIMessage {
-  return {
-    ...message,
-    parts: message.parts.flatMap((part): UIMessage["parts"] => {
-      if (part.type !== "file") return [part]
-      if (!isImagePart(part)) return []
-      if (seesImages) return [part]
-      return [{ type: "text", text: `[image: ${part.filename ?? "image"}]` }]
-    }),
-  }
 }
 
 /** The owner's questions and documents, as text: where a link they gave
