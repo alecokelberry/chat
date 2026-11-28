@@ -1,0 +1,4 @@
+# Hashed build files never change under their name, so a browser keeps them
+# for a year instead of asking again on every load.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

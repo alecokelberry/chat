@@ -1,9 +1,10 @@
 // The signed-in app: Skip to content, then the chat list's sidebar beside
 // the page (a new chat or a chat, whose <main> is #main). Only a signed-in
 // browser gets here; anyone else goes to /sign-in. The list loads with the
-// first page, again in the background on each navigation (a chat you left
-// may have been named since), and at once when the open chat's agent says
-// it changed (src/routes/_app/c.$id.tsx). ChatListProvider shares it with
+// first page, with the account in one call (getApp, src/lib/chat/list.ts),
+// again on each navigation (a chat you left may have been named since), and
+// when the open chat's agent says it changed (src/routes/_app/c.$id.tsx).
+// A navigation waits on that one call. ChatListProvider shares it with
 // the sidebar and the chat's header, and shows a rename or pin at once.
 // In dev, ?data=worst|empty|one swaps the chats and the account for made-up
 // extremes (src/lib/dev/worst-case.ts), kept on every page by the search
@@ -22,8 +23,7 @@ import { ChatListProvider } from "@/components/chat/chat-list"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { DemoBar } from "@/components/ui/demo-bar"
 import { SkipLink } from "@/components/ui/skip-link"
-import { getSession } from "@/lib/auth/session"
-import { getChats } from "@/lib/chat/list"
+import { getApp } from "@/lib/chat/list"
 import {
   type DataState,
   parseDataState,
@@ -40,17 +40,17 @@ export const Route = createFileRoute("/_app")({
   }),
   search: { middlewares: [retainSearchParams(["data"])] },
   beforeLoad: async () => {
-    const user = await getSession()
-    if (user === null) throw redirect({ to: "/sign-in" })
-    return { user, sidebarCollapsed: isSidebarCollapsed() }
+    // The account and the chat list in one call, so a navigation or a
+    // refresh is one request.
+    const app = await getApp()
+    if (app === null) throw redirect({ to: "/sign-in" })
+    return { ...app, sidebarCollapsed: isSidebarCollapsed() }
   },
-  loader: () => getChats(),
   component: AppLayout,
 })
 
 function AppLayout() {
-  const loaded = Route.useLoaderData()
-  const { user, sidebarCollapsed } = Route.useRouteContext()
+  const { user, chats: loaded, sidebarCollapsed } = Route.useRouteContext()
   const { data } = Route.useSearch()
   const navigate = useNavigate()
   // The chat screen's code (and, through it, a reply's renderer) loads

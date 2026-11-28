@@ -178,6 +178,8 @@ const PACKING_LIST = {
 
 const PACKED = `You can attach files with the **+** in the composer, paste them, or drop them anywhere on the page: up to 4 a question, photos, PDFs and text files. Photos go to models that can see them (Super, Nano Omni); a PDF's or text file's words go to every model. Tap a photo above a question to see it full size.
 
+Every file you attach also lands in the **Library**, under New Chat: flip through your photos full size, read a file, download either, or jump back to the chat it came from.
+
 Your list covers the essentials. Two things I'd add:
 
 - **Microspikes** if you go before April: the upper trail can be icy.
@@ -191,7 +193,7 @@ const HOW_TO = `Every message has its actions:
 
 And every chat has a menu (its row's **…** in the sidebar, or the **…** at the top of the chat): *Rename*, *Pin* or *Unpin*, and *Delete*, which offers Undo first.
 
-Pick the model in the composer, and switch light and dark with *Theme* in your account menu. That's the tour. Ask anything to keep going in this chat, or start a new one.`
+Pick the model in the composer, or type **/** at the start of a message to switch by name, and switch light and dark with *Theme* in your account menu. That's the tour. Ask anything to keep going in this chat, or start a new one.`
 
 /** The tour's messages, oldest first. */
 export const TOUR_MESSAGES: UIMessage[] = [

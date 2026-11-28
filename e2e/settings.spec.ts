@@ -9,6 +9,7 @@ import {
   signInAsDev,
   tapInSheet,
   test,
+  tokensOf,
   unique,
 } from "./session"
 
@@ -330,32 +331,14 @@ test.describe("on a computer", () => {
 
   test("Usage counts a reply's tokens toward its model", async ({ page }) => {
     await signInAsDev(page)
-    // Other tests on this worker chat as its Dev too, so this checks the
-    // count grows, not what it is.
-    const tokensOf = async (name: string) => {
-      await openSettings(page)
-      await sections(page).getByRole("tab", { name: "Usage" }).click()
-      const usage = settings(page).getByRole("tabpanel", { name: "Usage" })
-      await expect(usage.locator('[aria-busy="false"]')).toBeVisible()
-      const row = usage
-        .getByRole("list", { name: "Tokens by model" })
-        .getByRole("listitem")
-        .filter({ hasText: name })
-      const text = (await row.count()) === 0 ? "0" : await row.innerText()
-      await page.keyboard.press("Escape")
-      await expect(settings(page)).toBeHidden()
-      return Number(
-        /([\d,]+) tokens?$/.exec(text)?.[1]?.replaceAll(",", "") ?? 0
-      )
-    }
-    const before = await tokensOf("Nano Omni")
+    const before = await tokensOf(page, "Nano Omni")
 
     await pickModel(page, "Nano Omni")
     await send(page, unique("Count my tokens"))
     await expect(replies(page).last()).toContainText("Done.")
 
     await expect(async () => {
-      expect(await tokensOf("Nano Omni")).toBeGreaterThan(before)
+      expect(await tokensOf(page, "Nano Omni")).toBeGreaterThan(before)
     }).toPass()
     await openSettings(page)
     await sections(page).getByRole("tab", { name: "Usage" }).click()
