@@ -171,7 +171,7 @@ export function Settings({
 function AccountPage({ account }: { account: Account }) {
   const signOut = useSignOut()
   return (
-    <SettingsCard label="Account">
+    <SettingsCard>
       <SettingsRow
         leading={
           <Avatar>
@@ -199,7 +199,7 @@ function AccountPage({ account }: { account: Account }) {
 function AppearancePage() {
   const [wrap, setWrap] = useCodeWrap()
   return (
-    <SettingsCard label="Appearance">
+    <SettingsCard>
       <SettingsRow name="Theme" description="Switch light and dark">
         <ThemeToggle />
       </SettingsRow>
@@ -293,7 +293,7 @@ function CustomizePage({ saved }: { saved: Customize }) {
   useEffect(() => () => saveTypedLater(), [])
 
   return (
-    <SettingsCard label="Customize">
+    <SettingsCard>
       <SettingsRow
         name="Customize Chat's response"
         description="Personalize how Chat responds to you"
