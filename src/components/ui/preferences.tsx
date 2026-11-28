@@ -22,6 +22,7 @@
 // THEME_COLOR_SCRIPT sets it before the first paint for a choice saved
 // before the cookie was.
 import * as React from "react"
+import { useRouter } from "@tanstack/react-router"
 
 import { CHAT_SORTS, type ChatSort } from "@/lib/chat/groups"
 /* oxlint-disable no-restricted-imports -- preferences and storage have no entry of their own */
@@ -101,8 +102,10 @@ function useCodeWrap() {
 }
 
 function AppPreferences({ children }: { children: React.ReactNode }) {
+  // The pre-paint script runs only with the page's CSP nonce (src/start.ts).
+  const nonce = useRouter().options.ssr?.nonce
   return (
-    <Preferences preferences={[colorScheme, codeWrap]}>
+    <Preferences preferences={[colorScheme, codeWrap]} nonce={nonce}>
       <StatusBarColor />
       {children}
     </Preferences>

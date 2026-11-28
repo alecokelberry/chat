@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite"
 import { fc, it } from "@fast-check/vitest"
 import { beforeAll, expect, test } from "vitest"
 
-import { matchQuery, wordsOf } from "@/lib/chat/message-index"
+import { jsonChunks, matchQuery, wordsOf } from "@/lib/chat/message-index"
 
 // Search's query against a real FTS5 index: D1 is SQLite, so the app's own
 // migrations run in Node's built-in SQLite, giving the same table, the
@@ -167,4 +167,23 @@ test("a file name is found by the words inside a CamelCase or IMG4021 name", () 
   expect(search("4021")).toContain(question)
   expect(search("img4021")).toContain(question)
   expect(search("water")).not.toContain(question)
+})
+
+// A long chat is written in several statements: each piece is JSON under
+// the limit, and together the pieces hold every row, in order.
+it.prop([
+  fc.array(fc.record({ id: fc.uuid(), text: fc.string({ maxLength: 200 }) })),
+  fc.integer({ min: 300, max: 2000 }),
+])("splits rows into pieces under the limit, losing none", (rows, max) => {
+  const chunks = jsonChunks(rows, max)
+  const parsed: unknown[][] = chunks.map((chunk) => JSON.parse(chunk))
+  expect(parsed.flat()).toEqual(rows)
+  chunks.forEach((chunk, at) => {
+    // A row bigger than the limit goes alone; any other piece fits.
+    expect(parsed[at]?.length === 1 || chunk.length <= max).toBe(true)
+  })
+})
+
+test("a chat of no rows needs no statement", () => {
+  expect(jsonChunks([])).toEqual([])
 })
