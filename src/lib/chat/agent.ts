@@ -68,6 +68,7 @@ import { Buffer } from "node:buffer"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
+import { devBuild } from "@/lib/dev/dev-build"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { isPrivateChat, ownerOf } from "@/lib/chat/id"
@@ -154,8 +155,8 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   /** Tells this chat's open tabs to leave, then deletes everything the
-   *  agent keeps, for good, once the schedule runs at least a second later (see
-   *  the top of this file). An RPC method,
+   *  agent keeps, for good, once the schedule runs at least a second later,
+   *  unless the chat comes back first (see the top of this file). An RPC method,
    *  for the Worker (src/lib/chat/list.ts), once it has deleted the
    *  chat's row. */
   async deleteChat() {
@@ -208,10 +209,20 @@ export class ChatAgent extends AIChatAgent<Env> {
   private indexed = true
 
   /** A question's image for the Library, or 404 for anything else; any
-   *  other request goes on to the SDK. */
+   *  other request goes on to the SDK. In dev and e2e builds only,
+   *  /api/chats/<id>/wipe-pending answers whether a delete's wipe is still
+   *  to come, so a test can tell it has come due without guessing at the
+   *  time. */
   override async onRequest(request: Request) {
-    const file = FILE_PATH.exec(new URL(request.url).pathname)
+    const path = new URL(request.url).pathname
+    if (devBuild && path.endsWith("/wipe-pending")) return this.wipePending()
+    const file = FILE_PATH.exec(path)
     if (file === null) return super.onRequest(request)
+    return this.imageResponse(file)
+  }
+
+  /** The image a question's part holds, from FILE_PATH's match, or 404. */
+  private imageResponse(file: RegExpExecArray) {
     const [, messageId = "", part = ""] = file
     const found = this.messages.find((message) => message.id === messageId)
       ?.parts[Number(part)]
@@ -226,6 +237,12 @@ export class ChatAgent extends AIChatAgent<Env> {
         "X-Content-Type-Options": "nosniff",
       },
     })
+  }
+
+  /** Whether a delete's wipe is still to come (dev and e2e builds). */
+  private async wipePending() {
+    const schedules = await this.listSchedules()
+    return Response.json(schedules.some((s) => s.callback === "wipe"))
   }
 
   /** What deleteChat's schedule runs: nothing if the chat came back. */

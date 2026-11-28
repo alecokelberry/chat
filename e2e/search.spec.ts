@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import type { Page } from "@playwright/test"
 
 import {
+  closeDeleteToast,
   expect,
   findWords,
   madeUpWord,
@@ -301,13 +302,7 @@ test("an edited question and a deleted chat stop matching", async ({
 
   await page.getByRole("button", { name: "Chat actions" }).click()
   await page.getByRole("menuitem", { name: "Delete" }).click()
-  const deleted = page.waitForResponse(
-    (response) =>
-      response.url().includes("/_serverFn/") &&
-      response.request().method() === "POST"
-  )
-  await page.evaluate(() => window.toast.dismiss())
-  expect((await deleted).ok()).toBe(true)
+  await closeDeleteToast(page)
   await expect(page).not.toHaveURL(new RegExp(`${path}$`))
   await page.keyboard.press("ControlOrMeta+k")
   await field(page).fill(after)
@@ -375,13 +370,7 @@ test("a result's … renames its chat in the field's place, and deletes it", asy
   await expect(messages(page)).toHaveCount(0)
   await expect(field(page)).toBeFocused()
   await expect(dialog(page)).toBeVisible()
-  const deleted = page.waitForResponse(
-    (response) =>
-      response.url().includes("/_serverFn/") &&
-      response.request().method() === "POST"
-  )
-  await page.evaluate(() => window.toast.dismiss())
-  expect((await deleted).ok()).toBe(true)
+  await closeDeleteToast(page)
   // The open chat went, so the page went to a new one.
   await expect(page).not.toHaveURL(new RegExp(`${path}$`))
 })

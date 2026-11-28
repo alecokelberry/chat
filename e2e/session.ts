@@ -381,3 +381,34 @@ export async function pick(
   await page.getByRole("menuitem", { name: "Add photos & files" }).click()
   await (await chooser).setFiles(files)
 }
+
+/** Closes the "Chat deleted" toast, as if it timed out, which is when the
+ *  delete is sent, and waits for the delete to have worked. */
+export async function closeDeleteToast(page: Page) {
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/_serverFn/") &&
+      response.request().method() === "POST"
+  )
+  await page.evaluate(() => window.toast.dismiss())
+  expect((await deleted).ok()).toBe(true)
+}
+
+/** What the chat's agent holds, as the browser loads it: how many messages,
+ *  or -1 while the agent is being wiped (it answers 500 until it is gone). */
+export const savedMessages = (page: Page, id: string) =>
+  page.evaluate(async (id) => {
+    const response = await fetch(`/api/chats/${id}/get-messages`)
+    if (!response.ok) return -1
+    const messages: unknown[] = await response.json()
+    return messages.length
+  }, id)
+
+/** Whether a delete's wipe of the chat is still to come (dev and e2e
+ *  builds only: src/lib/chat/agent.ts). */
+export const wipePending = (page: Page, id: string) =>
+  page.evaluate(async (id) => {
+    const response = await fetch(`/api/chats/${id}/wipe-pending`)
+    const pending: boolean = await response.json()
+    return pending
+  }, id)
