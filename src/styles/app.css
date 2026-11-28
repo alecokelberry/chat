@@ -225,7 +225,7 @@
   --input: #e6e5e3;
   --ring: #858584; /* 3.5:1 on the page: a focus ring must reach 3:1 */
   --overlay: hsl(0 0% 2% / 20%);
-  --bubble-user: #efeeec;
+  --bubble-user: var(--accent); /* Grok's question bubble: the wash, 6% */
   --send: #ec4899;
   --highlight: oklch(0.86 0.17 95); /* <mark> in prose, mixed to 40% */
   --destructive-foreground: var(
@@ -290,7 +290,7 @@
     --input: hsl(0 0% 99% / 6%);
     --ring: #767574; /* 3.7:1 on the page */
     --overlay: hsl(0 0% 2% / 50%);
-    --bubble-user: #282726;
+    --bubble-user: var(--accent);
     --highlight: oklch(0.62 0.13 95); /* darker, so light ink reads on it */
     --send: #f15aa6;
     --destructive-foreground: #f75c60; /* Grok's red, lifted to 4.6:1 on its tint */

@@ -23,6 +23,9 @@
 // `fill` (the ref's handle) puts words in it and focuses it: a starter.
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
+// Offline, Send waits and a line above the pill says so ("Offline.
+// Reconnecting…"): the draft stays, nothing is sent into the void, and the
+// line goes as the browser comes back online (`useOnline`).
 import {
   useEffect,
   useImperativeHandle,
@@ -98,10 +101,11 @@ export function Composer({
   const chosen = modelOf(model)
   const blind = attachments.hasImages && !chosen.seesImages
   useEffect(() => onDraft?.(!empty), [onDraft, empty])
+  const online = useOnline()
   const ready = !empty && !attachments.waiting && !blind
 
   function send() {
-    if (!ready || busy) return
+    if (!ready || busy || !online) return
     onSend(message, attachments.parts)
     setText("")
     attachments.clear()
@@ -110,7 +114,7 @@ export function Composer({
   return (
     <AttachmentsInput attachments={attachments} pasteInto={() => field.current}>
       <form
-        className="flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
+        className="relative flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
         onSubmit={(event) => {
           event.preventDefault()
           send()
@@ -141,8 +145,14 @@ export function Composer({
           <div className={cn("flex", wrapped && "ms-auto")}>
             <ModelPicker value={model} onValueChange={onModelChange} />
           </div>
-          <SendOrStop busy={busy} ready={ready} onStop={onStop} />
+          <SendOrStop
+            busy={busy}
+            ready={ready}
+            online={online}
+            onStop={onStop}
+          />
         </div>
+        <OfflineLine offline={!online} />
       </form>
       <CantSeeImages
         blind={blind}
@@ -154,14 +164,62 @@ export function Composer({
   )
 }
 
+/** Whether the browser has a network, from its online and offline events
+ *  alone. It never reads `navigator.onLine`: iOS can report false on a
+ *  page that loaded fine (the Simulator did), and a wrong "offline" would
+ *  block Send for no reason, which is worse than missing a page that
+ *  opened already offline. The server and the first render say yes, so a
+ *  page never loads showing the line. */
+function useOnline() {
+  const [online, setOnline] = useState(true)
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    addEventListener("online", on)
+    addEventListener("offline", off)
+    return () => {
+      removeEventListener("online", on)
+      removeEventListener("offline", off)
+    }
+  }, [])
+  return online
+}
+
+/** Above the pill while offline, in the gap above it (the new chat's greeting
+ *  ends 28px over it, the thread has its own room), so it never covers the
+ *  starters under it. The status region is always on the
+ *  page and empty until then, since screen readers often skip a live
+ *  region that arrives already filled (as CantSeeImages does); the line
+ *  people see is hidden from them, so it isn't read twice. */
+function OfflineLine({ offline }: { offline: boolean }) {
+  const line = "Offline. Reconnecting…"
+  return (
+    <>
+      <p role="status" className="sr-only">
+        {offline ? line : ""}
+      </p>
+      {offline && (
+        <p
+          aria-hidden
+          className="absolute inset-x-0 bottom-full pb-1.5 text-center text-sm text-muted-foreground"
+        >
+          {line}
+        </p>
+      )}
+    </>
+  )
+}
+
 /** Send, or Stop while a reply streams: icons alone, named by tooltips. */
 function SendOrStop({
   busy,
   ready,
+  online,
   onStop,
 }: {
   busy: boolean
   ready: boolean
+  online: boolean
   onStop?: () => Promise<void> | void
 }) {
   return busy ? (
@@ -181,7 +239,7 @@ function SendOrStop({
             type="submit"
             variant="send"
             size="circle"
-            disabled={!ready}
+            disabled={!ready || !online}
             // Still focusable, so its tooltip reaches keyboards too
             // (ui-sdk's Tooltip docs, Disabled buttons).
             focusableWhenDisabled

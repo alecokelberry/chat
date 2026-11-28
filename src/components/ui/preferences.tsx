@@ -4,7 +4,8 @@
 // renders only in the browser, so they're read there, never on the server.
 // The rest are put on <html> as data attributes: the color scheme
 // (data-color-scheme: system, light or dark), which app.css's dark variant
-// follows and the account menu's Theme flips, and whether replies' code
+// follows and the account menu's Theme flips (System, the default, follows
+// the device live; a flip back to the device's scheme returns to it), and whether replies' code
 // wraps (data-code-wrap: scroll or wrap), from Settings. <AppPreferences>
 // sits at the top of <body>; on the server it renders an inline script
 // that sets the attributes before the first paint, so CSS that selects
@@ -21,6 +22,7 @@
 // THEME_COLOR_SCRIPT sets it before the first paint for a choice saved
 // before the cookie was.
 import * as React from "react"
+import { useRouter } from "@tanstack/react-router"
 
 import { CHAT_SORTS, type ChatSort } from "@/lib/chat/groups"
 /* oxlint-disable no-restricted-imports -- preferences and storage have no entry of their own */
@@ -33,7 +35,7 @@ import {
 import { Preferences, usePreference } from "@ui-sdk/react/preferences"
 import { useShortcut } from "@ui-sdk/react/shortcuts"
 
-import { saveTheme, THEME_COLOR, themeCookie } from "@/lib/theme"
+import { nextTheme, saveTheme, THEME_COLOR, themeCookie } from "@/lib/theme"
 
 /** Where createLocalStorage keeps the choice: "system", "light" or "dark". */
 const STORAGE_KEY = "theme"
@@ -100,8 +102,10 @@ function useCodeWrap() {
 }
 
 function AppPreferences({ children }: { children: React.ReactNode }) {
+  // The pre-paint script runs only with the page's CSP nonce (src/start.ts).
+  const nonce = useRouter().options.ssr?.nonce
   return (
-    <Preferences preferences={[colorScheme, codeWrap]}>
+    <Preferences preferences={[colorScheme, codeWrap]} nonce={nonce}>
       <StatusBarColor />
       {children}
     </Preferences>
@@ -254,10 +258,13 @@ function backdropFill(el: HTMLElement) {
   return alpha > 0 ? `rgb(${r} ${g} ${b} / ${alpha})` : null
 }
 
-/** Flips light and dark, from whichever is showing. */
+/** Flips light and dark, from whichever is showing; landing on the
+ *  device's own scheme follows the device again (nextTheme). */
 function useToggleTheme() {
-  const { resolved } = usePreference(colorScheme)
-  return () => colorScheme.set(resolved === "dark" ? "light" : "dark")
+  return () => {
+    const { resolved, system } = colorScheme.get()
+    colorScheme.set(nextTheme(resolved === "dark" ? "dark" : "light", system))
+  }
 }
 
 /** Whether dark is showing now (the system's choice included). */

@@ -29,10 +29,22 @@ test.describe("on a phone", () => {
     const sheet = page.locator('[data-slot="select-content"]')
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
     expect(await bar('[data-slot="select-content"]')(page)).toBe('""')
+    // Chromium has no -webkit-touch-callout, so only user-select is checked.
+    await expect(sheet).toHaveCSS("user-select", "none")
     const { violations } = await new AxeBuilder({ page })
       .include('[data-slot="select-content"]')
       .analyze()
     expect(violations.filter((v) => v.impact === "serious")).toEqual([])
+  })
+
+  test("the Menu sheet can't be text-selected either", async ({ page }) => {
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await drawer.getByRole("button", { name: "Chats options" }).tap()
+    const sheet = page.locator('[data-slot="menu-content"]')
+    await expect(sheet).toHaveAttribute("data-presentation", "sheet")
+    await expect(sheet).toHaveCSS("user-select", "none")
   })
 })
 
@@ -42,4 +54,7 @@ test("a computer's popover has no bar", async ({ page }) => {
   const popover = page.locator('[data-slot="select-content"]')
   await expect(popover).toHaveAttribute("data-presentation", "popover")
   expect(await bar('[data-slot="select-content"]')(page)).toBe("none")
+  expect(
+    await popover.evaluate((el) => getComputedStyle(el).userSelect)
+  ).not.toBe("none")
 })
