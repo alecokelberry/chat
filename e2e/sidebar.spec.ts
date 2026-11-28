@@ -635,11 +635,12 @@ test("holds up with 1,000 chats and worst-case titles", async ({ page }) => {
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/)
   await expect(last).toHaveAttribute("aria-current", "page")
 
-  // Search lists New Chat and the recent 50, and ranks all 1,000 (only
-  // the rows in view render), so the oldest is a few letters away.
+  // Search lists its actions (New Chat, Library) and the recent 50, and
+  // ranks all 1,000 (only the rows in view render), so the oldest is a
+  // few letters away.
   await page.keyboard.press("ControlOrMeta+k")
   const search = page.getByRole("dialog", { name: "Search" })
-  await expect(search.getByRole("option")).toHaveCount(51)
+  await expect(search.getByRole("option")).toHaveCount(52)
   await page
     .getByRole("combobox", { name: "Search chats" })
     .fill("seeded chat 995")

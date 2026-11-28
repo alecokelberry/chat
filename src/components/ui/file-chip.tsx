@@ -18,7 +18,6 @@ function FileChip({
   className,
   ...props
 }: React.ComponentProps<"div"> & { name: string; kind: string }) {
-  const long = name.length > TAIL * 2
   return (
     <div
       data-slot="file-chip"
@@ -33,20 +32,29 @@ function FileChip({
         <FileTextIcon aria-hidden />
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="flex min-w-0 text-sm font-medium text-foreground">
-          {long ? (
-            <>
-              <span className="truncate">{name.slice(0, -TAIL)}</span>
-              <span className="shrink-0">{name.slice(-TAIL)}</span>
-            </>
-          ) : (
-            <span className="truncate">{name}</span>
-          )}
-        </span>
+        <FileName name={name} />
         <span className="text-xs text-muted-foreground">{kind}</span>
       </span>
     </div>
   )
 }
 
-export { FileChip }
+/** A file's name on one line, giving way in the middle so its last TAIL
+ *  characters stay; the Library's rows use it too. */
+function FileName({ name, className }: { name: string; className?: string }) {
+  const long = name.length > TAIL * 2
+  return (
+    <span className={cn("flex min-w-0 text-foreground", className)}>
+      {long ? (
+        <>
+          <span className="truncate">{name.slice(0, -TAIL)}</span>
+          <span className="shrink-0">{name.slice(-TAIL)}</span>
+        </>
+      ) : (
+        <span className="truncate">{name}</span>
+      )}
+    </span>
+  )
+}
+
+export { FileChip, FileName }

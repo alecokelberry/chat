@@ -12,6 +12,9 @@
 // and as it opens, indexOlderChats has a few chats whose words the index
 // doesn't hold yet index themselves. Settings › Usage reads the user's
 // all-time tokens per model through getUsage (src/lib/chat/usage.ts).
+// The Library lists the user's attachments through getLibrary
+// (src/lib/chat/library.ts), and has older chats index themselves the same
+// way Search does.
 import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -20,6 +23,7 @@ import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
 import { agentName, CHAT_ID } from "@/lib/chat/id"
+import { listAttachments } from "@/lib/chat/library"
 import { searchMessages } from "@/lib/chat/message-index"
 import {
   deleteChatRow,
@@ -50,6 +54,14 @@ export const getUsage = createServerFn({ method: "GET" }).handler(async () => {
   const user = await userId()
   return splitUsage(user === null ? [] : await usageByModel(env.DB, user))
 })
+
+/** The first page of the signed-in user's attachments, newest first. */
+export const getLibrary = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const user = await userId()
+    return user === null ? [] : listAttachments(env.DB, user)
+  }
+)
 
 /** The longest title a rename keeps. */
 export const TITLE_MAX = 200
@@ -131,14 +143,14 @@ const INDEX_BATCH = 10
 
 /** Has up to INDEX_BATCH of the signed-in user's chats that Search's index
  *  doesn't hold yet index themselves whole, the latest first, so their
- *  words become findable: Search calls it each time it opens, and a long
- *  history fills in over a few opens. Only the user's own chats, and only
- *  their index rows change, never a chat. A chat that fails is left for
- *  the next call. */
+ *  words and files become findable: Search and the Library call it each
+ *  time they open, and a long history fills in over a few opens. Only the
+ *  user's own chats, and only their index rows change, never a chat. A
+ *  chat that fails is left for the next call. How many were indexed. */
 export const indexOlderChats = createServerFn({ method: "POST" }).handler(
   async () => {
     const user = await userId()
-    if (user === null) return
+    if (user === null) return 0
     const chats = await unindexedChats(env.DB, user, INDEX_BATCH)
     const results = await Promise.allSettled(
       chats.map(async (owner) => (await agentOf(owner)).indexAll())
@@ -146,6 +158,7 @@ export const indexOlderChats = createServerFn({ method: "POST" }).handler(
     for (const result of results)
       if (result.status === "rejected")
         console.error("Couldn't index an older chat", result.reason)
+    return results.filter((result) => result.status === "fulfilled").length
   }
 )
 

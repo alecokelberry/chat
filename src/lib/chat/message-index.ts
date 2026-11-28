@@ -24,6 +24,7 @@ import {
 import type { UIMessage } from "ai"
 
 import { isDocument } from "@/lib/chat/documents"
+import { attachmentsOf, attachmentStatements } from "@/lib/chat/library"
 import { MATCH_END, MATCH_START } from "@/lib/chat/match-marks"
 import { chat, type ChatOwner } from "@/lib/chat/store"
 
@@ -113,7 +114,8 @@ export function jsonChunks<Row>(rows: readonly Row[], max = JSON_MAX) {
   return chunks
 }
 
-/** Brings the chat's text in the index up to `messages`, the whole chat:
+/** Brings the chat's text in the index, and its files in the Library's
+ *  (src/lib/chat/library.ts), up to `messages`, the whole chat:
  *  drops what it no longer holds, then writes `changed` (the turn's
  *  question and reply, or every message), and with `whole` marks the chat
  *  indexed (src/lib/chat/store.ts). A few statements, the message list sent as
@@ -132,8 +134,13 @@ export async function indexMessages(
       .map((message) => ({ id: message.id, text: wordsOf(message) }))
       .filter((row) => row.text !== "")
   )
+  // From the whole chat, since a question's time is on the reply after it.
+  const changedIds = new Set(changed.map((message) => message.id))
+  const files = attachmentsOf(messages).filter((file) =>
+    changedIds.has(file.messageId)
+  )
   // Raw D1 statements: Drizzle's builder can't say "not in json_each",
-  // nor an upsert from a SELECT. One batch, so both or neither apply.
+  // nor an upsert from a SELECT. One batch, so all or none apply.
   await d1.batch([
     d1
       .prepare(
@@ -155,6 +162,12 @@ export async function indexMessages(
         )
         .bind(userId, id, json)
     ),
+    ...attachmentStatements(
+      { userId, id },
+      ids,
+      JSON.stringify([...changedIds]),
+      files
+    ).map(({ sql, params }) => d1.prepare(sql).bind(...params)),
     ...(whole
       ? [
           d1
