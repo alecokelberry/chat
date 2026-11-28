@@ -241,14 +241,6 @@
       "computedHash": "50f1de2394b88bb3433eca1e30da6866a4e310963d872a66af20ca77fd77f07d",
       "installMode": "copy"
     },
-    "shadcn": {
-      "source": "shadcn/ui",
-      "commit": "0e5b2e621a9ee4cf6a604bbe6c5c0d5b70561eb4",
-      "sourceType": "github",
-      "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "388962d16c7a4f13aaeee0d8f128e50a87df8553d42ef7988c39c0e1c74a40e8",
-      "installMode": "copy"
-    },
     "tdd": {
       "source": "mattpocock/skills",
       "commit": "6f7f7831a625f040a8e06a0e7954826b87ce775a",
