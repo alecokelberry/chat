@@ -67,7 +67,7 @@ import {
 } from "@/lib/ai/style"
 import { authClient } from "@/lib/auth/client"
 import { getCustomizeNow } from "@/lib/auth/session"
-import { useSignOut } from "@/lib/auth/use-sign-out"
+import { SIGN_OUT_CONFIRM, useSignOut } from "@/lib/auth/use-sign-out"
 import { getUsage } from "@/lib/chat/list"
 import { initialsOf } from "@/lib/settings/initials"
 import {
@@ -184,7 +184,7 @@ function AccountPage({ account }: { account: Account }) {
         <Button
           variant="outline"
           size="sm"
-          data-agent-confirm="Signs you out on this device"
+          data-agent-confirm={SIGN_OUT_CONFIRM}
           onClick={signOut}
         >
           Sign Out

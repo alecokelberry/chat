@@ -6,6 +6,7 @@ import {
   addAuthenticator,
   expect,
   expectSignedInAs,
+  hydrated,
   signInAsOwner,
   test,
 } from "./session"
@@ -31,6 +32,8 @@ test.describe(() => {
   test("a wrong setup code adds no passkey", async ({ page }) => {
     await addAuthenticator(page)
     await page.goto("/setup#not-it")
+    // A click before hydration is lost, and no alert follows.
+    await hydrated(page)
     await page.getByRole("button", { name: "Add a passkey" }).click()
     await expect(page.getByRole("alert")).toHaveText(
       "That setup code isn't right."
