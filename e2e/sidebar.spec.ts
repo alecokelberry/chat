@@ -380,6 +380,31 @@ test("Open in new tab opens the chat in a new tab", async ({ page }) => {
   await expect(tab).toHaveURL(new RegExp(`${path}$`))
 })
 
+// In the Home Screen app a new tab is Safari, signed out (chat-actions.tsx),
+// so the item isn't there at all: not on screen, not to Tab, not to an
+// agent. Playwright can't install the app, so the media query says so.
+test("the Home Screen app leaves out Open in new tab", async ({ page }) => {
+  await page.addInitScript(() => {
+    const matchMedia = window.matchMedia.bind(window)
+    window.matchMedia = (query) =>
+      query === "(display-mode: standalone)"
+        ? matchMedia("all")
+        : matchMedia(query)
+  })
+  await startChat(page, "Installed app")
+  await rowMenu(page).click()
+  await expect(
+    menu(page).getByRole("menuitem", { name: "Rename" })
+  ).toBeVisible()
+  await expect(
+    menu(page).getByRole("menuitem", { name: "Open in new tab" })
+  ).toHaveCount(0)
+  const labels = await page.evaluate(() =>
+    window.agent.snapshot().map((entry) => entry.label)
+  )
+  expect(labels).not.toContain("Open in new tab")
+})
+
 test("the header's … menu pins and renames in the pill", async ({ page }) => {
   await startChat(page, "Header menu")
   const actions = page.getByRole("button", { name: "Chat actions" })
