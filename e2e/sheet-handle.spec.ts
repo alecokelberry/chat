@@ -36,6 +36,16 @@ test.describe("on a phone", () => {
       .analyze()
     expect(violations.filter((v) => v.impact === "serious")).toEqual([])
   })
+
+  test("the Menu sheet can't be text-selected either", async ({ page }) => {
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Open sidebar" }).tap()
+    const drawer = page.getByRole("dialog", { name: "Chats" })
+    await drawer.getByRole("button", { name: "Chats options" }).tap()
+    const sheet = page.locator('[data-slot="menu-content"]')
+    await expect(sheet).toHaveAttribute("data-presentation", "sheet")
+    await expect(sheet).toHaveCSS("user-select", "none")
+  })
 })
 
 test("a computer's popover has no bar", async ({ page }) => {
