@@ -11,7 +11,7 @@
     "dev": "vite dev --port ${PORT:-3200}",
     "build": "vite build",
     "preview": "vite build && vite preview --port ${PORT:-3300}",
-    "deploy": "vite build && wrangler d1 migrations apply chat --remote && wrangler deploy",
+    "deploy": "vite build && wrangler d1 time-travel info chat && wrangler d1 migrations apply chat --remote && wrangler deploy",
     "deploy:preview": "vite build && wrangler d1 migrations apply chat-preview --remote -c wrangler.preview-migrations.jsonc && wrangler preview",
     "format": "oxfmt",
     "db:generate": "drizzle-kit generate",
