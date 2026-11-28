@@ -14,7 +14,9 @@ import { statusBar, watchStatusBar } from "./status-bar"
 
 // The account row and its menu (src/components/chat/account-menu.tsx) and
 // the theme it switches (src/components/ui/preferences.tsx): the name and
-// email, Theme flipping light and dark with the status bar following and
+// email, the device's scheme followed live until Theme picks the other
+// one (and again once Theme lands back on the device's), Theme flipping
+// light and dark with the status bar following and
 // no flash on a reload (the status bar's color included), Sign out landing
 // on /sign-in, and on a phone a sheet that opens at once, with iOS's status
 // bar (as e2e/status-bar.ts models it) following a Theme picked inside the
@@ -80,7 +82,32 @@ test.describe("on a computer", () => {
     await hydrated(page)
     await accountRow(page).click()
     await menu(page).getByRole("menuitem", { name: "Theme" }).click()
+    // Light is what the device shows, so the app follows it again.
+    await expect(html).toHaveAttribute("data-color-scheme", "system")
+  })
+
+  test("the app follows the device's scheme live until Theme overrides it", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const html = page.locator("html")
+    const background = () =>
+      page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    await expect(html).toHaveAttribute("data-color-scheme", "system")
+    // The device goes dark at sunset: the page and its status bar follow.
+    await page.emulateMedia({ colorScheme: "dark" })
+    await expect.poll(background).toBe(DARK)
+    // Light now differs from the device, so it's saved and sticks.
+    await page.keyboard.press("d")
     await expect(html).toHaveAttribute("data-color-scheme", "light")
+    await page.emulateMedia({ colorScheme: "light" })
+    await page.emulateMedia({ colorScheme: "dark" })
+    await expect.poll(background).toBe(LIGHT)
+    // Back to dark, the device's own: it follows the device once more.
+    await page.keyboard.press("d")
+    await expect(html).toHaveAttribute("data-color-scheme", "system")
+    await page.emulateMedia({ colorScheme: "light" })
+    await expect.poll(background).toBe(LIGHT)
   })
 
   test("a saved theme colors the status bar before the app's scripts run", async ({
@@ -199,14 +226,15 @@ test.describe("on a computer", () => {
     await expect(html).toHaveAttribute("data-color-scheme", "system")
     await page.keyboard.press("d")
     await expect(html).toHaveAttribute("data-color-scheme", "dark")
+    // Light is the device's own, so D lands back on following it.
     await page.keyboard.press("d")
-    await expect(html).toHaveAttribute("data-color-scheme", "light")
+    await expect(html).toHaveAttribute("data-color-scheme", "system")
 
     const message = page.getByRole("textbox", { name: "Message" })
     await message.click()
     await page.keyboard.type("dd")
     await expect(message).toHaveValue("dd")
-    await expect(html).toHaveAttribute("data-color-scheme", "light")
+    await expect(html).toHaveAttribute("data-color-scheme", "system")
 
     // With the account menu open, D flips it too, and the menu stays.
     await message.blur()
@@ -354,7 +382,8 @@ test.describe("on a phone", () => {
     await expect(drawer).toBeVisible()
     expect(await statusBar(page)).toBe(DARK)
 
-    // Closing both keeps it; D back to light, with nothing open, too.
+    // Closing both keeps it; D back to light (the
+    // device's, so it follows the device again), with nothing open, too.
     await page.keyboard.press("Escape")
     await expect(menu(page)).toBeHidden()
     await page.keyboard.press("Escape")
@@ -363,7 +392,7 @@ test.describe("on a phone", () => {
     await page.keyboard.press("d")
     await expect(page.locator("html")).toHaveAttribute(
       "data-color-scheme",
-      "light"
+      "system"
     )
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
   })
