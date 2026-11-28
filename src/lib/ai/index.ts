@@ -14,7 +14,8 @@
 // question's images inline (only as data URLs, so the server never fetches
 // a link a message names), or, for a model that can't see them, as
 // "[image: name]" in their place; its PDFs and text files as text
-// (src/lib/chat/documents.ts); and old thinking and old pages left out.
+// (src/lib/chat/documents.ts); old thinking and old pages left out; and a
+// long chat fitted to a size budget, its oldest turns dropped first.
 // The model never changes on its own: Alec picks it. After a chat's first
 // reply, Lightning, the quickest, names it.
 //
