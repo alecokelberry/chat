@@ -68,10 +68,14 @@ let loading: Promise<Plugins> | undefined
 
 /** The plugins with math, loading it once. */
 function loadMath() {
-  loading ??= import("@/components/chat/reply-math").then(({ math }) => {
-    withMath = { code, math }
-    return withMath
-  })
+  loading ??= import("@/components/chat/reply-math").then(
+    ({ math }) => (withMath = { code, math }),
+    (error: unknown) => {
+      // Offline, or a chunk a deploy replaced: the next render tries again.
+      loading = undefined
+      throw error
+    }
+  )
   return loading
 }
 
@@ -86,7 +90,10 @@ function usePlugins(markdown: string, live: boolean) {
   const [, loaded] = useState(0)
   useEffect(() => {
     if (needed && withMath === undefined)
-      void loadMath().then(() => loaded((n) => n + 1))
+      loadMath().then(
+        () => loaded((n) => n + 1),
+        () => undefined
+      )
   }, [needed])
   if (!needed) return { plugins, markdown }
   if (withMath !== undefined) return { plugins: withMath, markdown }
