@@ -24,6 +24,8 @@ What `code-review` checks a diff against, on top of AGENTS.md and DESIGN.md. Eac
 
 **Edge cases.** Every case real use reaches (empty, one, many, very long, slow network, a reload mid-stream, two tabs, an error from NVIDIA), and rare ones whose failure would be bad (lost messages, a stuck spinner, a wrong chat). Give how likely and how bad.
 
+**Migrations.** A migration only adds (a table, an index, a nullable or defaulted column), so the code before it still runs on the schema after it and a rollback is safe. A drop or rename ships a deploy later, in its own PR, once no code reads it.
+
 **Performance.** Fast enough for Chat's real load (one person, long chats, big files): flag work that's repeated, unbounded, blocks a render or streams slowly. Also flag optimizing what that load doesn't need. Workers Free gives each request 10 ms of CPU: flag heavy server work (big SSR, hashing, parsing) that belongs in the browser. React code follows `vercel-react-best-practices`. Server code (the Worker, D1, `wrangler.jsonc`) follows `cloudflare:workers-best-practices`, and the chat agent `cloudflare:agents-sdk` and `cloudflare:durable-objects`.
 
 **Tests.** The smallest set that gives real confidence: a smoke test per feature and a unit test for tricky logic, at the seams the ticket agreed. Every interface also gets ui-sdk's agent test (the `ui-sdk` skill's agent-ready page). e2e tests use `e2e/session.ts`'s `test`, sign-in and helpers; a second copy of a helper goes there instead. Flag a behavior change with no test, a test that can't fail, and any weakened lint, type or test check.
