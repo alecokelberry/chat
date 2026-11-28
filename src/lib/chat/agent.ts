@@ -46,7 +46,7 @@
 // A reply cut off by a deploy (the agent evicted mid-stream) keeps the
 // words that arrived and shows Retry, like a stopped one: the SDK's default
 // would call the model again to continue the partial reply, which needs
-// assistant prefill, and NVIDIA's API has none (onChatRecovery).
+// assistant prefill, and NVIDIA's API has none (recovery.ts).
 //
 // A private chat (its id says so, src/lib/chat/id.ts) keeps nothing past
 // its page: it never touches the chat list, Lightning's title, Search's
@@ -80,6 +80,7 @@ import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { isPrivateChat, ownerOf } from "@/lib/chat/id"
 import { PRIVATE_CHECK_EVERY, privateChatLeft } from "@/lib/chat/private-wipe"
 import { indexMessages } from "@/lib/chat/message-index"
+import { keepPartialReply } from "@/lib/chat/recovery"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   getCustomize,
@@ -260,13 +261,9 @@ export class ChatAgent extends AIChatAgent<Env> {
     await this.destroy()
   }
 
-  /** The SDK's default, after a deploy evicts the agent mid-reply, saves the
-   *  partial reply and runs the model again to continue it. That needs
-   *  assistant prefill, which NVIDIA's API lacks, so a fresh answer would be
-   *  glued onto the half one. This keeps the partial reply and stops: the
-   *  page shows Retry, as for a stopped reply. */
+  /** A reply cut off by a deploy keeps what arrived (recovery.ts). */
   override async onChatRecovery(): Promise<ChatRecoveryOptions> {
-    return { continue: false }
+    return keepPartialReply
   }
 
   override async onChatMessage(
