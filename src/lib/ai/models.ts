@@ -1,7 +1,8 @@
 // The models Chat offers (docs/nvidia.md): each one's short name (the
 // picker's button), full name (its list), NVIDIA id, whether it can see
-// images (Super and Nano Omni can) and the chat template switch that turns
-// its thinking on or off. Super is the default with thinking off; Ultra
+// images (Super, Nano Omni, Kimi and Mistral can) and the chat template
+// switch that turns its thinking on or off (Kimi and Mistral send none:
+// unmeasured, so they think however NVIDIA serves them). Super is the default with thinking off; Ultra
 // is the one that thinks hard. Shared by the server (src/lib/ai) and the
 // composer's picker, so it imports only a tiny data reader.
 // A message records the model it was sent with in its metadata, which is
