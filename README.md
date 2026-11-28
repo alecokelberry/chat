@@ -43,3 +43,13 @@ Afterwards, turn `/setup` off again by replacing the code with one nobody knows 
 ```bash
 openssl rand -hex 24 | tr -d '\n' | pnpm wrangler secret put SETUP_CODE
 ```
+
+## When live breaks
+
+Look here, in this order:
+
+1. **Issues**: the Worker's Issues page in the Cloudflare dashboard (Workers & Pages › chat › Issues) groups its failures, each with a stack trace and when it last happened.
+2. **Logs**: the Worker's Observability tab holds every request's log lines and trace for 7 days.
+3. **AI Gateway**: AI › AI Gateway › chat › Logs shows each NVIDIA request with its status, tokens and time, for a reply that failed or hung.
+4. **Workers Builds**: Workers & Pages › chat › Deployments › Builds holds each deploy's build log, for a deploy that failed.
+5. **The hourly check**: the uptime workflow's runs in GitHub's Actions tab show when live last answered.
