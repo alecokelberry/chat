@@ -8,11 +8,8 @@
 // reads at most READ_LIMIT pages; past that the tool tells the model no,
 // and the chat leaves the refusal out (src/lib/chat/searches.ts).
 //
-// It opens only an address written out whole in `known` (writtenIn): the owner's
-// questions and documents in the chat, then whatever this reply's searches
-// found and the pages it read (src/lib/ai/index.ts and search.ts add
-// them). An address the model made up itself is refused before anything
-// leaves.
+// It opens only an address the reply's KnownAddresses holds, and adds
+// each page it reads to them (src/lib/ai/web-address.ts says the rule).
 //
 // The page's text is the web's, not the owner's: it reaches the model
 // marked as the page's content, and the instructions (src/lib/ai/index.ts)
@@ -29,7 +26,7 @@ import {
   refusalFor,
   siteOf,
   UNSEEN_ADDRESS,
-  writtenIn,
+  type KnownAddresses,
 } from "@/lib/ai/web-address"
 
 /** At most this many pages read in one reply. */
@@ -111,9 +108,8 @@ async function read(url: string, abortSignal: AbortSignal | undefined) {
   }
 }
 
-/** The readPage tool for one reply. `known` is the text an address may
- *  come from; each page read adds its own. */
-export const readPage = (known: string[]) => {
+/** The readPage tool for one reply, opening only what `known` holds. */
+export const readPage = (known: KnownAddresses) => {
   let left = READ_LIMIT
   return tool({
     description:
@@ -124,16 +120,15 @@ export const readPage = (known: string[]) => {
     execute: async ({ url }, { abortSignal }) => {
       const refusal = refusalFor(url)
       if (refusal !== null) throw new SearchError(refusal)
-      if (!known.some((text) => writtenIn(url, text)))
-        throw new SearchError(UNSEEN_ADDRESS)
       if (left <= 0)
         return {
           refused: `That's the ${READ_LIMIT} pages this reply can read. Answer from what you have.`,
         }
+      if (!known.has(url)) throw new SearchError(UNSEEN_ADDRESS)
       left -= 1
       try {
         const page = await read(url, abortSignal)
-        known.push(page.url, page.content)
+        known.add(page.url, page.content)
         return page
       } catch (error) {
         if (abortSignal?.aborted === true) throw error

@@ -464,25 +464,22 @@ function nextCall(
   const offered = (name: string) => (tools ?? []).some((t) => t.name === name)
   if (offered("webSearch") && calls.webSearch < searchesWanted(message))
     return { stream: searchCall(message, calls.webSearch + 1) }
-  const read = readsWanted(message)
   if (!offered("readPage")) return undefined
-  const url =
-    calls.readPage < read.times
-      ? read.url
-      : calls.readPage === read.times && read.times > 0
-        ? afterRead(message)
-        : undefined
-  return url === undefined
-    ? undefined
-    : { stream: toolCall("readPage", { url }, calls.readPage + 1, 1) }
+  const url = readsOf(message)[calls.readPage]
+  if (url === undefined) return undefined
+  return { stream: toolCall("readPage", { url }, calls.readPage + 1, 1) }
 }
 
-/** The address read after the asked-for ones: the made-up one with the
- *  question in it for "(obey)", the page's link for "(follow)". */
-function afterRead(message: string) {
-  if (message.includes("(obey)")) return madeUpAddress(message)
-  if (message.includes("(follow)")) return MOCK_PAGE_LINK
-  return undefined
+/** Every address a question has the mock read, in order: the one it
+ *  names, as many times as it asks, then the made-up one with the
+ *  question in it for "(obey)", or the page's link for "(follow)". */
+function readsOf(message: string): string[] {
+  const read = readsWanted(message)
+  if (read.times === 0) return []
+  const asked = Array.from({ length: read.times }, () => read.url)
+  if (message.includes("(obey)")) return [...asked, madeUpAddress(message)]
+  if (message.includes("(follow)")) return [...asked, MOCK_PAGE_LINK]
+  return asked
 }
 
 /** What the mock answers once it has searched or read, if it has. */

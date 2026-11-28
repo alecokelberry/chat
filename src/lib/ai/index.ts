@@ -23,9 +23,8 @@
 // that reads the results. Once a tool has been called its limit's number
 // of times (SEARCH_LIMIT, READ_LIMIT) it is no longer offered, so the
 // model answers, and each tool itself refuses calls past its limit (a step
-// can make several at once). A page is read only at an address written
-// out in the owner's own words or in what this reply found or read, never
-// one the model composed.
+// can make several at once). readPage opens only the reply's
+// KnownAddresses (src/lib/ai/web-address.ts).
 //
 // The instructions give today's date and time in the owner's time zone (the
 // question's metadata, checked), so "today" and "latest" mean the right
@@ -53,6 +52,7 @@ import { lastModel, lastTimeZone, LIGHTNING } from "@/lib/ai/models"
 import { READ_LIMIT, readPage } from "@/lib/ai/read-page"
 import { SEARCH_LIMIT, SearchError, webSearch } from "@/lib/ai/search"
 import { failWhenSilent, SilentModelError } from "@/lib/ai/silence"
+import { knownAddresses } from "@/lib/ai/web-address"
 import { isImagePart } from "@/lib/chat/attachments"
 
 /** How long NVIDIA may send nothing before a reply ends. NVIDIA's first
@@ -92,9 +92,7 @@ export async function streamReply(
   onUsage: (usage: ReplyTokens) => void
 ) {
   const chosen = lastModel(messages)
-  // Where readPage may take an address from: the owner's own words, then
-  // what this reply's searches and reads add.
-  const known = ownWords(messages)
+  const known = knownAddresses(ownWords(messages))
   return streamText({
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages), customize),
