@@ -5,7 +5,7 @@
 // leave warning room; raising it is a choice, with the reason in the commit.
 import { execFileSync } from "node:child_process"
 
-const LIMIT_KIB = 2560
+const LIMIT_KIB = 1280
 
 const output = execFileSync(
   "pnpm",

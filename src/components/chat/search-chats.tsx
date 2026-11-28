@@ -1,11 +1,12 @@
 // Search's dialog and list (search.tsx opens it; this loads apart so the
 // first load doesn't carry it): Grok's command palette, "Search or type an
 // action". The list is ui-sdk's Command over Chat's actions (New Chat, its
-// keys on the right) and the chat list the layout already has
-// (chat-list.tsx). The actions are New Chat, Change theme, Open settings,
-// Feature tour, Toggle sidebar (not on a phone, which has a drawer) and Sign
-// out; the first is a link, the rest run from onAction. With nothing
-// typed it shows the actions, New Chat highlighted, then under Chats the 50 most recently active, each with a
+// keys on the right, and Library) and the chat list the layout already has
+// (chat-list.tsx). The actions are New Chat, Library, Change theme, Open
+// settings, Feature tour, Toggle sidebar (not on a phone, which has a
+// drawer) and Sign out; New Chat and Library are links, the rest run from
+// onAction. With nothing typed it shows the actions, New Chat highlighted,
+// then under Chats the 50 most recently active, each with a
 // chat icon and how long ago on the right (1d, 2d). Tab moves the
 // highlight to the next section's first row, Shift+Tab back. Typing ranks
 // the actions and every chat by title with Command's fuzzy filter, a
@@ -42,6 +43,7 @@ import type { UIMessage } from "ai"
 import {
   CompassIcon,
   EllipsisIcon,
+  LibraryIcon,
   LogOutIcon,
   MessageCircleIcon,
   PanelLeftIcon,
@@ -128,7 +130,7 @@ const ThemeActionIcon = () => (
 const ACTIONS: readonly {
   value: string
   label: string
-  to?: "/"
+  to?: "/" | "/library"
   shortcut?: string
   icon: ComponentType<{ "aria-hidden"?: boolean }>
   computerOnly?: true
@@ -141,6 +143,12 @@ const ACTIONS: readonly {
     to: "/",
     shortcut: NEW_CHAT_SHORTCUT,
     icon: PlusIcon,
+  },
+  {
+    value: "action:library",
+    label: "Library",
+    to: "/library",
+    icon: LibraryIcon,
   },
   {
     value: "action:theme",
