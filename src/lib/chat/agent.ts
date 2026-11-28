@@ -43,6 +43,11 @@
 // and the browser may keep it for good (the Library's address for a file
 // changes when the file does, src/lib/chat/library.ts).
 //
+// A reply cut off by a deploy (the agent evicted mid-stream) keeps the
+// words that arrived and shows Retry, like a stopped one: the SDK's default
+// would call the model again to continue the partial reply, which needs
+// assistant prefill, and NVIDIA's API has none (onChatRecovery).
+//
 // A private chat (its id says so, src/lib/chat/id.ts) keeps nothing past
 // its page: it never touches the chat list, Lightning's title, Search's
 // index or the Library's, though its replies still count in Usage. Once a
@@ -60,6 +65,7 @@
 import type { Connection, ConnectionContext } from "agents"
 import {
   AIChatAgent,
+  type ChatRecoveryOptions,
   type ChatResponseResult,
   type OnChatMessageOptions,
 } from "@cloudflare/ai-chat"
@@ -252,6 +258,15 @@ export class ChatAgent extends AIChatAgent<Env> {
     // arrived meanwhile.
     if (this.revived) return
     await this.destroy()
+  }
+
+  /** The SDK's default, after a deploy evicts the agent mid-reply, saves the
+   *  partial reply and runs the model again to continue it. That needs
+   *  assistant prefill, which NVIDIA's API lacks, so a fresh answer would be
+   *  glued onto the half one. This keeps the partial reply and stops: the
+   *  page shows Retry, as for a stopped reply. */
+  override async onChatRecovery(): Promise<ChatRecoveryOptions> {
+    return { continue: false }
   }
 
   override async onChatMessage(
