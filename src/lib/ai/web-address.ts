@@ -11,8 +11,8 @@
 // And readPage opens only an address in the reply's KnownAddresses: one
 // written out whole (writtenIn) in the owner's questions or documents in
 // the chat, in this reply's search results, or in a page this reply read.
-// An address the model wrote itself is refused. What's left: the model can
-// still choose among the links a page it read lists (docs/decisions.md).
+// An address the model wrote itself is refused, and a link a page gives
+// opens only on that page's own site.
 
 /** An address's site (its host, without "www."), or null if it isn't an
  *  http(s) address. */
@@ -113,14 +113,21 @@ export function writtenIn(url: string, text: string): boolean {
 /** The text one reply's addresses may come from: the owner's words at
  *  first, then each search's results and each page read, added as they
  *  arrive. Each text is checked on its own, so no address is pieced
- *  together from two. */
+ *  together from two. A page's text is added with its site: a link in it
+ *  counts only on that same site. */
 export function knownAddresses(ownWords: string[]) {
-  const texts = [...ownWords]
+  const texts: { text: string; site?: string }[] = ownWords.map((text) => ({
+    text,
+  }))
   return {
-    add: (...more: string[]) => {
-      texts.push(...more)
+    add: (text: string, site?: string) => {
+      texts.push({ text, site })
     },
-    has: (url: string) => texts.some((text) => writtenIn(url, text)),
+    has: (url: string) =>
+      texts.some(
+        ({ text, site }) =>
+          writtenIn(url, text) && (site === undefined || siteOf(url) === site)
+      ),
   }
 }
 

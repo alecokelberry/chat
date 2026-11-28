@@ -128,7 +128,8 @@ export const readPage = (known: KnownAddresses) => {
       left -= 1
       try {
         const page = await read(url, abortSignal)
-        known.add(page.url, page.content)
+        known.add(page.url)
+        known.add(page.content, page.site)
         return page
       } catch (error) {
         if (abortSignal?.aborted === true) throw error
