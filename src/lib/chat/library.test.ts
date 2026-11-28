@@ -3,13 +3,16 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite"
 
 import { fc, it } from "@fast-check/vitest"
 import type { UIMessage } from "ai"
+import { drizzle } from "drizzle-orm/sqlite-proxy"
 import { beforeEach, expect, test } from "vitest"
 
 import {
   attachmentsOf,
   attachmentStatements,
+  listAttachments,
   type AttachmentRow,
 } from "@/lib/chat/library"
+import { LIBRARY_PAGE, type LibraryQuery } from "@/lib/chat/library-items"
 
 // The Library's rows against a real SQLite: D1 is SQLite, so the app's own
 // migrations run in Node's built-in SQLite, and its statements run there
@@ -169,3 +172,99 @@ it.prop([
     ).toEqual(expected)
   }
 )
+
+/** The Library's query, through Drizzle over the same SQLite. */
+const proxy = drizzle(async (sql, params, method) => {
+  const statement = db.prepare(sql)
+  const values = params.filter(isInput)
+  if (method === "run") {
+    statement.run(...values)
+    return { rows: [] }
+  }
+  return {
+    rows: statement.all(...values).map((row) => Object.values(row)),
+  }
+})
+
+const list = (query: Partial<LibraryQuery> = {}) =>
+  listAttachments(proxy, "u", {
+    tab: "all",
+    name: "",
+    order: "newest",
+    ...query,
+  })
+
+/** `count` questions, each with an image then a PDF, a second apart. */
+function fill(count: number) {
+  index(
+    Array.from({ length: count }, (_, at) => [
+      question(`q${at}`, [image(`Photo${at}.jpg`), doc(`Plan-${at}.pdf`)]),
+      reply(`r${at}`, 10_000 + at * 1000),
+    ]).flat()
+  )
+}
+
+test("the Library lists newest first, by tab, by part of a name in any case", async () => {
+  fill(3)
+  expect((await list()).map((item) => item.name)).toEqual([
+    "Plan-2.pdf",
+    "Photo2.jpg",
+    "Plan-1.pdf",
+    "Photo1.jpg",
+    "Plan-0.pdf",
+    "Photo0.jpg",
+  ])
+  expect((await list({ tab: "images" })).map((item) => item.kind)).toEqual([
+    "image",
+    "image",
+    "image",
+  ])
+  expect((await list({ tab: "files" })).map((item) => item.name)).toEqual([
+    "Plan-2.pdf",
+    "Plan-1.pdf",
+    "Plan-0.pdf",
+  ])
+  expect((await list({ name: "PHOTO1" })).map((item) => item.name)).toEqual([
+    "Photo1.jpg",
+  ])
+  expect(await list({ name: "%" })).toEqual([])
+  expect((await list({ order: "oldest" })).at(0)?.name).toBe("Photo0.jpg")
+})
+
+test("Files holds PDFs and text files; a name folds A to Z as SQLite does", async () => {
+  index([
+    question("q1", [doc("PackingList.md", "text/markdown"), doc("École.pdf")]),
+    reply("r1", 5000),
+  ])
+  expect((await list({ tab: "files" })).map((item) => item.kind)).toEqual([
+    "pdf",
+    "text",
+  ])
+  expect((await list({ name: "packing" })).map((item) => item.name)).toEqual([
+    "PackingList.md",
+  ])
+  expect((await list({ name: "COLE" })).map((item) => item.name)).toEqual([
+    "École.pdf",
+  ])
+  expect((await list({ name: "É" })).map((item) => item.name)).toEqual([
+    "École.pdf",
+  ])
+})
+
+test("pages follow on from the last item, in either order, with none twice", async () => {
+  fill(LIBRARY_PAGE)
+  for (const order of ["newest", "oldest"] as const) {
+    const seen: number[] = []
+    let page = await list({ order })
+    while (page.length > 0) {
+      seen.push(...page.map((item) => item.seq))
+      const last = page.at(-1)
+      page =
+        last === undefined
+          ? []
+          : await list({ order, cursor: { at: last.at, seq: last.seq } })
+    }
+    expect(seen).toHaveLength(LIBRARY_PAGE * 2)
+    expect(new Set(seen).size).toBe(seen.length)
+  }
+})

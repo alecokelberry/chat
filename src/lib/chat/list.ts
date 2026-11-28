@@ -19,11 +19,13 @@ import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { getAgentByName } from "agents"
+import { drizzle } from "drizzle-orm/d1"
 import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
 import { agentName, CHAT_ID } from "@/lib/chat/id"
 import { listAttachments } from "@/lib/chat/library"
+import { LIBRARY_ORDERS, LIBRARY_TABS } from "@/lib/chat/library-items"
 import { searchMessages } from "@/lib/chat/message-index"
 import {
   deleteChatRow,
@@ -55,13 +57,24 @@ export const getUsage = createServerFn({ method: "GET" }).handler(async () => {
   return splitUsage(user === null ? [] : await usageByModel(env.DB, user))
 })
 
-/** The first page of the signed-in user's attachments, newest first. */
-export const getLibrary = createServerFn({ method: "GET" }).handler(
-  async () => {
+/** The longest part of a file name the Library's search sends. */
+export const NAME_MAX = 255
+
+const Library = z.object({
+  tab: z.enum(LIBRARY_TABS),
+  name: z.string().max(NAME_MAX),
+  order: z.enum(LIBRARY_ORDERS),
+  cursor: z.object({ at: z.number().int(), seq: z.number().int() }).optional(),
+})
+
+/** A page of the signed-in user's attachments: a tab's, whose names hold
+ *  `name`, in `order`, after `cursor` (src/lib/chat/library.ts). */
+export const getLibrary = createServerFn({ method: "GET" })
+  .validator(Library)
+  .handler(async ({ data }) => {
     const user = await userId()
-    return user === null ? [] : listAttachments(env.DB, user)
-  }
-)
+    return user === null ? [] : listAttachments(drizzle(env.DB), user, data)
+  })
 
 /** The longest title a rename keeps. */
 export const TITLE_MAX = 200
