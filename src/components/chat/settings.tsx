@@ -7,7 +7,7 @@
 // nav keeps the sections whose name or settings hold what's typed
 // (src/lib/settings/sections.ts), and the first of them shows; with none,
 // it says so. Each section's page is its own component below: Account
-// (who's signed in, Sign Out), Appearance (the theme, code wrapping) and
+// (who's signed in, Sign Out), Appearance (the theme, the accent color, code wrapping) and
 // Customize (the response style, src/lib/ai/style.ts) and Usage (each
 // model's share of the tokens used, all time: src/lib/chat/usage.ts). The
 // look is src/components/ui/settings.tsx and src/components/ui/usage.tsx.
@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 
 import type { Account } from "@/components/chat/account-menu"
+import { AccentPicker } from "@/components/ui/accent-picker"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useCodeWrap } from "@/components/ui/preferences"
@@ -195,13 +196,21 @@ function AccountPage({ account }: { account: Account }) {
 }
 
 /** The theme, with the same sun-and-moon button the sign-in page has (the
- *  account menu's Theme does the same), and whether code wraps. */
+ *  account menu's Theme does the same), the accent color, and whether
+ *  code wraps. */
 function AppearancePage() {
   const [wrap, setWrap] = useCodeWrap()
   return (
     <SettingsCard label="Appearance">
       <SettingsRow name="Theme" description="Switch light and dark">
         <ThemeToggle />
+      </SettingsRow>
+      <SettingsRow
+        name="Accent color"
+        description="Send button, New Chat and selection"
+        className="flex-col items-stretch"
+      >
+        <AccentPicker />
       </SettingsRow>
       <SettingsField
         name="Wrap long code blocks"
