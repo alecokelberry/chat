@@ -37,6 +37,9 @@ const buttonVariants = cva(
         // then the words, left-aligned, 12px corners; a long one wraps.
         starter:
           "h-auto min-h-10 w-full justify-start gap-3 rounded-xl px-3 py-2 text-start font-normal whitespace-normal text-muted-foreground hover:bg-secondary-hover hover:text-foreground active:bg-secondary-active [&_svg:not([class*='size-'])]:size-5",
+        // A Library row: 56px tall, full width, left-aligned, 12px
+        // corners, in full ink; hover washes it like a starter.
+        file: "h-14 w-full justify-start gap-3 rounded-xl px-3 text-start font-normal text-foreground hover:bg-secondary-hover active:bg-secondary-active",
         // Floats over the thread (jump to latest): a translucent raised
         // circle.
         float:
