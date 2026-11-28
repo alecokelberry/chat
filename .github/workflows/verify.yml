@@ -113,12 +113,6 @@ jobs:
           SPECS: ${{ steps.specs.outputs.list }}
         # SPECS is a space-separated list of paths, split on purpose.
         run: pnpm e2e --repeat-each=3 --reporter=github,list $SPECS
-      - if: failure()
-        run: |
-          # TEMPORARY: print CI's own drawings
-          for f in $(find test-results -name '*-actual.png' | sort | awk -F/ '!seen[$NF]++'); do
-            echo "PNG-BEGIN $(basename $f)"; base64 -w0 "$f"; echo; echo "PNG-END"
-          done
       # What a failed screenshot test drew (its *-actual.png), to look at or
       # to copy over a baseline (e2e/screenshots.spec.ts).
       - if: failure() && steps.specs.outputs.list != ''
