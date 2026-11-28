@@ -8,9 +8,9 @@ import { expect, replies, send, settled, signInAsDev, test } from "./session"
 // light and a computer in dark, and compares with the PNGs beside this file
 // (e2e/screenshots.spec.ts-snapshots/), made on Linux, as CI is: another
 // system draws text a little differently, so these skip elsewhere. Update
-// them, after a change meant to move pixels, with
-//   pnpm e2e e2e/screenshots.spec.ts --update-snapshots=all
-// on Linux (a cloud thread), and read the changed PNGs in the PR.
+// them, after a change meant to move pixels, with the `screenshots` workflow
+// (Actions tab, Run workflow, on the PR's branch: .github/workflows/
+// screenshots.yml), and read the changed PNGs in the PR.
 //
 // What keeps them still: each test signs in as its own fresh account (no
 // chat but the one it makes, whichever worker or rerun it lands on), the
