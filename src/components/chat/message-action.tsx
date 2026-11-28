@@ -22,6 +22,7 @@ export function MessageAction({
   onClick,
   disabled,
   confirm,
+  size = "action",
   children,
 }: {
   ref?: Ref<HTMLButtonElement>
@@ -30,6 +31,8 @@ export function MessageAction({
   disabled?: boolean
   /** What it does, for an agent to ask a person first. */
   confirm?: string
+  /** The button's size: a reply's 20px, or a card's (code 24px, table 28px). */
+  size?: "action" | "code" | "header"
   children: ReactNode
 }) {
   return (
@@ -44,7 +47,7 @@ export function MessageAction({
             // (ui-sdk's Tooltip docs, Disabled buttons).
             focusableWhenDisabled
             data-agent-confirm={confirm}
-            render={<Button variant="ghost" size="action" />}
+            render={<Button variant="ghost" size={size} />}
           />
         }
       >
@@ -58,7 +61,9 @@ export function MessageAction({
 export function CopyAction({
   text,
   label,
+  size,
 }: {
+  size?: "action" | "code" | "header"
   /** What to copy; a function reads it at the press (a table's rows). */
   text: string | (() => string)
   /** Says what it copies, as it differs where it sits ("Copy code"). */
@@ -74,6 +79,7 @@ export function CopyAction({
   return (
     <MessageAction
       label={copied ? "Copied" : label}
+      size={size}
       onClick={() => {
         navigator.clipboard
           .writeText(typeof text === "function" ? text() : text)

@@ -63,7 +63,11 @@ function Block(props: ComponentProps<typeof defaultComponents.code>) {
           aria-label="Code actions"
           className="absolute end-1.5 top-1 h-6"
         >
-          <CopyAction text={code.replace(/\n$/, "")} label="Copy code" />
+          <CopyAction
+            text={code.replace(/\n$/, "")}
+            label="Copy code"
+            size="code"
+          />
         </MessageToolbar>
       )}
       {foldable && (
