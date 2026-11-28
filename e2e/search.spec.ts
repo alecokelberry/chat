@@ -424,6 +424,19 @@ test.describe("on a touch phone", () => {
     isMobile: true,
   })
 
+  test("the sheet is the visible height, less 1rem at the top", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Search" }).tap()
+    const sheet = page.locator('[data-slot="dialog-content"]')
+    await tapInSheet(sheet, field(page))
+    const height = await sheet.evaluate(
+      (el) => el.getBoundingClientRect().height
+    )
+    expect(height).toBeCloseTo(844 - 16, 0)
+  })
+
   test("the header's icon opens a sheet, and so does the drawer's, over it", async ({
     page,
   }) => {
