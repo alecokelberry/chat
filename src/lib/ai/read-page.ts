@@ -8,6 +8,9 @@
 // reads at most READ_LIMIT pages; past that the tool tells the model no,
 // and the chat leaves the refusal out (src/lib/chat/searches.ts).
 //
+// It opens only an address the reply's KnownAddresses holds, and adds
+// each page it reads to them (src/lib/ai/web-address.ts says the rule).
+//
 // The page's text is the web's, not the owner's: it reaches the model
 // marked as the page's content, and the instructions (src/lib/ai/index.ts)
 // say never to follow instructions found in it. A read that fails throws
@@ -19,7 +22,12 @@ import { z } from "zod"
 
 import { mockRead } from "@/lib/ai/mock"
 import { KeenableError, SearchError } from "@/lib/ai/search"
-import { refusalFor, siteOf } from "@/lib/ai/web-address"
+import {
+  refusalFor,
+  siteOf,
+  UNSEEN_ADDRESS,
+  type KnownAddresses,
+} from "@/lib/ai/web-address"
 
 /** At most this many pages read in one reply. */
 export const READ_LIMIT = 3
@@ -100,12 +108,12 @@ async function read(url: string, abortSignal: AbortSignal | undefined) {
   }
 }
 
-/** The readPage tool for one reply. */
-export const readPage = () => {
+/** The readPage tool for one reply, opening only what `known` holds. */
+export const readPage = (known: KnownAddresses) => {
   let left = READ_LIMIT
   return tool({
     description:
-      "Open a web page and read its text. Use it when a search result's snippet isn't enough to answer, or when the user gives a link and asks about it.",
+      "Open a web page and read its text. Use it when a search result's snippet isn't enough to answer, or when the user gives a link and asks about it. Give the address exactly as it is written in the user's messages, a search result or a page you read: no other address can be opened.",
     inputSchema: z.object({
       url: z.string().max(2048).describe("The page's full http(s) address"),
     }),
@@ -116,9 +124,12 @@ export const readPage = () => {
         return {
           refused: `That's the ${READ_LIMIT} pages this reply can read. Answer from what you have.`,
         }
+      if (!known.has(url)) throw new SearchError(UNSEEN_ADDRESS)
       left -= 1
       try {
-        return await read(url, abortSignal)
+        const page = await read(url, abortSignal)
+        known.add(page.url, page.content)
+        return page
       } catch (error) {
         if (abortSignal?.aborted === true) throw error
         console.error(
