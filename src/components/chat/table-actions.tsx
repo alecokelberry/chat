@@ -1,5 +1,5 @@
 // A reply's table, Streamdown's `table` override (reply.tsx): the same
-// outlined card, with a toolbar over its top corner on hover (always on
+// outlined card, with a toolbar in a row above its header, on hover (always on
 // touch, and while it holds focus). Copy puts the rows on the clipboard
 // tab-separated, so they paste into a spreadsheet as rows and columns;
 // Save as CSV downloads them. Both read the table's cells at the press, so
@@ -38,16 +38,20 @@ export function Table({
   }
   return (
     <div data-streamdown="table-wrapper" className="group/table relative">
-      <div data-slot="table-scroll" className="scroll-fade-x">
-        <table ref={table} data-streamdown="table" {...props} />
-      </div>
-      <div className="absolute end-2 top-2 rounded-full bg-popover opacity-0 shadow-tooltip transition-opacity duration-fast ease-standard group-hover/table:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
+      <div className="flex justify-end px-2 pt-2 opacity-0 transition-opacity duration-fast ease-standard group-hover/table:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
         <MessageToolbar aria-label="Table actions">
-          <CopyAction text={() => tableDataToTSV(data())} label="Copy table" />
-          <MessageAction label="Save as CSV" onClick={save}>
+          <CopyAction
+            text={() => tableDataToTSV(data())}
+            label="Copy table"
+            size="header"
+          />
+          <MessageAction label="Save as CSV" size="header" onClick={save}>
             <DownloadIcon aria-hidden />
           </MessageAction>
         </MessageToolbar>
+      </div>
+      <div data-slot="table-scroll" className="scroll-fade-x">
+        <table ref={table} data-streamdown="table" {...props} />
       </div>
     </div>
   )

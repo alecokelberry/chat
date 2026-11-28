@@ -419,6 +419,11 @@ const sidebarRowVariants = cva(
         // In the rail, only its plus on the sidebar's plane, in a 36px square.
         raised:
           "gap-1.5 bg-popover ps-2.25 pe-3.5 shadow-raised-row group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:bg-transparent group-data-collapsed/sidebar:ps-1.5 group-data-collapsed/sidebar:shadow-none hover:bg-sidebar-accent active:bg-sidebar-accent [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-icon [&>svg]:shrink-0",
+        // A page under New Chat (Library), Grok's: its 20px icon and name
+        // on the sidebar's plane, the icon where New Chat's plus is; the
+        // page while open (the link's aria-current) keeps the chat rows'
+        // wash. In the rail, only its icon, in a 36px square.
+        nav: "gap-1.5 ps-2.25 pe-3.5 group-data-collapsed/sidebar:h-9 group-data-collapsed/sidebar:ps-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground [&>span]:transition-opacity [&>span]:duration-sidebar [&>span]:ease-spring group-data-collapsed/sidebar:[&>span]:opacity-0 group-data-instant/sidebar:[&>span]:transition-none motion-reduce:[&>span]:transition-none [&>svg]:mx-0.5 [&>svg]:size-icon [&>svg]:shrink-0",
         // The account, Grok's: a 26px avatar (12px initials) and the name,
         // medium in full ink, 8px in, in a muted row; hover and open fill the row at once
         // with the chat rows' wash, and the avatar dims to 75%. In the rail, the avatar alone in a
@@ -472,5 +477,6 @@ export {
   SidebarSectionAction,
   SidebarToggle,
   NEW_CHAT_SHORTCUT,
+  TOGGLE_SHORTCUT as TOGGLE_SIDEBAR_SHORTCUT,
   useNewChatShortcut,
 }

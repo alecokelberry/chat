@@ -117,6 +117,8 @@ test.describe("on a computer", () => {
     // saved the way ui-sdk saves it. After a reload with the app's own
     // scripts emptied, only the head's inline script can set the color.
     await page.goto("/sign-in")
+    // A tap before React hydrates the switch is lost.
+    await hydrated(page)
     await page.getByRole("button", { name: "Dark theme" }).click()
     await expect(page.locator("html")).toHaveAttribute(
       "data-color-scheme",
@@ -163,6 +165,8 @@ test.describe("on a computer", () => {
     context,
   }) => {
     await page.goto("/sign-in")
+    // A tap before React hydrates the switch is lost.
+    await hydrated(page)
     await page.getByRole("button", { name: "Dark theme" }).click()
     await expect
       .poll(async () =>
@@ -180,6 +184,8 @@ test.describe("on a computer", () => {
     await watchStatusBar(page)
     const unloads = await watchUnloads(page)
     await page.goto("/sign-in")
+    // A tap before React hydrates the switch is lost.
+    await hydrated(page)
     await expect(page.getByRole("button", { name: "Dark theme" })).toBeVisible()
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
     const loads: string[] = []
@@ -202,6 +208,8 @@ test.describe("on a computer", () => {
     page,
   }) => {
     await page.goto("/sign-in")
+    // A tap before React hydrates the switch is lost.
+    await hydrated(page)
     await expect(page.locator("svg.lucide-message-circle")).toBeVisible()
     const html = page.locator("html")
     const toggle = page.getByRole("button", { name: "Dark theme" })
@@ -408,6 +416,8 @@ test.describe("on a phone", () => {
     })
     await watchStatusBar(page)
     await page.goto("/sign-in")
+    // A tap before React hydrates the switch is lost.
+    await hydrated(page)
     const toggle = page.getByRole("button", { name: "Dark theme" })
     await expect(toggle).toBeVisible()
     await expect.poll(() => bottomBar(page)).toBe(LIGHT)
