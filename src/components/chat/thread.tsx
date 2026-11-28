@@ -21,7 +21,7 @@
 // a reply waits for it rather than flash its raw markdown. The server never
 // imports it (the import.meta.env.SSR branch drops it from the Worker's
 // build) and never renders a chat's messages (the route is data-only).
-import { lazy, memo, Suspense, useMemo } from "react"
+import { lazy, memo, Suspense } from "react"
 import type { ReasoningUIPart, UIMessage } from "ai"
 import {
   BrainIcon,
@@ -208,13 +208,11 @@ const QuestionMessage = memo(function QuestionMessage({
   onModelChange: (model: ModelKey) => void
   onEdit: (id: string, text: string, attachments: AttachmentPart[]) => void
 }) {
-  const images = useMemo(() => imagesOf(message), [message])
-  const documents = useMemo(() => documentsOf(message), [message])
   return (
     <Question
       text={textOf(message)}
-      images={images}
-      documents={documents}
+      images={imagesOf(message)}
+      documents={documentsOf(message)}
       busy={busy}
       model={model}
       onModelChange={onModelChange}
