@@ -23,7 +23,7 @@
 // `fill` (the ref's handle) puts words in it and focuses it: a starter.
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
-// Offline, Send waits and a line under the pill says so ("Offline.
+// Offline, Send waits and a line above the pill says so ("Offline.
 // Reconnecting…"): the draft stays, nothing is sent into the void, and the
 // line goes as the browser comes back online (`useOnline`).
 import {
@@ -31,7 +31,6 @@ import {
   useImperativeHandle,
   useRef,
   useState,
-  useSyncExternalStore,
   type Ref,
   type RefObject,
 } from "react"
@@ -115,7 +114,7 @@ export function Composer({
   return (
     <AttachmentsInput attachments={attachments} pasteInto={() => field.current}>
       <form
-        className="flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
+        className="relative flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
         onSubmit={(event) => {
           event.preventDefault()
           send()
@@ -153,8 +152,8 @@ export function Composer({
             onStop={onStop}
           />
         </div>
+        <OfflineLine offline={!online} />
       </form>
-      <OfflineLine offline={!online} />
       <CantSeeImages
         blind={blind}
         model={chosen.name}
@@ -165,26 +164,30 @@ export function Composer({
   )
 }
 
-function subscribeOnline(notify: () => void) {
-  addEventListener("online", notify)
-  addEventListener("offline", notify)
-  return () => {
-    removeEventListener("online", notify)
-    removeEventListener("offline", notify)
-  }
-}
-
-/** Whether the browser has a network. The server and the first render say
- *  yes, so a page never loads showing the line. */
+/** Whether the browser has a network, from its online and offline events
+ *  alone. It never reads `navigator.onLine`: iOS can report false on a
+ *  page that loaded fine (the Simulator did), and a wrong "offline" would
+ *  block Send for no reason, which is worse than missing a page that
+ *  opened already offline. The server and the first render say yes, so a
+ *  page never loads showing the line. */
 function useOnline() {
-  return useSyncExternalStore(
-    subscribeOnline,
-    () => navigator.onLine,
-    () => true
-  )
+  const [online, setOnline] = useState(true)
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    addEventListener("online", on)
+    addEventListener("offline", off)
+    return () => {
+      removeEventListener("online", on)
+      removeEventListener("offline", off)
+    }
+  }, [])
+  return online
 }
 
-/** Under the composer while offline. The status region is always on the
+/** Above the pill while offline, in the gap above it (the new chat's greeting
+ *  ends 28px over it, the thread has its own room), so it never covers the
+ *  starters under it. The status region is always on the
  *  page and empty until then, since screen readers often skip a live
  *  region that arrives already filled (as CantSeeImages does); the line
  *  people see is hidden from them, so it isn't read twice. */
@@ -198,7 +201,7 @@ function OfflineLine({ offline }: { offline: boolean }) {
       {offline && (
         <p
           aria-hidden
-          className="pt-2 text-center text-sm text-muted-foreground"
+          className="absolute inset-x-0 bottom-full pb-1.5 text-center text-sm text-muted-foreground"
         >
           {line}
         </p>
