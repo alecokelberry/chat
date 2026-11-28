@@ -133,6 +133,40 @@ test.describe("on a phone", () => {
     expect(log?.height).toBeGreaterThan(150)
   })
 
+  test("the header stays on screen while the keyboard is up", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await send(page, "Hello")
+    await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+      "Done."
+    )
+    // iOS doesn't shrink the page for its keyboard: it pans the part on
+    // screen down to show the field, which would carry the header off the
+    // top. Chromium can't pan, so this sets what ui-sdk's bindViewport
+    // measures on an iPhone: 359px left above the keyboard, panned 300px.
+    const top = 300
+    const height = 359
+    await page.evaluate(
+      ([top, height]) => {
+        const root = document.documentElement
+        root.dataset.keyboard = ""
+        root.style.setProperty("--visual-viewport-top", `${top}px`)
+        root.style.setProperty("--visual-viewport-height", `${height}px`)
+      },
+      [top, height]
+    )
+    const sidebar = await page
+      .getByRole("button", { name: "Open sidebar" })
+      .boundingBox()
+    expect(sidebar?.y).toBeGreaterThanOrEqual(top)
+    const composer = await page.locator("form").boundingBox()
+    if (composer === null) throw new Error("The composer has no box")
+    expect(composer.y + composer.height).toBeLessThanOrEqual(top + height)
+    const log = await page.getByRole("log", { name: "Messages" }).boundingBox()
+    expect(log?.y).toBeGreaterThanOrEqual(top)
+  })
+
   test("a long press on a chat row doesn't select its title", async ({
     page,
   }) => {

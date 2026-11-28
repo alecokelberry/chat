@@ -427,6 +427,21 @@
   padding-left: max(--spacing(4), env(safe-area-inset-left));
 }
 
+/* The signed-in app's shell while the iPhone keyboard is up. iOS doesn't
+   shrink the page for its keyboard: it pans the part on screen down to
+   show the field, which carried the shell's header (sidebar, Search, the
+   chat's title) off the top. While the keyboard is open (data-keyboard,
+   from ui-sdk's bindViewport in ui/viewport.tsx) the shell takes the
+   visible height and moves down by the pan, so the header stays at the
+   top and the composer sits on the keyboard. No transition: it follows
+   the pan as ui-sdk measures it. */
+@utility keyboard-fit {
+  :root[data-keyboard] & {
+    height: var(--visual-viewport-height);
+    translate: 0 var(--visual-viewport-top);
+  }
+}
+
 /* Scroll bars keep their room on both edges, so the centered thread never
    shifts when it starts to scroll. */
 @utility scrollbar-gutter-stable {
