@@ -1,7 +1,7 @@
 import { fc, it } from "@fast-check/vitest"
 import { describe, expect, test } from "vitest"
 
-import { refusalFor, siteOf } from "@/lib/ai/web-address"
+import { appearsIn, refusalFor, siteOf } from "@/lib/ai/web-address"
 
 /** Ranges off the public internet, from RFC 6890: [first, last] as
  *  32-bit numbers. */
@@ -145,5 +145,61 @@ describe("siteOf", () => {
     ),
   ])("is null for anything but an http(s) address", (url) => {
     expect(siteOf(url)).toBeNull()
+  })
+})
+
+describe("appearsIn", () => {
+  const address = fc
+    .tuple(scheme, publicName, path)
+    .map(([s, host, p]) => `${s}://${host}${p}`)
+  /** Anything a model could add to an address to carry words out: at
+   *  least one character an address holds that isn't closing punctuation. */
+  const added = fc
+    .tuple(
+      fc.string({
+        unit: fc.constantFrom(..."?=&/#%a1-._~:@!$'()*+,;".split("")),
+        maxLength: 40,
+      }),
+      fc.constantFrom(..."aZ9%/=&#_-~".split(""))
+    )
+    .map(([more, one]) => more + one)
+  /** What may sit around a written address in a message or a page. */
+  const around = fc.constantFrom(
+    (url: string) => url,
+    (url: string) => `see ${url} now`,
+    (url: string) => `see ${url}.`,
+    (url: string) => `(${url}), and`,
+    (url: string) => `[a page](${url})`,
+    (url: string) => `"${url}"\nnext line`
+  )
+
+  it.prop([address, around])(
+    "finds an address written out whole",
+    (url, wrap) => {
+      expect(appearsIn(url, wrap(url))).toBe(true)
+    }
+  )
+
+  it.prop([address, added, around])(
+    "never finds the address with anything added after it",
+    (url, more, wrap) => {
+      expect(appearsIn(url + more, wrap(url))).toBe(false)
+    }
+  )
+
+  it.prop([address, added, around])(
+    "never finds the start of a longer address",
+    (url, more, wrap) => {
+      expect(appearsIn(url, wrap(url + more))).toBe(false)
+    }
+  )
+
+  test("finds it when another copy runs on", () => {
+    const url = "https://example.org/a"
+    expect(appearsIn(url, `${url}?x=1 and ${url}`)).toBe(true)
+  })
+
+  test("finds nothing for an empty address", () => {
+    expect(appearsIn("", "anything")).toBe(false)
   })
 })

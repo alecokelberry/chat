@@ -14,6 +14,8 @@
 // Stop cancels a search in flight (the reply's abort signal). The tool is
 // built for each reply and counts its calls: past SEARCH_LIMIT, even calls
 // made at once in one step, it tells the model no without asking Keenable.
+// Each result's address, title and snippet join `known`, the text readPage
+// may take an address from (src/lib/ai/read-page.ts).
 // With MOCK_MODEL "1" the mock's canned results answer instead
 // (src/lib/ai/mock.ts), so tests never go out.
 import { env } from "cloudflare:workers"
@@ -105,8 +107,8 @@ export class SearchError extends Error {}
 /** The webSearch tool for one reply: past SEARCH_LIMIT calls, even ones
  *  made at once in a single step, it refuses without asking Keenable. A
  *  refusal is for the model only: the chat leaves it out
- *  (src/lib/chat/searches.ts). */
-export const webSearch = () => {
+ *  (src/lib/chat/searches.ts). Its results join `known`. */
+export const webSearch = (known: string[]) => {
   let left = SEARCH_LIMIT
   return tool({
     description:
@@ -129,6 +131,11 @@ export const webSearch = () => {
           env.MOCK_MODEL === "1"
             ? await mockSearch(query, abortSignal)
             : await keenable(query, abortSignal)
+        known.push(
+          ...results.map(({ url, title, snippet }) =>
+            [url, title, snippet].join("\n")
+          )
+        )
         return { results }
       } catch (error) {
         if (abortSignal?.aborted === true) throw error

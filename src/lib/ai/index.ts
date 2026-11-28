@@ -23,7 +23,11 @@
 // that reads the results. Once a tool has been called its limit's number
 // of times (SEARCH_LIMIT, READ_LIMIT) it is no longer offered, so the
 // model answers, and each tool itself refuses calls past its limit (a step
-// can make several at once). The instructions give today's date and time in the owner's time zone (the
+// can make several at once). A page is read only at an address written
+// out in the owner's own words or in what this reply found or read, never
+// one the model composed.
+//
+// The instructions give today's date and time in the owner's time zone (the
 // question's metadata, checked), so "today" and "latest" mean the right
 // thing, and say to cite nothing inline (the chat lists the sources under
 // the reply) and to treat web text as information, never instructions.
@@ -88,6 +92,9 @@ export async function streamReply(
   onUsage: (usage: ReplyTokens) => void
 ) {
   const chosen = lastModel(messages)
+  // Where readPage may take an address from: the owner's own words, then
+  // what this reply's searches and reads add.
+  const known = ownWords(messages)
   return streamText({
     model: model(chosen.id),
     instructions: instructions(new Date(), lastTimeZone(messages), customize),
@@ -100,7 +107,7 @@ export async function streamReply(
             : undefined,
       }
     ),
-    tools: { webSearch: webSearch(), readPage: readPage() },
+    tools: { webSearch: webSearch(known), readPage: readPage(known) },
     // At most one step per search or read, and one more to answer.
     stopWhen: isStepCount(SEARCH_LIMIT + READ_LIMIT + 1),
     prepareStep: ({ steps }) => ({ activeTools: toolsLeft(steps) }),
@@ -136,6 +143,20 @@ function imagesFor(message: UIMessage, seesImages: boolean): UIMessage {
       return [{ type: "text", text: `[image: ${part.filename ?? "image"}]` }]
     }),
   }
+}
+
+/** The owner's questions and documents, as text: where a link they gave
+ *  is written. */
+function ownWords(messages: UIMessage[]): string[] {
+  return messages.flatMap((message) =>
+    message.role !== "user"
+      ? []
+      : message.parts.flatMap((part) => {
+          if (part.type === "text") return [part.text]
+          if (isDocument(part)) return [part.data.text]
+          return []
+        })
+  )
 }
 
 /** A reply's tokens in and out. */
