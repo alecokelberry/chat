@@ -1,0 +1,38 @@
+# Checks live once an hour: loads the sign-in page and fails unless it
+# answers 200 with the app's own words in it. A failed scheduled run makes
+# GitHub email Alec (the default notification for failed workflows), so
+# he hears that live is down without opening it. Free on a public repo,
+# and it needs no secret.
+#
+# It checks that the Worker serves pages, not that NVIDIA answers (that
+# needs sign-in). GitHub can start a scheduled run some minutes late, and
+# pauses schedules after 60 days without a commit. Run it by hand from the
+# Actions tab (workflow_dispatch).
+name: uptime
+
+on:
+  schedule:
+    # Off the hour, when GitHub's runners are less busy.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      # Three tries, 20 s apart, so one blip doesn't send an email.
+      - name: Load live's sign-in page
+        run: |
+          for try in 1 2 3; do
+            if curl --silent --show-error --fail --max-time 15 \
+              https://chat.alecokelberry.workers.dev/sign-in \
+              | grep --quiet "Sign in with passkey"; then
+              echo "Live is up (try $try)."; exit 0
+            fi
+            echo "Try $try failed."; sleep 20
+          done
+          echo "Live didn't serve its sign-in page." >&2; exit 1
