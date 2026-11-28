@@ -61,36 +61,39 @@ export function NewChat({
           onSend={(text, files) => onSend(text, files, model)}
         />
       </div>
-      {/* Under the composer, starting where the middle row ends, so the
-          composer stays at the exact middle. Gone once there's a draft or
-          a file: the composer grows down over this space, and Grok's
-          suggestions leave then too. */}
-      {isPrivate ? (
-        <p className="mx-auto mt-3 flex w-full max-w-composer items-center justify-center gap-1.5 self-start px-4 text-center text-sm text-muted-foreground">
-          <CircleDashedIcon aria-hidden className="size-3.5 shrink-0" />
-          This chat won’t appear in your history.
-        </p>
-      ) : (
-        !started && (
-          <ul
-            aria-label="Starters"
-            className="mx-auto mt-3 w-full max-w-composer self-start px-2 sm:px-0"
-          >
-            {STARTERS.map(({ icon: Icon, text }) => (
-              <li key={text}>
-                <Button
-                  variant="starter"
-                  size="none"
-                  onClick={() => composer.current?.fill(text)}
-                >
-                  <Icon data-icon="inline-start" aria-hidden />
-                  {text}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )
-      )}
+      {/* Under the composer, hung from the top of the bottom row, which is
+          empty: the starters are out of flow, so nothing in them can change
+          the rows' sizes and move the composer off the exact middle. Gone
+          once there's a draft or a file: the composer grows down over this
+          space, and Grok's suggestions leave then too. */}
+      <div className="relative mx-auto w-full max-w-composer self-start px-2 sm:px-0">
+        {isPrivate ? (
+          <p className="mt-3 flex items-center justify-center gap-1.5 px-2 text-center text-sm text-muted-foreground">
+            <CircleDashedIcon aria-hidden className="size-3.5 shrink-0" />
+            This chat won’t appear in your history.
+          </p>
+        ) : (
+          !started && (
+            <ul
+              aria-label="Starters"
+              className="absolute inset-x-2 top-3 sm:inset-x-0"
+            >
+              {STARTERS.map(({ icon: Icon, text }) => (
+                <li key={text}>
+                  <Button
+                    variant="starter"
+                    size="none"
+                    onClick={() => composer.current?.fill(text)}
+                  >
+                    <Icon data-icon="inline-start" aria-hidden />
+                    {text}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </div>
     </main>
   )
 }
