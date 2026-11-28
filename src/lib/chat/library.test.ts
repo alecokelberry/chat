@@ -12,7 +12,12 @@ import {
   listAttachments,
   type AttachmentRow,
 } from "@/lib/chat/library"
-import { LIBRARY_PAGE, type LibraryQuery } from "@/lib/chat/library-items"
+import {
+  downloadName,
+  LIBRARY_PAGE,
+  stepAround,
+  type LibraryQuery,
+} from "@/lib/chat/library-items"
 
 // The Library's rows against a real SQLite: D1 is SQLite, so the app's own
 // migrations run in Node's built-in SQLite, and its statements run there
@@ -267,4 +272,37 @@ test("pages follow on from the last item, in either order, with none twice", asy
     expect(seen).toHaveLength(LIBRARY_PAGE * 2)
     expect(new Set(seen).size).toBe(seen.length)
   }
+})
+
+test("next and previous go round at the ends", () => {
+  expect(stepAround(4, 1, 5)).toBe(0)
+  expect(stepAround(0, -1, 5)).toBe(4)
+  expect(stepAround(2, 1, 5)).toBe(3)
+  expect(stepAround(0, 1, 1)).toBe(0)
+})
+
+it.prop([
+  fc
+    .integer({ min: 1, max: 10_000 })
+    .chain((length) =>
+      fc.tuple(
+        fc.constant(length),
+        fc.integer({ min: 0, max: length - 1 }),
+        fc.integer({ min: -1_000_000, max: 1_000_000 })
+      )
+    ),
+])(
+  "a step always lands on an item, and stepping back returns",
+  ([length, at, step]) => {
+    const to = stepAround(at, step, length)
+    expect(to).toBeGreaterThanOrEqual(0)
+    expect(to).toBeLessThan(length)
+    expect(stepAround(to, -step, length)).toBe(at)
+  }
+)
+
+test("a PDF saves as the text the chat kept", () => {
+  expect(downloadName({ name: "Plan.pdf", kind: "pdf" })).toBe("Plan.pdf.txt")
+  expect(downloadName({ name: "notes.md", kind: "text" })).toBe("notes.md")
+  expect(downloadName({ name: "a.jpg", kind: "image" })).toBe("a.jpg")
 })

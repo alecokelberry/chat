@@ -108,10 +108,10 @@ test("a private chat answers, then never reaches the list, Search or the Library
   await expect(page).toHaveURL(/\/library$/)
   const library = page.getByRole("main")
   await expect(
-    library.getByRole("link").filter({ hasText: shown })
+    library.getByRole("listitem").filter({ hasText: shown })
   ).toBeVisible()
   await expect(
-    library.getByRole("link").filter({ hasText: hidden })
+    library.getByRole("listitem").filter({ hasText: hidden })
   ).toHaveCount(0)
 })
 

@@ -32,7 +32,10 @@ test("New Chat's tooltip shows ⌘J as keycaps", async ({ page }) => {
   await expect(newChat).toHaveAttribute("aria-keyshortcuts", /\+J$/)
 })
 
-for (const path of ["/nope", "/c/not-a-chat"]) {
+// A well-formed id no chat has: a deleted chat's link.
+const NO_SUCH_CHAT = "/c/6f1c2b9e-3d4a-4e5f-8a7b-0c9d1e2f3a4b"
+
+for (const path of ["/nope", "/c/not-a-chat", NO_SUCH_CHAT]) {
   test(`${path} shows not found inside the shell`, async ({ page }) => {
     await signInAsDev(page)
     await page.goto(path)
@@ -45,6 +48,16 @@ for (const path of ["/nope", "/c/not-a-chat"]) {
     await expect(greeting(page)).toBeVisible()
   })
 }
+
+test("a chat just started never flashes Not found", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, "Hello")
+  await expect(page.getByRole("article", { name: "Reply" })).toContainText(
+    "Done.",
+    { timeout: 15_000 }
+  )
+  await expect(page.getByRole("heading", { name: "Not found." })).toHaveCount(0)
+})
 
 test.describe("a page that throws", () => {
   // What the faked 500s cause: the failed requests, what they throw, and the

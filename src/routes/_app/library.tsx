@@ -43,6 +43,11 @@ import {
 } from "lucide-react"
 
 import { useChatList } from "@/components/chat/chat-list"
+import {
+  DocumentReader,
+  FileActions,
+  LibraryViewer,
+} from "@/components/chat/library-viewer"
 import { Button } from "@/components/ui/button"
 import { FileName } from "@/components/ui/file-chip"
 import { Input } from "@/components/ui/input"
@@ -157,6 +162,14 @@ function Library() {
   // from before a switch. Shown at once; the order needs the list loaded
   // again.
   const [view, setView] = useState(() => libraryLook().view)
+  // The pressed tab at once, as ui-sdk asks; its link then loads the list,
+  // and Back or a link from elsewhere brings the address's tab back.
+  const [tab, setTab] = useState(query.tab)
+  const [shownTab, setShownTab] = useState(query.tab)
+  if (query.tab !== shownTab) {
+    setShownTab(query.tab)
+    setTab(query.tab)
+  }
   const shown = useMemo(() => previewLibrary(items, data), [items, data])
   const navigate = useNavigate({ from: Route.fullPath })
   const router = useRouter()
@@ -173,7 +186,13 @@ function Library() {
     >
       <div className="mx-auto w-full max-w-composer pt-2 md:pt-12">
         <h1 className="px-3 pb-4 text-base font-medium">Library</h1>
-        <Tabs value={query.tab}>
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            const picked = oneOf(LIBRARY_TABS, value)
+            if (picked !== undefined) setTab(picked)
+          }}
+        >
           <TabsList aria-label="Show" className="mx-3 mb-3">
             {LIBRARY_TABS.map((tab) => (
               <TabsTab
@@ -193,7 +212,7 @@ function Library() {
               </TabsTab>
             ))}
           </TabsList>
-          <TabsPanel value={query.tab}>
+          <TabsPanel value={tab}>
             <div className="flex items-center justify-end gap-2 px-3 pb-3">
               <NameSearch
                 name={query.name}
@@ -384,6 +403,9 @@ function Files({
     setItems(first)
     setDone(!more || first.length < LIBRARY_PAGE)
   }
+  // The image open in the viewer (its seq), or the document in the reader.
+  const [viewing, setViewing] = useState<number | null>(null)
+  const [reading, setReading] = useState<LibraryItem | null>(null)
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const sentinel = end.current
@@ -422,51 +444,66 @@ function Files({
   if (items.length === 0 && done) return <Nothing query={query} />
   if (!inBrowser) return null
   const now = Date.now()
-  const groups = groupByDay(items, (item) => item.at, now)
+  const byDay = groupByDay(items, (item) => item.at, now)
+  const groups = query.order === "oldest" ? byDay.toReversed() : byDay
+  // The viewer pages through the images as the page lists them.
+  const images = groups
+    .flatMap((group) => group.items)
+    .filter((item) => item.kind === "image")
+  const at = images.findIndex((item) => item.seq === viewing)
+  const open = (item: LibraryItem) =>
+    item.kind === "image" ? setViewing(item.seq) : setReading(item)
   return (
     <>
-      {(query.order === "oldest" ? groups.toReversed() : groups).map(
-        (group) => (
-          <section key={group.label} aria-label={group.label} className="pb-3">
-            <h2 className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">
-              {group.label}
-            </h2>
-            {view === "grid" ? (
-              <ul className="grid grid-cols-3 gap-2 px-3 sm:grid-cols-4 md:grid-cols-5">
-                {group.items.map((item) => (
-                  <li key={item.seq}>
-                    <Tile item={item} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <ul className="flex flex-col gap-px">
-                {group.items.map((item) => (
-                  <li key={item.seq}>
-                    <Row item={item} now={now} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )
-      )}
+      {groups.map((group) => (
+        <section key={group.label} aria-label={group.label} className="pb-3">
+          <h2 className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">
+            {group.label}
+          </h2>
+          {view === "grid" ? (
+            <ul className="grid grid-cols-3 gap-2 px-3 sm:grid-cols-4 md:grid-cols-5">
+              {group.items.map((item) => (
+                <li key={item.seq} className="group/file relative">
+                  <Tile item={item} onOpen={() => open(item)} />
+                  <FileActions
+                    item={item}
+                    variant="overlay"
+                    className="absolute end-1.5 top-1.5"
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="flex flex-col gap-px">
+              {group.items.map((item) => (
+                <li key={item.seq} className="flex items-center gap-1">
+                  <Row item={item} now={now} onOpen={() => open(item)} />
+                  <FileActions item={item} className="me-1.5" />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
       {!done && <div ref={end} className="h-px" />}
+      <LibraryViewer
+        images={images}
+        at={at === -1 ? null : at}
+        onAt={(next) => setViewing(images[next]?.seq ?? null)}
+        onClose={() => setViewing(null)}
+      />
+      <DocumentReader item={reading} onClose={() => setReading(null)} />
     </>
   )
 }
 
 /** A file in the Grid: an image's square, or a document's tile with its
  *  icon, name and kind. An image's name is there for screen readers. */
-function Tile({ item }: { item: LibraryItem }) {
+function Tile({ item, onOpen }: { item: LibraryItem; onOpen: () => void }) {
   const [broken, setBroken] = useState(false)
   const image = item.kind === "image" && !broken
   return (
-    <Button
-      variant="tile"
-      size="none"
-      render={<Link to="/c/$id" params={{ id: item.chatId }} />}
-    >
+    <Button variant="tile" size="none" onClick={onOpen}>
       {image ? (
         <>
           <img
@@ -501,7 +538,15 @@ function Tile({ item }: { item: LibraryItem }) {
   )
 }
 
-function Row({ item, now }: { item: LibraryItem; now: number }) {
+function Row({
+  item,
+  now,
+  onOpen,
+}: {
+  item: LibraryItem
+  now: number
+  onOpen: () => void
+}) {
   // An image that won't load (its chat deleted since) shows the icon the
   // thread shows for one, not the browser's broken image.
   const [broken, setBroken] = useState(false)
@@ -509,7 +554,8 @@ function Row({ item, now }: { item: LibraryItem; now: number }) {
     <Button
       variant="file"
       size="none"
-      render={<Link to="/c/$id" params={{ id: item.chatId }} />}
+      className="min-w-0 flex-1"
+      onClick={onOpen}
     >
       <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted text-muted-foreground [&_svg]:size-5">
         {item.kind === "image" && !broken ? (

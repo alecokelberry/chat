@@ -125,6 +125,84 @@ test.describe("on a computer", () => {
     await expect(html).toHaveAttribute("data-code-wrap", "wrap")
   })
 
+  test("Appearance's accent color applies at once and stays saved", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    const send = () =>
+      page.evaluate(() =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--send")
+          .trim()
+      )
+    expect(await send()).toBe("#ec4899")
+    const presets = settings(page).getByRole("listbox", { name: "Presets" })
+    await expect(presets.getByRole("option", { name: "Pink" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+
+    await presets.getByRole("option", { name: "Blue" }).click()
+    await expect.poll(send).toBe("#2f7bf5")
+    await page.reload()
+    // On <html> from the head's script, before anything hydrates.
+    await expect(page.locator("html")).toHaveAttribute(
+      "style",
+      /--accent-light: #2f7bf5/
+    )
+    expect(await send()).toBe("#2f7bf5")
+
+    // A pale custom color deepens until the send button's white ink reads.
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    await settings(page).getByRole("button", { name: "Custom color" }).click()
+    const hex = page.getByRole("textbox", { name: "Hex" })
+    await hex.fill("#fde68a")
+    await hex.press("Enter")
+    await expect.poll(send).not.toBe("#2f7bf5")
+    expect(await send()).not.toBe("#fde68a")
+    expect(await send()).toMatch(/^#[0-9a-f]{6}$/)
+
+    // Pink again clears the choice.
+    await page.keyboard.press("Escape")
+    await presets.getByRole("option", { name: "Pink" }).click()
+    await expect.poll(send).toBe("#ec4899")
+    expect(await page.evaluate(() => localStorage.getItem("accent"))).toBeNull()
+  })
+
+  // ui-sdk's agent test: an agent finds the accent color by its name and
+  // can set it, and it's saved as a person's pick is.
+  test("an agent can set the accent color", async ({ page }) => {
+    await signInAsDev(page)
+    await openSettings(page)
+    await sections(page).getByRole("tab", { name: "Appearance" }).click()
+    const refOf = () =>
+      page.evaluate(
+        () =>
+          window.agent.snapshot().find((part) => part.label === "Accent color")
+            ?.ref ?? ""
+      )
+    await expect.poll(refOf).not.toBe("")
+    const set = await page.evaluate(
+      async (ref) => {
+        const result = await window.agent.act({
+          steps: [{ ref, action: "setValue", args: ["#2f7bf5"] }],
+        })
+        return result.ok ? "set" : (result.error?.message ?? "refused")
+      },
+      await refOf()
+    )
+    expect(set).toBe("set")
+    await expect(
+      settings(page).getByRole("option", { name: "Blue" })
+    ).toHaveAttribute("aria-selected", "true")
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("accent")))
+      .toContain("#2f7bf5")
+  })
+
   // ui-sdk's agent test: an agent finds the switch by its name and can
   // turn it on.
   test("an agent can turn on Wrap long code blocks", async ({ page }) => {

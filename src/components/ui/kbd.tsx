@@ -26,7 +26,7 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
 }
 
 /** One keycap per key of `hint`, as ui-sdk's useShortcutHint or
- *  TooltipShortcut formats it. Hidden from screen readers: the control's
+ *  TooltipShortcut formats it, hidden on touch-only devices. Hidden from screen readers: the control's
  *  aria-keyshortcuts says it instead. */
 function KbdShortcut({
   hint,
@@ -39,7 +39,11 @@ function KbdShortcut({
     <span
       data-slot="kbd-group"
       aria-hidden
-      className={cn("inline-flex shrink-0 items-center gap-1", className)}
+      className={cn(
+        // No keycaps where no keyboard is likely: a phone has only touch.
+        "inline-flex shrink-0 items-center gap-1 [@media(not_(any-pointer:fine))]:hidden",
+        className
+      )}
     >
       {/* A shortcut never names a key twice. */}
       {shortcutKeys(hint).map((key) => (
