@@ -6,7 +6,6 @@
 // spin, Feature tour, which adds the pinned demo chat (src/lib/chat/tour.ts)
 // or refreshes it, and opens it, then Sign out, which lands on /sign-in. Agents ask before signing out
 // (data-agent-confirm).
-import { useNavigate, useRouter } from "@tanstack/react-router"
 import { CompassIcon, LogOutIcon, SettingsIcon } from "lucide-react"
 
 import type { SettingsController } from "@/components/chat/settings-dialog"
@@ -24,14 +23,13 @@ import {
 import { useToggleTheme } from "@/components/ui/preferences"
 import { SidebarRow } from "@/components/ui/sidebar"
 import { ThemeIcon } from "@/components/ui/theme-icon"
-import { toast } from "@/components/ui/toast"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useSignOut } from "@/lib/auth/use-sign-out"
-import { addTour } from "@/lib/chat/list"
+import { SIGN_OUT_CONFIRM, useSignOut } from "@/lib/auth/use-sign-out"
+import { useOpenTour } from "@/lib/chat/use-open-tour"
 import { initialsOf } from "@/lib/settings/initials"
 
 export type Account = { name: string; email: string }
@@ -51,20 +49,9 @@ export function AccountMenu({
    *  for a row. */
   onOpenChat?: () => void
 }) {
-  const navigate = useNavigate()
-  const router = useRouter()
   const toggleTheme = useToggleTheme()
   const signOut = useSignOut()
-  async function openTour() {
-    try {
-      const id = await addTour()
-      await router.invalidate()
-      await navigate({ to: "/c/$id", params: { id } })
-      onOpenChat?.()
-    } catch {
-      toast.error("Couldn't add the feature tour")
-    }
-  }
+  const openTour = useOpenTour(onOpenChat)
   return (
     <>
       <Menu>
@@ -121,10 +108,7 @@ export function AccountMenu({
             Feature tour
           </MenuItem>
           <MenuSeparator />
-          <MenuItem
-            data-agent-confirm="Signs you out on this device"
-            onSelect={signOut}
-          >
+          <MenuItem data-agent-confirm={SIGN_OUT_CONFIRM} onSelect={signOut}>
             <LogOutIcon aria-hidden />
             Sign out
           </MenuItem>

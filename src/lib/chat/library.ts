@@ -1,4 +1,5 @@
-// The Library's index: a D1 row per attachment of a question (an image or
+// The Library's index (what the browser needs of it is in
+// src/lib/chat/library-items.ts, which imports no Drizzle): a D1 row per attachment of a question (an image or
 // a document, src/lib/chat/attachments.ts), across all of a user's chats,
 // for the Library page (src/routes/_app/library.tsx). The files themselves
 // stay inside their chat's agent; a row holds only what the page lists
@@ -8,9 +9,9 @@
 // (indexMessages, src/lib/chat/message-index.ts), so one path keeps both
 // up to date and indexes an older chat whole. Rows belong to their chat's
 // row in the chat list, so deleting a chat (or its user) deletes them too.
-import { desc, eq } from "drizzle-orm"
-import { drizzle } from "drizzle-orm/d1"
+import { and, asc, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm"
 import {
+  type BaseSQLiteDatabase,
   foreignKey,
   index,
   integer,
@@ -21,6 +22,14 @@ import {
 import type { UIMessage } from "ai"
 
 import { isDocument } from "@/lib/chat/documents"
+import {
+  ATTACHMENT_KINDS,
+  LIBRARY_PAGE,
+  type AttachmentKind,
+  type LibraryItem,
+  type LibraryQuery,
+  type LibraryTab,
+} from "@/lib/chat/library-items"
 import { field } from "@/lib/field"
 import { chat, type ChatOwner } from "@/lib/chat/store"
 
@@ -37,7 +46,7 @@ export const attachment = sqliteTable(
     /** The part's place among its question's parts. */
     part: integer().notNull(),
     name: text().notNull(),
-    kind: text({ enum: ["image", "pdf", "text"] }).notNull(),
+    kind: text({ enum: ATTACHMENT_KINDS }).notNull(),
     /** Bytes for an image, characters for a document. */
     size: integer().notNull(),
     /** When its question was sent (epoch ms). */
@@ -57,8 +66,6 @@ export const attachment = sqliteTable(
     }).onDelete("cascade"),
   ]
 )
-
-export type AttachmentKind = (typeof attachment.$inferSelect)["kind"]
 
 /** What a question's attachment puts in its row. `at` is null when the
  *  chat doesn't say when it was sent, and the chat's start stands in. */
@@ -185,27 +192,29 @@ export function attachmentStatements(
   ]
 }
 
-/** A file the Library lists. */
-export type LibraryItem = {
-  seq: number
-  chatId: string
-  messageId: string
-  part: number
-  name: string
-  kind: AttachmentKind
-  size: number
-  at: number
+/** A to Z as a to z, and nothing else, as SQLite's lower() does. */
+const foldAscii = (text: string) =>
+  text.replaceAll(/[A-Z]/g, (letter) => letter.toLowerCase())
+
+const KINDS_OF: Record<LibraryTab, AttachmentKind[] | null> = {
+  all: null,
+  images: ["image"],
+  files: ["pdf", "text"],
 }
 
-/** How many items one page of the Library holds. */
-export const LIBRARY_PAGE = 60
-
-/** The first page of the user's attachments, newest first. */
-export async function listAttachments(
-  d1: D1Database,
-  userId: string
+/** One page of the user's attachments that `query` asks for, from `db`
+ *  (D1's Drizzle in the app). A name matches anywhere (SQLite's instr,
+ *  so nothing typed is read as a pattern), A to Z in either case: D1's
+ *  lower() folds only ASCII, so what's typed is folded the same way. */
+export async function listAttachments<Result>(
+  db: BaseSQLiteDatabase<"async", Result>,
+  userId: string,
+  { tab, name, order, cursor }: LibraryQuery
 ): Promise<LibraryItem[]> {
-  return drizzle(d1)
+  const newest = order === "newest"
+  const before = newest ? lt : gt
+  const kinds = KINDS_OF[tab]
+  return db
     .select({
       seq: attachment.seq,
       chatId: attachment.chatId,
@@ -217,16 +226,28 @@ export async function listAttachments(
       at: attachment.at,
     })
     .from(attachment)
-    .where(eq(attachment.userId, userId))
-    .orderBy(desc(attachment.at), desc(attachment.seq))
+    .where(
+      and(
+        eq(attachment.userId, userId),
+        kinds === null ? undefined : inArray(attachment.kind, kinds),
+        name === ""
+          ? undefined
+          : sql`instr(lower(${attachment.name}), ${foldAscii(name)}) > 0`,
+        cursor === undefined
+          ? undefined
+          : or(
+              before(attachment.at, cursor.at),
+              and(
+                eq(attachment.at, cursor.at),
+                before(attachment.seq, cursor.seq)
+              )
+            )
+      )
+    )
+    .orderBy(
+      ...(newest
+        ? [desc(attachment.at), desc(attachment.seq)]
+        : [asc(attachment.at), asc(attachment.seq)])
+    )
     .limit(LIBRARY_PAGE)
 }
-
-/** Where the browser gets an image the Library shows: from its chat's
- *  agent (ChatAgent.onRequest, src/lib/chat/agent.ts), behind the chats'
- *  door, by its message and part. `v` is the row's seq, which the server
- *  doesn't read: it makes the address change with the file (a changed
- *  file is a new row, and seq is never reused), so the browser can keep
- *  what it got for good. */
-export const fileUrl = (item: LibraryItem) =>
-  `/api/chats/${item.chatId}/files/${item.messageId}/${item.part}?v=${item.seq}`
