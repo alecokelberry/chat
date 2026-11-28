@@ -1,6 +1,7 @@
 // Backs up the D1 database: `pnpm db:export` (live) or `pnpm db:export
 // --local`. Writes one .sql file of data only into backups/ (ignored, never
-// committed), named for its source and time.
+// committed), named for its source and time. The live database can't
+// answer queries while a remote export runs (seconds at today's size).
 //
 // `wrangler d1 export` refuses a whole database that holds a virtual table
 // (Search's FTS5 index), so this asks D1 for its tables and exports each
@@ -15,10 +16,14 @@ import { mkdirSync } from "node:fs"
 const DATABASE = "chat"
 const where = process.argv.includes("--local") === true ? "--local" : "--remote"
 
-const wrangler = (args) =>
+// The export's own output is dropped, not captured: on a remote export it
+// holds a one-hour download link to the whole database, which a failed
+// download would otherwise print inside the thrown error.
+const wrangler = (args, stdio = "pipe") =>
   execFileSync("pnpm", ["exec", "wrangler", ...args], {
     encoding: "utf8",
     env: { ...process.env, NO_COLOR: "1" },
+    stdio,
   })
 
 const [{ results: tables }] = JSON.parse(
@@ -52,15 +57,18 @@ const real = names.filter((name) => !skipped.has(name))
 mkdirSync("backups", { recursive: true })
 const stamp = new Date().toISOString().replace(/[:.]/g, "-")
 const output = `backups/${DATABASE}-${where.slice(2)}-${stamp}.sql`
-wrangler([
-  "d1",
-  "export",
-  DATABASE,
-  where,
-  "--no-schema",
-  ...real.flatMap((name) => ["--table", name]),
-  "--output",
-  output,
-  ...(where === "--remote" ? ["--skip-confirmation"] : []),
-])
+wrangler(
+  [
+    "d1",
+    "export",
+    DATABASE,
+    where,
+    "--no-schema",
+    ...real.flatMap((name) => ["--table", name]),
+    "--output",
+    output,
+    ...(where === "--remote" ? ["--skip-confirmation"] : []),
+  ],
+  ["ignore", "ignore", "inherit"]
+)
 console.log(`Backed up ${real.length} tables to ${output}`)

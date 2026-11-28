@@ -46,7 +46,7 @@ openssl rand -hex 24 | tr -d '\n' | pnpm wrangler secret put SETUP_CODE
 
 ## Backups
 
-`pnpm db:export` backs up the live D1 database to `backups/` (ignored, never committed; keep it somewhere private), and `pnpm db:export --local` the local one. The file is data only: the chat list, accounts, sessions and passkeys, settings, usage, and Search's copy of each message's text. It doesn't hold the chats' messages or attachments, which live in each chat's own agent (a Durable Object).
+`pnpm db:export` backs up the live D1 database to `backups/` (ignored, never committed; keep it somewhere private), and `pnpm db:export --local` the local one. The live database can't answer queries while it runs (seconds at today's size), so run it when nobody's chatting. The file is data only: the chat list, accounts, sessions and passkeys, settings, usage, and Search's copy of each message's text. It doesn't hold the chats' messages or attachments, which live in each chat's own agent (a Durable Object).
 
 D1 also keeps its own history for 7 days on the free plan (Time Travel), which is the way back from a bad write or migration. A backup is for anything older, or a database that's gone. Make a new database named `chat`, put its id in `wrangler.jsonc`'s `database_id`, then:
 
