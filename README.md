@@ -56,3 +56,5 @@ pnpm wrangler d1 execute chat --remote --file backups/<file>.sql
 ```
 
 The migrations make the tables, and as the rows go in, the triggers rebuild Search's index. Then deploy.
+
+When something goes wrong live (a bad deploy, lost data, a leaked secret, a lost passkey), follow [docs/recovery.md](docs/recovery.md).
