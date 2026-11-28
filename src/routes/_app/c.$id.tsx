@@ -28,7 +28,15 @@
 // the title in the pill. In dev, ?data= shows made-up messages instead
 // (src/lib/dev/worst-case.ts) and Send, Retry and Edit do nothing, so a
 // preview never writes to a chat.
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from "react"
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   createFileRoute,
   useLocation,
@@ -54,7 +62,11 @@ import { Menu, MenuTrigger } from "@/components/ui/menu"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { toast } from "@/components/ui/toast"
-import { questionParts, takeHandedOffFiles } from "@/lib/chat/attachments"
+import {
+  questionParts,
+  takeHandedOffFiles,
+  type AttachmentPart,
+} from "@/lib/chat/attachments"
 import { CHAT_ID } from "@/lib/chat/id"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 import { pageTitle } from "@/lib/utils"
@@ -204,6 +216,20 @@ const Chat = memo(function Chat({ id }: { id: string }) {
   // isStreaming also covers a reply another tab started.
   const previewing = previewEnabled && data !== undefined
   const shown = useMemo(() => previewMessages(messages, data), [messages, data])
+  // Stable, so the thread's past questions don't re-render as a reply
+  // streams (thread.tsx).
+  const onEdit = useCallback(
+    (messageId: string, text: string, attachments: AttachmentPart[]) => {
+      if (previewing) return
+      setStopped(false)
+      void sendMessage({
+        parts: questionParts(text, attachments),
+        messageId,
+        metadata: sentWith(model),
+      })
+    },
+    [previewing, sendMessage, model]
+  )
   const busy = status === "submitted" || status === "streaming" || isStreaming
   return (
     <>
@@ -221,15 +247,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
         }}
         model={model}
         onModelChange={setModel}
-        onEdit={(messageId, text, attachments) => {
-          if (previewing) return
-          setStopped(false)
-          void sendMessage({
-            parts: questionParts(text, attachments),
-            messageId,
-            metadata: sentWith(model),
-          })
-        }}
+        onEdit={onEdit}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
           the thread's text; 16px in on a computer. */}
