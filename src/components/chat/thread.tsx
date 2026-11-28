@@ -21,7 +21,7 @@
 // a reply waits for it rather than flash its raw markdown. The server never
 // imports it (the import.meta.env.SSR branch drops it from the Worker's
 // build) and never renders a chat's messages (the route is data-only).
-import { lazy, Suspense } from "react"
+import { lazy, memo, Suspense } from "react"
 import type { ReasoningUIPart, UIMessage } from "ai"
 import {
   BrainIcon,
@@ -120,16 +120,12 @@ export function Thread({
       {messages.map((message) =>
         message.role === "user" ? (
           <MessageScrollerItem key={message.id} anchor>
-            <Question
-              text={textOf(message)}
-              images={imagesOf(message)}
-              documents={documentsOf(message)}
+            <QuestionMessage
+              message={message}
               busy={busy}
               model={model}
               onModelChange={onModelChange}
-              onEdit={(text, attachments) =>
-                onEdit(message.id, text, attachments)
-              }
+              onEdit={onEdit}
             />
           </MessageScrollerItem>
         ) : isBlank(message) ? null : (
@@ -194,9 +190,42 @@ export function ThreadPreview({ messages }: { messages: UIMessage[] }) {
   )
 }
 
+/** A question of the thread. Memoized, with what it's given kept stable
+ *  (the AI SDK keeps a past message's identity, and the chat screen keeps
+ *  onEdit and onModelChange), so a streaming reply re-renders only itself:
+ *  without it, every past message re-rendered on each chunk, work in
+ *  proportion to the chat's length. */
+const QuestionMessage = memo(function QuestionMessage({
+  message,
+  busy,
+  model,
+  onModelChange,
+  onEdit,
+}: {
+  message: UIMessage
+  busy: boolean
+  model: ModelKey
+  onModelChange: (model: ModelKey) => void
+  onEdit: (id: string, text: string, attachments: AttachmentPart[]) => void
+}) {
+  return (
+    <Question
+      text={textOf(message)}
+      images={imagesOf(message)}
+      documents={documentsOf(message)}
+      busy={busy}
+      model={model}
+      onModelChange={onModelChange}
+      onEdit={(text, attachments) => onEdit(message.id, text, attachments)}
+    />
+  )
+})
+
 /** A reply: what the model thought and searched, its markdown, then its
- *  sources and actions once it has finished. */
-function ReplyMessage({
+ *  sources and actions once it has finished. Memoized like QuestionMessage:
+ *  a past reply gets the same props every render, and only the last one
+ *  streams, is stopped or is "latest". */
+const ReplyMessage = memo(function ReplyMessage({
   message,
   streaming,
   stopped,
@@ -238,7 +267,7 @@ function ReplyMessage({
       )}
     </div>
   )
-}
+})
 
 /** A reply's reasoning, if the model thought. Nothing for an empty
  *  thought. */

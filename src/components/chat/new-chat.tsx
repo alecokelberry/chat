@@ -12,7 +12,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { CircleDashedIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { PillToggle } from "@/components/ui/toggle"
+import { PillToggle } from "@/components/ui/pill-toggle"
 import {
   Tooltip,
   TooltipContent,

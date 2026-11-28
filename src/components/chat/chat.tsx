@@ -22,6 +22,7 @@
 // preview never writes to a chat.
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -37,7 +38,11 @@ import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
 import { toast } from "@/components/ui/toast"
 import { lastModel, type ModelKey } from "@/lib/ai/models"
-import { questionParts, takeHandedOffFiles } from "@/lib/chat/attachments"
+import {
+  questionParts,
+  takeHandedOffFiles,
+  type AttachmentPart,
+} from "@/lib/chat/attachments"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { previewEnabled, previewMessages } from "@/lib/dev/worst-case"
 
@@ -148,6 +153,20 @@ export const Chat = memo(function Chat({
   // isStreaming also covers a reply another tab started.
   const previewing = previewEnabled && data !== undefined
   const shown = useMemo(() => previewMessages(messages, data), [messages, data])
+  // Stable, so the thread's past questions don't re-render as a reply
+  // streams (thread.tsx).
+  const onEdit = useCallback(
+    (messageId: string, text: string, attachments: AttachmentPart[]) => {
+      if (previewing) return
+      setStopped(false)
+      void sendMessage({
+        parts: questionParts(text, attachments),
+        messageId,
+        metadata: sentWith(model),
+      })
+    },
+    [previewing, sendMessage, model]
+  )
   const busy = status === "submitted" || status === "streaming" || isStreaming
   return (
     <>
@@ -165,15 +184,7 @@ export const Chat = memo(function Chat({
         }}
         model={model}
         onModelChange={setModel}
-        onEdit={(messageId, text, attachments) => {
-          if (previewing) return
-          setStopped(false)
-          void sendMessage({
-            parts: questionParts(text, attachments),
-            messageId,
-            metadata: sentWith(model),
-          })
-        }}
+        onEdit={onEdit}
       />
       {/* 24px in and up from the screen's edges on a phone, in line with
           the thread's text; 16px in on a computer. */}
