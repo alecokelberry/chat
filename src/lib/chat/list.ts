@@ -19,7 +19,7 @@ import { getAgentByName } from "agents"
 import { z } from "zod"
 
 import { getAuth } from "@/lib/auth/server"
-import { CHAT_ID } from "@/lib/chat/id"
+import { agentName, CHAT_ID } from "@/lib/chat/id"
 import { searchMessages } from "@/lib/chat/message-index"
 import {
   deleteChatRow,
@@ -75,9 +75,9 @@ async function ownChat(id: string): Promise<ChatOwner> {
 
 /** The chat's agent. Its name holds the user's id, so a user reaches only
  *  their own chats' agents, whatever id they send
- *  (src/lib/chat/route.ts names it the same way). */
-const agentOf = ({ userId, id }: ChatOwner) =>
-  getAgentByName(env.ChatAgent, `${userId}:${id}`)
+ *  (src/lib/chat/route.ts names it the same way, with agentName). */
+const agentOf = (owner: ChatOwner) =>
+  getAgentByName(env.ChatAgent, agentName(owner))
 
 /** Changes the signed-in user's chat, then tells its open tabs. Only a
  *  chat the user has wakes its agent. */

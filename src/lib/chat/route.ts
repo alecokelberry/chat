@@ -6,7 +6,7 @@ import { env } from "cloudflare:workers"
 import { getAgentByName } from "agents"
 
 import { getAuth } from "@/lib/auth/server"
-import { CHAT_ID } from "@/lib/chat/id"
+import { agentName, CHAT_ID } from "@/lib/chat/id"
 
 const CHAT_PATH = /^\/api\/chats\/([^/]+)(?:\/|$)/
 
@@ -27,6 +27,9 @@ export async function routeChatRequest(
   }
   const session = await getAuth().api.getSession({ headers: request.headers })
   if (session === null) return new Response(null, { status: 401 })
-  const agent = await getAgentByName(env.ChatAgent, `${session.user.id}:${id}`)
+  const agent = await getAgentByName(
+    env.ChatAgent,
+    agentName({ userId: session.user.id, id })
+  )
   return agent.fetch(request)
 }
