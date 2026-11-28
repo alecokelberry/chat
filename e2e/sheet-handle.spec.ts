@@ -29,6 +29,8 @@ test.describe("on a phone", () => {
     const sheet = page.locator('[data-slot="select-content"]')
     await expect(sheet).toHaveAttribute("data-presentation", "sheet")
     expect(await bar('[data-slot="select-content"]')(page)).toBe('""')
+    // Chromium has no -webkit-touch-callout, so only user-select is checked.
+    await expect(sheet).toHaveCSS("user-select", "none")
     const { violations } = await new AxeBuilder({ page })
       .include('[data-slot="select-content"]')
       .analyze()
@@ -42,4 +44,7 @@ test("a computer's popover has no bar", async ({ page }) => {
   const popover = page.locator('[data-slot="select-content"]')
   await expect(popover).toHaveAttribute("data-presentation", "popover")
   expect(await bar('[data-slot="select-content"]')(page)).toBe("none")
+  expect(
+    await popover.evaluate((el) => getComputedStyle(el).userSelect)
+  ).not.toBe("none")
 })
