@@ -23,10 +23,16 @@
 // `fill` (the ref's handle) puts words in it and focuses it: a starter.
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
+// Typing `/` at the start of the text lists the models (ui-sdk's
+// TriggerMenu, connected to the textarea through textFieldAdapter so
+// Enter-to-send and auto-resize stay as they were): picking one switches
+// the model and takes the `/` and what was typed after it out of the text,
+// keeping the rest. Enter picks while the list is open and never sends.
 // Offline, Send waits and a line above the pill says so ("Offline.
 // Reconnecting…"): the draft stays, nothing is sent into the void, and the
 // line goes as the browser comes back online (`useOnline`).
 import {
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -34,7 +40,7 @@ import {
   type Ref,
   type RefObject,
 } from "react"
-import { ArrowUpIcon, SquareIcon } from "lucide-react"
+import { ArrowUpIcon, CheckIcon, SquareIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -51,8 +57,18 @@ import {
   useAttachments,
 } from "@/components/chat/attachments"
 import { ModelPicker } from "@/components/chat/model-picker"
+import {
+  TriggerMenu,
+  TriggerMenuContent,
+  TriggerMenuEmpty,
+  TriggerMenuItem,
+  TriggerMenuList,
+  TriggerMenuStatus,
+  textFieldAdapter,
+  type TextEditorAdapter,
+} from "@/components/ui/trigger-menu"
 import { cn } from "@/lib/utils"
-import { DEFAULT_MODEL, modelOf, type ModelKey } from "@/lib/ai/models"
+import { DEFAULT_MODEL, MODELS, modelOf, type ModelKey } from "@/lib/ai/models"
 import type { AttachmentPart } from "@/lib/chat/attachments"
 
 /** What a parent can do to the composer: put words in it (a starter). */
@@ -81,6 +97,16 @@ export function Composer({
   const [text, setText] = useState("")
   const message = text.trim()
   const field = useRef<HTMLTextAreaElement>(null)
+  // The `/` menu's link to the textarea, made once the textarea is in the page.
+  const [editor, setEditor] = useState<TextEditorAdapter>()
+  const [pill, setPill] = useState<HTMLFormElement | null>(null)
+  const fieldRef = useCallback((el: HTMLTextAreaElement | null) => {
+    field.current = el
+    if (el)
+      setEditor((current) =>
+        current?.element === el ? current : textFieldAdapter(el)
+      )
+  }, [])
   // Read once: it's about the moment this composer appears.
   const focusAtMount = useRef(focusOnMount)
   useEffect(() => {
@@ -113,47 +139,83 @@ export function Composer({
 
   return (
     <AttachmentsInput attachments={attachments} pasteInto={() => field.current}>
-      <form
-        className="relative flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
-        onSubmit={(event) => {
-          event.preventDefault()
-          send()
-        }}
+      <TriggerMenu<ModelKey>
+        editor={editor}
+        triggers={[
+          {
+            char: "/",
+            boundary: "start",
+            type: "model",
+            insert: () => "",
+          },
+        ]}
+        onSelect={(key) => onModelChange(key)}
       >
-        <AttachmentTiles attachments={attachments} />
-        <div
-          className={cn(
-            "flex items-end gap-x-1",
-            wrapped && "flex-wrap gap-y-2"
-          )}
+        <form
+          ref={setPill}
+          className="relative flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
+          onSubmit={(event) => {
+            event.preventDefault()
+            send()
+          }}
         >
-          <AttachMenu controller={attachments.controller} />
-          <Textarea
+          <AttachmentTiles attachments={attachments} />
+          <div
             className={cn(
-              "min-w-0 flex-1",
-              wrapped && "order-first basis-full"
+              "flex items-end gap-x-1",
+              wrapped && "flex-wrap gap-y-2"
             )}
-            ref={field}
-            aria-label="Message"
-            placeholder="Ask anything…"
-            rows={1}
-            autoResize
-            submitShortcut="enter"
-            value={text}
-            onValueChange={setText}
-          />
-          <div className={cn("flex", wrapped && "ms-auto")}>
-            <ModelPicker value={model} onValueChange={onModelChange} />
+          >
+            <AttachMenu controller={attachments.controller} />
+            <Textarea
+              className={cn(
+                "min-w-0 flex-1",
+                wrapped && "order-first basis-full"
+              )}
+              ref={fieldRef}
+              aria-label="Message"
+              placeholder="Ask anything…"
+              rows={1}
+              autoResize
+              submitShortcut="enter"
+              value={text}
+              onValueChange={setText}
+            />
+            <div className={cn("flex", wrapped && "ms-auto")}>
+              <ModelPicker value={model} onValueChange={onModelChange} />
+            </div>
+            <SendOrStop
+              busy={busy}
+              ready={ready}
+              online={online}
+              onStop={onStop}
+            />
           </div>
-          <SendOrStop
-            busy={busy}
-            ready={ready}
-            online={online}
-            onStop={onStop}
-          />
+          <OfflineLine offline={!online} />
+        </form>
+        <div className="sr-only">
+          <TriggerMenuStatus />
         </div>
-        <OfflineLine offline={!online} />
-      </form>
+        <TriggerMenuContent anchor={pill}>
+          <TriggerMenuEmpty>No model matches</TriggerMenuEmpty>
+          <TriggerMenuList>
+            {MODELS.map((m) => (
+              <TriggerMenuItem<ModelKey>
+                key={m.key}
+                value={m.key}
+                label={m.name}
+                keywords={[m.fullName]}
+              >
+                <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {m.fullName}
+                </span>
+                {m.key === model && <CheckIcon aria-hidden />}
+              </TriggerMenuItem>
+            ))}
+          </TriggerMenuList>
+        </TriggerMenuContent>
+      </TriggerMenu>
       <CantSeeImages
         blind={blind}
         model={chosen.name}
