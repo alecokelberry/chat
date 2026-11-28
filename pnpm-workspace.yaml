@@ -1,18 +1,23 @@
 # Wait 7 days before installing a new release (supply-chain attacks are
 # usually caught by then). Packages that run install scripts are listed here.
 minimumReleaseAge: 10080
+# Alec's call (2026-11-27): ui-sdk's betas land often and he wants the latest,
+# so it skips the wait. Everything else still waits.
+minimumReleaseAgeExclude:
+  - "@ui-sdk/*"
 allowBuilds:
   esbuild: true
   workerd: true
   sharp: true
   # Its install script only prints a banner.
   core-js-pure: false
-# ui-sdk issue #1085, until a release fixes it: a sheet's held open start
-# time, which WebKit keeps, so an iPhone shows nothing for a second.
-patchedDependencies:
-  "@ui-sdk/core": patches/@ui-sdk__core.patch
 # drizzle-kit's old TS loader pins esbuild 0.18, which has a dev-server
 # advisory (GHSA-67mh-4wv8-2f99). 0.25 is the first fixed release and the
 # loader's API is unchanged. Dev-only: drizzle-kit never ships in the Worker.
 overrides:
   "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+# ui-sdk issue #1085, still open in beta.19 (e2e/session.ts expectNoHeldStart
+# fails without this): a sheet's held open start time, which WebKit keeps, so
+# an iPhone shows nothing for a second.
+patchedDependencies:
+  "@ui-sdk/core": patches/@ui-sdk__core.patch
