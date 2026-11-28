@@ -41,12 +41,9 @@ declare module "@tanstack/react-router" {
 
 export const Route = createFileRoute("/_app/c/$id")({
   ssr: "data-only",
-  loader: async ({ params, parentMatchPromise }) => {
-    const { loaderData: chats } = await parentMatchPromise
-    return {
-      title: chats?.find((chat) => chat.id === params.id)?.title ?? null,
-    }
-  },
+  loader: ({ params, context }) => ({
+    title: context.chats.find((chat) => chat.id === params.id)?.title ?? null,
+  }),
   head: ({ params, loaderData }) => ({
     meta: [
       {

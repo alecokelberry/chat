@@ -410,6 +410,27 @@ test("the header's … menu pins and renames in the pill", async ({ page }) => {
   await page.keyboard.press("Escape")
 })
 
+test("renaming the open chat loads the list once, as one call", async ({
+  page,
+}) => {
+  await startChat(page, "Count my loads")
+  const loads: string[] = []
+  page.on("request", (request) => {
+    // The layout's call (getApp) is the only GET server function this page
+    // makes: no Settings, Search or other page that has its own is opened.
+    if (request.method() === "GET" && request.url().includes("/_serverFn/"))
+      loads.push(request.url())
+  })
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await menu(page).getByRole("menuitem", { name: "Rename" }).click()
+  const name = unique("Counted once")
+  await page.keyboard.type(name)
+  await page.keyboard.press("Enter")
+  await expect(openRow(page).getByRole("link")).toHaveText(name)
+  await settled(page)
+  expect(loads).toHaveLength(1)
+})
+
 // Delete (chat-list.tsx): the row goes at once and a toast offers Undo;
 // the chat is deleted for good only once the toast closes without it.
 /** The toasts showing, not the ones on their way out. */

@@ -32,6 +32,7 @@ import { useRouter, useSearch } from "@tanstack/react-router"
 import { useAgent } from "agents/react"
 import { useAgentChat } from "@cloudflare/ai-chat/react"
 
+import { useListChanged } from "@/components/chat/chat-list"
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
 import { toast } from "@/components/ui/toast"
@@ -94,12 +95,13 @@ export const Chat = memo(function Chat({
 }) {
   const [isNew] = useState(firstMessage !== undefined)
   const router = useRouter()
+  const listChanged = useListChanged()
   const { data } = useSearch({ from: "/_app" })
   const agent = useAgent({
     agent: "ChatAgent",
     basePath: `api/chats/${id}`,
     onMessage: (event) => {
-      if (event.data === CHATS_CHANGED) void router.invalidate()
+      if (event.data === CHATS_CHANGED) void listChanged()
       if (event.data === CHAT_DELETED) void router.navigate({ to: "/" })
     },
   })
