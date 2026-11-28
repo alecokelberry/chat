@@ -17,9 +17,9 @@ import { expect, send, signInAsDev, test } from "./session"
 const KB = 1024
 
 // Today's sizes, rounded up by about 5%. Raised Nov 27 for ui-sdk beta.19,
-// which is about 20 KB bigger on a first load than beta.13 (sign-in 228 to
-// 250 KB, a new chat 314 to 332 KB, a saved chat 686 to 730 KB), Alec's call:
-// he wants the latest ui-sdk.
+// which adds about 20 KB to a first load (measured: sign-in 250 KB, a new
+// chat 332, a saved chat 730; the budgets were 240, 330 and 720). Alec's
+// call: he wants the latest ui-sdk.
 const budgets = {
   "sign-in": 262,
   "a new chat": 350,
