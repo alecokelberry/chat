@@ -5,6 +5,9 @@
 // a script that fixes it afterwards is too late. Later changes recolor the
 // bar live (src/components/ui/preferences.tsx). The choice
 // itself lives in localStorage (ui-sdk's Preferences); this only mirrors it.
+// With nothing saved the app follows the device, live; the one Theme
+// button saves an override only while it differs from the device, so
+// switching back to what the device shows follows it again (nextTheme).
 import { createIsomorphicFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 
@@ -13,6 +16,18 @@ type Theme = "light" | "dark" | "system"
 /** The status bar's color, light and dark: the page's --background in
  *  app.css, repeated here because the server writes it into the head. */
 export const THEME_COLOR = { light: "#f9f8f7", dark: "#1e1d1d" } as const
+
+/** What the Theme button saves when tapped while `showing` is on screen:
+ *  the other scheme, or "system" when that is what the device shows, so
+ *  the app follows the device again (and keeps following it, at sunset
+ *  say). One button covers all three choices, with no picker. */
+export function nextTheme(
+  showing: "light" | "dark",
+  device: "light" | "dark" | "unknown"
+): Theme {
+  const next = showing === "dark" ? "light" : "dark"
+  return next === device ? "system" : next
+}
 
 const COOKIE = "theme"
 const SAVED = new RegExp(`(?:^|;\\s*)${COOKIE}=(light|dark)(?:;|$)`)

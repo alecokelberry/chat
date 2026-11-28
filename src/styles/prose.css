@@ -104,10 +104,11 @@
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
   }
+  /* Code at 90% of the text, 13.5/20.25 at 15px: Grok's, measured. */
   .typeset-docs [data-streamdown="code-block-body"] {
     overflow-x: auto;
-    font-size: var(--text-base);
-    line-height: var(--text-base--line-height);
+    font-size: 0.9em;
+    line-height: 1.5;
     @apply scroll-fade-x;
   }
   /* Folded: the first 16 lines (the pre's 4px above and 12px below
@@ -121,8 +122,8 @@
   .typeset-docs [data-streamdown="code-block-body"] pre {
     margin: 0;
     padding: --spacing(1) --spacing(3) --spacing(3);
-    font-size: var(--text-base);
-    line-height: var(--text-base--line-height);
+    font-size: inherit;
+    line-height: inherit;
     border-radius: 0;
     background-color: transparent;
     overflow: visible;
