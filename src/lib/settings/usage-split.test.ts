@@ -77,6 +77,6 @@ test("a model keeps its color whichever others were used", () => {
   expect(shared.parts.map((part) => [part.key, part.slot])).toEqual([
     ["super", 1],
     ["lightning", 4],
-    ["other", 5],
+    ["other", 7],
   ])
 })

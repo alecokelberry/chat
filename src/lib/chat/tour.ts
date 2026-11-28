@@ -96,7 +96,9 @@ And a table. Hover it (or tap it on a phone) for Copy and Save as CSV:
 | Super | Everyday questions, and the default | No |
 | Ultra | Hard problems that need reasoning | Yes |
 | Nano Omni | Quick answers from a small model | No |
-| Lightning | The fastest, and it names each chat | No |`
+| Lightning | The fastest, and it names each chat | No |
+| Kimi | Coding and long, careful work | Varies |
+| Mistral | A second opinion from another maker | Varies |`
 
 const REASONING =
   "They want to see math rendered. A good example is one everyone knows: the sum of the first n numbers, inline and as a display formula, plus the quadratic formula. I'll keep the words short so the math stands out."
@@ -176,7 +178,7 @@ const PACKING_LIST = {
   },
 }
 
-const PACKED = `You can attach files with the **+** in the composer, paste them, or drop them anywhere on the page: up to 4 a question, photos, PDFs and text files. Photos go to models that can see them (Super, Nano Omni); a PDF's or text file's words go to every model. Tap a photo above a question to see it full size.
+const PACKED = `You can attach files with the **+** in the composer, paste them, or drop them anywhere on the page: up to 4 a question, photos, PDFs and text files. Photos go to models that can see them (Super, Nano Omni, Kimi, Mistral); a PDF's or text file's words go to every model. Tap a photo above a question to see it full size.
 
 Your list covers the essentials. Two things I'd add:
 

@@ -12,7 +12,7 @@ type UsagePart = {
   /** The model's key, or "other". */
   key: string
   name: string
-  /** Its color, 1 to 5: its place in the picker's order, Other last. */
+  /** Its color, 1 to 7: its place in the picker's order, Other last. */
   slot: number
   tokens: number
   replies: number

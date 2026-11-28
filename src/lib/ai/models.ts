@@ -43,6 +43,25 @@ export const MODELS = [
     seesImages: false,
     chatTemplate: { enable_thinking: false },
   },
+  // Kimi and Mistral are not NVIDIA's own: their thinking switch is not
+  // verified against the real API yet (docs/nvidia.md), so they send no
+  // chat template and think however NVIDIA serves them by default.
+  {
+    key: "kimi",
+    name: "Kimi",
+    fullName: "Kimi K3.1 Pro",
+    id: "moonshotai/kimi-k3.1-pro",
+    seesImages: true,
+    chatTemplate: {},
+  },
+  {
+    key: "mistral",
+    name: "Mistral",
+    fullName: "Mistral Large 4",
+    id: "mistralai/mistral-large-4-1t-a52b",
+    seesImages: true,
+    chatTemplate: {},
+  },
 ] as const
 
 type Model = (typeof MODELS)[number]

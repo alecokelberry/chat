@@ -31,6 +31,8 @@ const FILLS = [
   "bg-chart-3",
   "bg-chart-4",
   "bg-chart-5",
+  "bg-chart-6",
+  "bg-chart-7",
 ] as const
 
 const fillOf = (slot: number) => FILLS[(slot - 1) % FILLS.length]

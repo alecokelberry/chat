@@ -35,6 +35,15 @@ Measured 2026-11-21 with real calls (first token streamed, thinking off). Chat's
 | `nvidia/nemotron-3-ultra-550b-a55b`             | 550B (55B active), 1M                   | same                                          | 0.8–0.9s    | yes   | no     | Chat's "think hard" model                                                                      |
 | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | 31B (3B active), 256K, also audio/video | same                                          | 0.17s       | yes   | yes    | Images now also go to Super                                                                    |
 
+Added 2026-11-28 from the public catalog, **not yet called with our key** (first token, tools, thinking switch and image input are unmeasured; the picker sends no chat template for them):
+
+| Model id                            | What                                                 | Images |
+| ----------------------------------- | ---------------------------------------------------- | ------ |
+| `moonshotai/kimi-k3.1-pro`          | ~3T, 1M, agentic coding, thinking, tools             | yes    |
+| `mistralai/mistral-large-4-1t-a52b` | 1T (52B active), reasoning, tools, structured output | yes    |
+
+Looked at and left out: `z-ai/glm-5.3-flash` (no thinking off switch), `nvidia/nemotron-3.5-bolt-e4b` (Lightning covers fast), MiniMax M3.1 Flash, Step 5 Preview. Image generation (FLUX 3 Klein) and speech (Parakeet, `nemotron-transcribe`) have no free hosted endpoint; the forum reports 404 "Function not found for account" for hosted image models on the free tier. `nvidia/nemotron-3.5-embed-1b` is the pick if semantic search ever happens.
+
 ## Request quirks
 
 - Every model streams reasoning in `delta.reasoning_content` (gpt-oss also sends `delta.reasoning`); `@ai-sdk/openai-compatible` reads either.
