@@ -10,10 +10,21 @@ import { defaultClientConditions, defineConfig } from "vite"
 // "[ui-sdk]" warning on misuse, which e2e/session.ts fails the test on.
 // React reads NODE_ENV instead and stays a production build. Only the
 // browser bundle changes: the Worker, and what deploys, are untouched.
+//
+// The Worker (the "ssr" environment) is minified, which Vite doesn't do for
+// it by default: 1,697 KiB gzipped became about 1 MB, less code to parse in
+// each fresh isolate. Names are kept because the agents package routes
+// sub-agents and workflows by `constructor.name`.
 export default defineConfig(({ mode }) => ({
   resolve: { tsconfigPaths: true },
-  environments:
-    mode === "test"
+  environments: {
+    ssr: {
+      build: {
+        minify: true,
+        rolldownOptions: { output: { keepNames: true } },
+      },
+    },
+    ...(mode === "test"
       ? {
           client: {
             resolve: {
@@ -26,7 +37,8 @@ export default defineConfig(({ mode }) => ({
             },
           },
         }
-      : undefined,
+      : {}),
+  },
   plugins: [
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
