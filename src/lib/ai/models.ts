@@ -1,7 +1,8 @@
 // The models Chat offers (docs/nvidia.md): each one's short name (the
 // picker's button), full name (its list), NVIDIA id, whether it can see
-// images (Super and Nano Omni can) and the chat template switch that turns
-// its thinking on or off. Super is the default with thinking off; Ultra
+// images (Super, Nano Omni, Kimi and Mistral can) and the chat template
+// switch that turns its thinking on or off (Kimi and Mistral send none:
+// unmeasured, so they think however NVIDIA serves them). Super is the default with thinking off; Ultra
 // is the one that thinks hard. Shared by the server (src/lib/ai) and the
 // composer's picker, so it imports only a tiny data reader.
 // A message records the model it was sent with in its metadata, which is
@@ -42,6 +43,25 @@ export const MODELS = [
     id: "nvidia/nemotron-3.5-lightning-30b-a3b",
     seesImages: false,
     chatTemplate: { enable_thinking: false },
+  },
+  // Kimi and Mistral are not NVIDIA's own: their thinking switch is not
+  // verified against the real API yet (docs/nvidia.md), so they send no
+  // chat template and think however NVIDIA serves them by default.
+  {
+    key: "kimi",
+    name: "Kimi",
+    fullName: "Kimi K3.1 Pro",
+    id: "moonshotai/kimi-k3.1-pro",
+    seesImages: true,
+    chatTemplate: {},
+  },
+  {
+    key: "mistral",
+    name: "Mistral",
+    fullName: "Mistral Large 4",
+    id: "mistralai/mistral-large-4-1t-a52b",
+    seesImages: true,
+    chatTemplate: {},
   },
 ] as const
 

@@ -126,6 +126,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
   --color-chart-ink: var(--chart-ink);
 
   /* Shape. */
@@ -258,6 +260,8 @@
   --chart-3: #00b894;
   --chart-4: #f2a600;
   --chart-5: #ee7fac;
+  --chart-6: #a487ec;
+  --chart-7: #93a0b6;
   --chart-ink: #0a0a0a;
   /* What ui-sdk's sheets (menus on phones) dim the page to. */
   --sheet-backdrop: var(--overlay);
@@ -308,6 +312,8 @@
     --chart-3: #00a888;
     --chart-4: #d28e05;
     --chart-5: #e24d8b;
+    --chart-6: #9a7ae6;
+    --chart-7: #8896ae;
     --tooltip-shadow:
       inset 0 0 0 0.5px var(--sidebar-border), 0 1px 2px 0 rgb(0 0 0 / 0.3),
       0 2px 5px -2px rgb(0 0 0 / 0.25);
