@@ -1,10 +1,12 @@
 import type { Page } from "@playwright/test"
 
 import {
+  closeDeleteToast,
   expect,
   expectNoHeldStart,
   greeting,
   recordStartTimes,
+  savedMessages,
   send,
   settled,
   showAllChats,
@@ -487,16 +489,6 @@ async function deleteForGood(page: Page, path: string) {
   await expect(rowFor(page, path)).toHaveCount(0)
 }
 
-/** What the chat's agent holds, as the browser loads it: how many messages,
- *  or -1 while the agent is being wiped (it answers 500 until it is gone). */
-const savedMessages = (page: Page, id: string) =>
-  page.evaluate(async (id) => {
-    const response = await fetch(`/api/chats/${id}/get-messages`)
-    if (!response.ok) return -1
-    const messages: unknown[] = await response.json()
-    return messages.length
-  }, id)
-
 test("Delete hides the open chat at once, and Undo puts it back", async ({
   page,
 }) => {
@@ -540,13 +532,7 @@ test.describe("a chat wiped for good", () => {
     await expect(toasts(page)).toContainText("Chat deleted")
     // As if it timed out, without the wait. The delete succeeds, so no
     // toast says it failed: the agent's wipe once beat its own answer.
-    const deleted = page.waitForResponse(
-      (response) =>
-        response.url().includes("/_serverFn/") &&
-        response.request().method() === "POST"
-    )
-    await page.evaluate(() => window.toast.dismiss())
-    expect((await deleted).ok()).toBe(true)
+    await closeDeleteToast(page)
     // The wipe waits until the delete has answered: run at once, it can
     // end the agent before its answer leaves, and the delete then fails.
     expect(await savedMessages(page, id)).toBe(2)

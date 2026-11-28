@@ -24,6 +24,11 @@
 // that answer, and the Worker then reports a delete that worked as failed.
 // The SDK's own deferred destroy waits a second for the same reason; the
 // scheduler rounds a delay down to a whole second, so it takes 2 to be sure.
+// A chat can come back in that window under the same id (Feature tour
+// pressed again, or a send reaching the agent). Each of those cancels a
+// pending wipe before it awaits anything outside the agent, and a wipe
+// already under way gives up if one arrives while it checks D1, or if the
+// chat's row is back: a chat that came back keeps its messages.
 //
 // After every reply, finished, stopped or failed, it brings Search's index
 // of the chat's words up to date (src/lib/chat/message-index.ts): that
@@ -63,6 +68,7 @@ import { Buffer } from "node:buffer"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
+import { devBuild } from "@/lib/dev/dev-build"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
 import { isPrivateChat, ownerOf } from "@/lib/chat/id"
@@ -71,6 +77,7 @@ import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   getCustomize,
+  hasChat,
   isUntitled,
   setFirstTitle,
   touchChat,
@@ -148,13 +155,26 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   /** Tells this chat's open tabs to leave, then deletes everything the
-   *  agent keeps, for good, once the schedule runs at least a second later (see
-   *  the top of this file). An RPC method,
+   *  agent keeps, for good, once the schedule runs at least a second later,
+   *  unless the chat comes back first (see the top of this file). An RPC method,
    *  for the Worker (src/lib/chat/list.ts), once it has deleted the
    *  chat's row. */
   async deleteChat() {
+    this.revived = false
     this.broadcast(CHAT_DELETED)
     await this.schedule(WIPE_AFTER, "wipe")
+  }
+
+  /** Whether the chat came back (a send, or the tour) since its delete. */
+  private revived = false
+
+  /** Called as the chat comes back: drops a pending wipe, and stops one
+   *  that's checking D1 right now. The schedules are the agent's own
+   *  SQLite, so nothing else gets in while they're read. */
+  private async keepChat() {
+    this.revived = true
+    for (const pending of await this.listSchedules())
+      if (pending.callback === "wipe") await this.cancelSchedule(pending.id)
   }
 
   /** Replaces everything the chat holds with `messages`, stopping any
@@ -164,6 +184,7 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  refresh drops whatever was asked since. An RPC method, for the Worker
    *  (src/lib/chat/list.ts), once it has written the chat's row. */
   async replaceMessages(messages: UIMessage[]) {
+    await this.keepChat()
     this.resetTurnState()
     await this.sessions.session().clearMessages()
     await this.persistMessages(messages)
@@ -188,10 +209,20 @@ export class ChatAgent extends AIChatAgent<Env> {
   private indexed = true
 
   /** A question's image for the Library, or 404 for anything else; any
-   *  other request goes on to the SDK. */
+   *  other request goes on to the SDK. In dev and e2e builds only,
+   *  /api/chats/<id>/wipe-pending answers whether a delete's wipe is still
+   *  to come, so a test can tell it has come due without guessing at the
+   *  time. */
   override async onRequest(request: Request) {
-    const file = FILE_PATH.exec(new URL(request.url).pathname)
+    const path = new URL(request.url).pathname
+    if (devBuild && path.endsWith("/wipe-pending")) return this.wipePending()
+    const file = FILE_PATH.exec(path)
     if (file === null) return super.onRequest(request)
+    return this.imageResponse(file)
+  }
+
+  /** The image a question's part holds, from FILE_PATH's match, or 404. */
+  private imageResponse(file: RegExpExecArray) {
     const [, messageId = "", part = ""] = file
     const found = this.messages.find((message) => message.id === messageId)
       ?.parts[Number(part)]
@@ -208,8 +239,18 @@ export class ChatAgent extends AIChatAgent<Env> {
     })
   }
 
-  /** What deleteChat's schedule runs. */
+  /** Whether a delete's wipe is still to come (dev and e2e builds). */
+  private async wipePending() {
+    const schedules = await this.listSchedules()
+    return Response.json(schedules.some((s) => s.callback === "wipe"))
+  }
+
+  /** What deleteChat's schedule runs: nothing if the chat came back. */
   async wipe() {
+    if (await hasChat(this.env.DB, this.owner)) return
+    // D1 let other calls in while it answered: a send or the tour may have
+    // arrived meanwhile.
+    if (this.revived) return
     await this.destroy()
   }
 
@@ -218,6 +259,7 @@ export class ChatAgent extends AIChatAgent<Env> {
     options?: OnChatMessageOptions
   ) {
     const started = Date.now()
+    await this.keepChat()
     const model = lastModel(this.messages).key
     // The owner's response style is read each turn, so a change in
     // Settings reaches the next message on any device.
