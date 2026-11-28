@@ -189,7 +189,7 @@ export function AttachmentsInput({
 }
 
 /** The + at the composer's start: it opens the system picker at once. */
-export function AttachMenu({
+export function AttachButton({
   controller,
 }: {
   controller: Attachments["controller"]

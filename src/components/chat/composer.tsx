@@ -44,7 +44,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-  AttachMenu,
+  AttachButton,
   CantSeeImages,
   AttachmentsInput,
   AttachmentTiles,
@@ -127,7 +127,7 @@ export function Composer({
             wrapped && "flex-wrap gap-y-2"
           )}
         >
-          <AttachMenu controller={attachments.controller} />
+          <AttachButton controller={attachments.controller} />
           <Textarea
             className={cn(
               "min-w-0 flex-1",
