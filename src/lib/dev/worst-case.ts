@@ -12,7 +12,7 @@
 import type { UIMessage } from "ai"
 
 import type { Account } from "@/components/chat/account-menu"
-import type { LibraryItem } from "@/lib/chat/library"
+import type { LibraryItem } from "@/lib/chat/library-items"
 import type { ChatSummary } from "@/lib/chat/store"
 import { devBuild } from "@/lib/dev/dev-build"
 
