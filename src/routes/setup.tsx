@@ -1,6 +1,7 @@
-// Adds the owner's first passkey: open /setup#<SETUP_CODE> (the code stays
-// in the fragment, so it never reaches the server's logs), tap, and you're
-// signed in. Delete the SETUP_CODE secret afterwards to turn this off.
+// Adds the owner's first passkey: open /setup#<SETUP_CODE>, tap, and you're
+// signed in. A fragment stays in the browser, but the
+// passkey request that follows does carry the code, so treat it as spent
+// once used: replace it afterwards (README, "Deploying").
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 

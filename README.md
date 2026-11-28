@@ -38,7 +38,7 @@ To add a passkey while signed out (a new device), this sets a fresh setup code a
 code=$(openssl rand -hex 24); printf %s "$code" | pnpm wrangler secret put SETUP_CODE && open "https://chat.alecokelberry.workers.dev/setup#$code"
 ```
 
-Afterwards, turn `/setup` off again by replacing the code with one nobody knows. Don't delete it: Wrangler won't deploy without it.
+Afterwards, turn `/setup` off again by replacing the code with one nobody knows (the sign-in request carries it to the server, so a used code is spent). Don't delete it: Wrangler won't deploy without it.
 
 ```bash
 openssl rand -hex 24 | tr -d '\n' | pnpm wrangler secret put SETUP_CODE
