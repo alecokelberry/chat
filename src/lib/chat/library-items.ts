@@ -41,7 +41,18 @@ export type LibraryQuery = {
 /** How many items one page of the Library holds. */
 export const LIBRARY_PAGE = 60
 
-/** Where the browser gets an image the Library shows: from its chat's
+/** The place `step` away from `at` among `length` items, going round
+ *  from the last to the first and back: the viewer's next and previous. */
+export const stepAround = (at: number, step: number, length: number) =>
+  length === 0 ? 0 : (((at + step) % length) + length) % length
+
+/** A name to save a file under: a PDF's text is what the chat kept, so
+ *  it saves as text. */
+export const downloadName = (item: Pick<LibraryItem, "name" | "kind">) =>
+  item.kind === "pdf" ? `${item.name}.txt` : item.name
+
+/** Where the browser gets a file the Library shows (an image's bytes, or
+ *  a document's text): from its chat's
  *  agent (ChatAgent.onRequest, src/lib/chat/agent.ts), behind the chats'
  *  door, by its message and part. `v` is the row's seq, which the server
  *  doesn't read: it makes the address change with the file (a changed

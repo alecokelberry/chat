@@ -17,8 +17,10 @@ import {
 
 // The Library (src/routes/_app/library.tsx): Library under New Chat (and
 // in Search's actions) opens a list of every file attached in any chat,
-// newest first under day groups, each row showing the image itself or the
-// document's kind and opening the chat it came from. A chat from before
+// newest first under day groups, each showing the image itself or the
+// document's kind. An image opens full screen, paging through the rest; a
+// document opens in a reader; either, and each file's ⋯, downloads it or
+// opens the chat it came from. A chat from before
 // the Library (the feature tour, put back unindexed) shows up once the
 // page has opened. A deleted chat's files leave at once, and Undo brings
 // them back; an edit that takes a file out takes it out of the Library.
@@ -29,8 +31,10 @@ const SMALL = "e2e/fixtures/small.jpg" // 400 × 300
 const NOTES = "e2e/fixtures/notes.pdf"
 
 const library = (page: Page) => page.getByRole("main")
+/** The Library's files, each a list item: the file, then its ⋯. */
+const files = (page: Page) => library(page).getByRole("listitem")
 const row = (page: Page, name: string) =>
-  library(page).getByRole("link").filter({ hasText: name })
+  files(page).filter({ hasText: name }).getByRole("button").first()
 
 /** Sends a question with a photo and a PDF named after `tag`, once both
  *  are ready, and waits for the reply. Their names. */
@@ -62,7 +66,7 @@ async function openLibrary(page: Page) {
 
 test.use({ viewport: { width: 1440, height: 900 } })
 
-test("lists a question's files under Today, and a row opens its chat", async ({
+test("lists a question's files under Today; a document opens in the reader, ⋯ opens its chat", async ({
   page,
 }) => {
   await signInAsDev(page)
@@ -72,7 +76,7 @@ test("lists a question's files under Today, and a row opens its chat", async ({
   await openLibrary(page)
   const today = library(page).getByRole("region", { name: "Today" })
   await expect(
-    today.getByRole("link").filter({ hasText: notes })
+    today.getByRole("listitem").filter({ hasText: notes })
   ).toContainText("PDF")
   const image = row(page, photo).locator("img")
   await expect(image).toHaveAttribute("src", /\/files\//)
@@ -80,7 +84,7 @@ test("lists a question's files under Today, and a row opens its chat", async ({
     .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBeGreaterThan(0)
   // The newest first: the document came after the photo in the question.
-  const names = await library(page).getByRole("link").allTextContents()
+  const names = await files(page).allTextContents()
   expect(names.findIndex((text) => text.includes(notes))).toBeLessThan(
     names.findIndex((text) => text.includes(photo))
   )
@@ -93,6 +97,62 @@ test("lists a question's files under Today, and a row opens its chat", async ({
   expect(labels.some((label) => label?.includes(notes) === true)).toBe(true)
 
   await row(page, notes).click()
+  const reader = page.getByRole("dialog", { name: notes })
+  await expect(reader).toContainText("Zion trip notes")
+  await reader.getByRole("button", { name: "Close" }).click()
+  await expect(reader).toHaveCount(0)
+
+  await files(page)
+    .filter({ hasText: photo })
+    .getByRole("button", { name: `Actions for ${photo}` })
+    .click()
+  await page.getByRole("menuitem", { name: "Open chat" }).click()
+  await expect(page).toHaveURL(chat)
+})
+
+test("an image opens full screen, pages round the others, downloads and opens its chat", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const tag = unique("v").slice(2)
+  const [first, second] = [`Arch-${tag}.jpg`, `Bridge-${tag}.jpg`]
+  // A third image the search leaves out, so the count below holds only
+  // once the searched list is in: before it, a list of just these two
+  // passes at once, and the search then starts the list over, closing
+  // the viewer the test just opened.
+  await pick(page, [
+    { name: first, mimeType: "image/jpeg", buffer: readFileSync(SMALL) },
+    { name: second, mimeType: "image/jpeg", buffer: readFileSync(SMALL) },
+    { name: "Canyon.jpg", mimeType: "image/jpeg", buffer: readFileSync(SMALL) },
+  ])
+  await expect(
+    page.getByRole("list", { name: "Attached files" }).locator("img")
+  ).toHaveCount(3)
+  await page.getByRole("textbox", { name: "Message" }).fill(unique("Two"))
+  await page.keyboard.press("Enter")
+  await expect(replies(page)).toHaveText([/Done\.$/])
+  const chat = page.url()
+
+  await openLibrary(page)
+  await page.getByRole("searchbox", { name: "Search files" }).fill(tag)
+  await expect(files(page)).toHaveCount(2)
+  // Newest first: the second image was attached last.
+  await row(page, second).click()
+  const viewer = page.getByRole("dialog")
+  await expect(viewer).toContainText(`${second} · 1 / 2`)
+  await expect(viewer.getByRole("img", { name: second })).toBeVisible()
+  await page.keyboard.press("ArrowRight")
+  await expect(viewer).toContainText(`${first} · 2 / 2`)
+  await viewer.getByRole("button", { name: "Next image" }).click()
+  await expect(viewer).toContainText(`${second} · 1 / 2`)
+  await viewer.getByRole("button", { name: "Previous image" }).click()
+  await expect(viewer).toContainText(`${first} · 2 / 2`)
+
+  const download = page.waitForEvent("download")
+  await viewer.getByRole("link", { name: "Download" }).click()
+  expect((await download).suggestedFilename()).toBe(first)
+
+  await viewer.getByRole("link", { name: "Open chat" }).click()
   await expect(page).toHaveURL(chat)
 })
 
@@ -142,20 +202,20 @@ test("tabs, a name search and Oldest narrow and flip the list", async ({
   const search = page.getByRole("searchbox", { name: "Search files" })
   await search.fill(`notes-${tag}`.toUpperCase())
   await expect(page).toHaveURL(/q=/)
-  await expect(library(page).getByRole("link")).toHaveCount(1)
+  await expect(files(page)).toHaveCount(1)
   await expect(row(page, notes)).toBeVisible()
   await search.fill(`nothing-${tag}`)
   await expect(library(page)).toContainText("No files found")
   await search.fill(tag)
-  await expect(library(page).getByRole("link")).toHaveCount(2)
+  await expect(files(page)).toHaveCount(2)
 
   // Newest first, the PDF last attached; Oldest flips it.
-  await expect(library(page).getByRole("link").first()).toContainText(notes)
+  await expect(files(page).first()).toContainText(notes)
   await page.getByRole("button", { name: "View options" }).click()
   await page.getByRole("menuitemradio", { name: "Oldest" }).click()
-  await expect(library(page).getByRole("link").first()).toContainText(photo)
+  await expect(files(page).first()).toContainText(photo)
   await page.reload()
-  await expect(library(page).getByRole("link").first()).toContainText(photo)
+  await expect(files(page).first()).toContainText(photo)
 })
 
 test("Grid shows the files as squares, List as rows, after a reload too", async ({
@@ -181,7 +241,11 @@ test("Grid shows the files as squares, List as rows, after a reload too", async 
   expect(line?.width).toBeGreaterThan((line?.height ?? 0) * 4)
 
   // Back from a chat, without a reload, still the view last picked.
-  await row(page, photo).click()
+  await files(page)
+    .filter({ hasText: photo })
+    .getByRole("button", { name: `Actions for ${photo}` })
+    .click()
+  await page.getByRole("menuitem", { name: "Open chat" }).click()
   await expect(page).toHaveURL(/\/c\//)
   await page.goBack()
   await expect(page).toHaveURL(/\/library$/)
@@ -223,7 +287,7 @@ test("Files finds a text file by a part of its name; Back clears the box", async
   const search = page.getByRole("searchbox", { name: "Search files" })
   await search.fill(`list-${tag}`)
   await expect(page).toHaveURL(/q=/)
-  await expect(library(page).getByRole("link")).toHaveCount(1)
+  await expect(files(page)).toHaveCount(1)
   await expect(row(page, list)).toContainText("Text")
 
   // The search replaced its entry, so Back is All with no search.
