@@ -23,6 +23,8 @@
 // `fill` (the ref's handle) puts words in it and focuses it: a starter.
 // `focusOnMount` puts the caret in it as it mounts: a new chat's first send
 // moves to its own page, and focus goes on into that page's composer.
+// A private chat's composer (`isPrivate`) has a dashed border, as Grok's
+// does, so it's plain the chat isn't being saved.
 // Offline, Send waits and a line above the pill says so ("Offline.
 // Reconnecting…"): the draft stays, nothing is sent into the void, and the
 // line goes as the browser comes back online (`useOnline`).
@@ -61,6 +63,7 @@ export type ComposerHandle = { fill: (text: string) => void }
 export function Composer({
   ref,
   onDraft,
+  isPrivate,
   focusOnMount = false,
   busy = false,
   model,
@@ -71,6 +74,7 @@ export function Composer({
   ref?: Ref<ComposerHandle>
   /** Told when the composer gains or loses anything to send. */
   onDraft?: (started: boolean) => void
+  isPrivate?: boolean
   focusOnMount?: boolean
   busy?: boolean
   model: ModelKey
@@ -114,7 +118,8 @@ export function Composer({
   return (
     <AttachmentsInput attachments={attachments} pasteInto={() => field.current}>
       <form
-        className="relative flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
+        data-private={isPrivate}
+        className="relative flex flex-col rounded-composer border border-border-strong bg-surface p-3 focus-within:border-input data-[private=true]:border-dashed keyboard:focus-within:ring-2 keyboard:focus-within:ring-ring"
         onSubmit={(event) => {
           event.preventDefault()
           send()

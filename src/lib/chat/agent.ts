@@ -38,10 +38,20 @@
 // and the browser may keep it for good (the Library's address for a file
 // changes when the file does, src/lib/chat/library.ts).
 //
+// A private chat (its id says so, src/lib/chat/id.ts) keeps nothing past
+// its page: it never touches the chat list, Lightning's title, Search's
+// index or the Library's, though its replies still count in Usage. Once a
+// browser connects, a durable alarm checks every minute: with no socket
+// open and none closed in the last half minute, the agent wipes itself
+// (destroy). The half minute lets a dropped socket reconnect without losing
+// the chat; the alarm, rather than the close alone, means a close the agent
+// never hears (an evicted object) still ends it within a couple of minutes.
+//
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
 // model thought, from its first thought to the end of its last (or to
 // Stop), so the chat shows them after a reload too.
+import type { Connection, ConnectionContext } from "agents"
 import {
   AIChatAgent,
   type ChatResponseResult,
@@ -54,7 +64,7 @@ import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
-import { ownerOf } from "@/lib/chat/id"
+import { isPrivateChat, ownerOf } from "@/lib/chat/id"
 import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
@@ -75,6 +85,13 @@ const textOf = (message: UIMessage | undefined) =>
  *  down to a whole second, so 2 waits 1 to 2 seconds. */
 const WIPE_AFTER = 2
 
+/** Seconds between a private chat's checks for an open page. */
+const PRIVATE_CHECK_EVERY = 60
+
+/** Milliseconds a private chat waits after a socket closes for a
+ *  reconnect before it may wipe itself. */
+const PRIVATE_GRACE = 30_000
+
 /** A Library request for a question's file: its message id and part. */
 const FILE_PATH = /\/files\/([^/]+)\/(\d{1,3})$/
 
@@ -88,6 +105,41 @@ export class ChatAgent extends AIChatAgent<Env> {
   /** The user and the chat, from the agent's name (agentName). */
   private get owner(): ChatOwner {
     return ownerOf(this.name)
+  }
+
+  /** Whether this is a private chat, which keeps nothing past its page. */
+  private get isPrivate() {
+    return isPrivateChat(this.owner.id)
+  }
+
+  /** When a private chat's socket last closed (0: not since it woke). */
+  private lastClose = 0
+
+  override async onConnect(connection: Connection, ctx: ConnectionContext) {
+    // Idempotent: a reconnect, or a second tab, keeps the one alarm.
+    if (this.isPrivate)
+      await this.scheduleEvery(PRIVATE_CHECK_EVERY, "endIfLeft")
+    return super.onConnect(connection, ctx)
+  }
+
+  override async onClose(
+    connection: Connection,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ) {
+    this.lastClose = Date.now()
+    return super.onClose(connection, code, reason, wasClean)
+  }
+
+  /** A private chat's alarm: wipes it once no page holds it (see the top
+   *  of this file). */
+  async endIfLeft() {
+    const open = [...this.getConnections()].some(
+      (connection) => connection.readyState === WebSocket.OPEN
+    )
+    if (open || Date.now() - this.lastClose < PRIVATE_GRACE) return
+    await this.destroy()
   }
 
   /** Tells this chat's open tabs the list changed. An RPC method, for
@@ -171,11 +223,12 @@ export class ChatAgent extends AIChatAgent<Env> {
     // The owner's response style is read each turn, so a change in
     // Settings reaches the next message on any device.
     const [indexed, customize] = await Promise.all([
-      touchChat(this.env.DB, this.owner),
+      // A private chat never joins the chat list.
+      this.isPrivate ? true : touchChat(this.env.DB, this.owner),
       getCustomize(this.env.DB, this.owner.userId),
     ])
     this.indexed = indexed
-    this.broadcast(CHATS_CHANGED)
+    if (!this.isPrivate) this.broadcast(CHATS_CHANGED)
     const result = await streamReply(
       this.messages,
       options?.abortSignal,
@@ -215,6 +268,8 @@ export class ChatAgent extends AIChatAgent<Env> {
   override async onChatResponse(result: ChatResponseResult) {
     if (result.status === "aborted" || result.status === "error")
       await this.saveTimeOf(result.message)
+    // A private chat has no title and isn't indexed.
+    if (this.isPrivate) return
     if (result.status !== "error") await this.nameIfUntitled()
     await this.indexTurn()
   }
