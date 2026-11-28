@@ -25,8 +25,10 @@
 // The SDK's own deferred destroy waits a second for the same reason; the
 // scheduler rounds a delay down to a whole second, so it takes 2 to be sure.
 // A chat can come back in that window under the same id (Feature tour
-// pressed again, or a send reaching the agent), so the wipe runs only if
-// the chat's row is still gone: one that came back keeps its messages.
+// pressed again, or a send reaching the agent). Each of those cancels a
+// pending wipe before it awaits anything outside the agent, and a wipe
+// already under way gives up if one arrives while it checks D1, or if the
+// chat's row is back: a chat that came back keeps its messages.
 //
 // After every reply, finished, stopped or failed, it brings Search's index
 // of the chat's words up to date (src/lib/chat/message-index.ts): that
@@ -157,8 +159,21 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  for the Worker (src/lib/chat/list.ts), once it has deleted the
    *  chat's row. */
   async deleteChat() {
+    this.revived = false
     this.broadcast(CHAT_DELETED)
     await this.schedule(WIPE_AFTER, "wipe")
+  }
+
+  /** Whether the chat came back (a send, or the tour) since its delete. */
+  private revived = false
+
+  /** Called as the chat comes back: drops a pending wipe, and stops one
+   *  that's checking D1 right now. The schedules are the agent's own
+   *  SQLite, so nothing else gets in while they're read. */
+  private async keepChat() {
+    this.revived = true
+    for (const pending of await this.listSchedules())
+      if (pending.callback === "wipe") await this.cancelSchedule(pending.id)
   }
 
   /** Replaces everything the chat holds with `messages`, stopping any
@@ -168,6 +183,7 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  refresh drops whatever was asked since. An RPC method, for the Worker
    *  (src/lib/chat/list.ts), once it has written the chat's row. */
   async replaceMessages(messages: UIMessage[]) {
+    await this.keepChat()
     this.resetTurnState()
     await this.sessions.session().clearMessages()
     await this.persistMessages(messages)
@@ -215,6 +231,9 @@ export class ChatAgent extends AIChatAgent<Env> {
   /** What deleteChat's schedule runs: nothing if the chat came back. */
   async wipe() {
     if (await hasChat(this.env.DB, this.owner)) return
+    // D1 let other calls in while it answered: a send or the tour may have
+    // arrived meanwhile.
+    if (this.revived) return
     await this.destroy()
   }
 
@@ -223,6 +242,7 @@ export class ChatAgent extends AIChatAgent<Env> {
     options?: OnChatMessageOptions
   ) {
     const started = Date.now()
+    await this.keepChat()
     const model = lastModel(this.messages).key
     // The owner's response style is read each turn, so a change in
     // Settings reaches the next message on any device.
