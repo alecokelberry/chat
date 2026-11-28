@@ -40,11 +40,7 @@ import { useAgentChat } from "@cloudflare/ai-chat/react"
 import { EllipsisIcon } from "lucide-react"
 
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
-import {
-  listChanged,
-  useChatList,
-  type ChatRef,
-} from "@/components/chat/chat-list"
+import { useChatList, type ChatRef } from "@/components/chat/chat-list"
 import { NotFoundPage } from "@/components/error-page"
 import { Composer } from "@/components/chat/composer"
 import { Thread } from "@/components/chat/thread"
@@ -73,12 +69,9 @@ const sentWith = (model: ModelKey) => ({
 
 export const Route = createFileRoute("/_app/c/$id")({
   ssr: "data-only",
-  loader: async ({ params, parentMatchPromise }) => {
-    const { loaderData: chats } = await parentMatchPromise
-    return {
-      title: chats?.find((chat) => chat.id === params.id)?.title ?? null,
-    }
-  },
+  loader: ({ params, context }) => ({
+    title: context.chats.find((chat) => chat.id === params.id)?.title ?? null,
+  }),
   head: ({ params, loaderData }) => ({
     meta: [
       {
@@ -158,7 +151,7 @@ const Chat = memo(function Chat({ id }: { id: string }) {
     agent: "ChatAgent",
     basePath: `api/chats/${id}`,
     onMessage: (event) => {
-      if (event.data === CHATS_CHANGED) void listChanged(router)
+      if (event.data === CHATS_CHANGED) void router.invalidate()
       if (event.data === CHAT_DELETED) void router.navigate({ to: "/" })
     },
   })

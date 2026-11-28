@@ -1,8 +1,7 @@
 // The sidebar's chats, as server functions: the signed-in pages' layout
-// (src/routes/_app/route.tsx) loads them with the account, in one call (getApp),
-// on the server on first load and
-// asks again on client navigation or when the open chat says the list
-// changed. The row and header menus (src/components/chat/chat-actions.tsx)
+// (src/routes/_app/route.tsx) loads them with the account, in one call
+// (getApp), on the server on first load and asks again on client navigation
+// or when the open chat says the list changed. The row and header menus (src/components/chat/chat-actions.tsx)
 // rename, pin and delete through them: each checks its input with zod and
 // touches only the signed-in user's own chat. A rename or pin then has the
 // chat's agent tell its open tabs (on any device) to load the list again;

@@ -416,7 +416,8 @@ test("renaming the open chat loads the list once, as one call", async ({
   await startChat(page, "Count my loads")
   const loads: string[] = []
   page.on("request", (request) => {
-    // The layout's one call (getApp) is the only GET server function.
+    // The layout's call (getApp) is the only GET server function this page
+    // makes: no Settings, Search or other page that has its own is opened.
     if (request.method() === "GET" && request.url().includes("/_serverFn/"))
       loads.push(request.url())
   })

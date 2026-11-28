@@ -80,16 +80,6 @@ function applyChanges(chats: ChatSummary[], changes: Change[]): ChatSummary[] {
     )
 }
 
-/** How many times a chat's agent has told this tab the list changed. */
-let announcements = 0
-
-/** Loads the list again because the open chat's agent said it changed
- *  (rename, pin, delete). */
-export function listChanged(router: { invalidate: () => Promise<void> }) {
-  announcements += 1
-  return router.invalidate()
-}
-
 /** Moves focus to the page's <main> once a new chat has replaced the
  *  deleted one, if the menu's focus went with the old page. */
 function focusNewPage() {
@@ -151,16 +141,18 @@ export function ChatListProvider({
       ])
       const timer = setTimeout(drop, SHOWN_FOR)
       timers.current.add(timer)
-      const announced = announcements
       try {
         await write()
       } catch {
         drop()
         toast.error(failed)
       }
-      // The open chat's agent already had this tab load the list after the
-      // write (listChanged), so loading it again would be a second request.
-      if (announcements === announced) await router.invalidate()
+      // The open chat's agent announces its own rename or pin, and the chat
+      // screen then loads the list (src/routes/_app/c.$id.tsx), so this
+      // load would be a second request. Any other chat's agent isn't
+      // listening here.
+      if (router.state.location.pathname !== `/c/${next.id}`)
+        await router.invalidate()
     },
     [router]
   )
