@@ -12,9 +12,10 @@
 // them is right from the start, with nothing to flash.
 // The status bar follows the choice too. On iOS 26 and later, Safari and
 // the Home Screen app both color it from the fixed or sticky element at
-// the top edge (here, the shell's solid background), looking again only
-// when such an element comes or goes, so a change shows a strip for one
-// frame that iOS takes the new color from (nudgeStatusBar): no reload.
+// the top edge (here, the shell's solid background), and Safari's bottom
+// toolbar from the bottom edge, looking again only when such an element
+// comes or goes, so a change shows a strip at each edge for one frame
+// that iOS takes the new color from (nudgeStatusBar): no reload.
 // Until then, at launch, the Home Screen app uses the theme-color the
 // page loads with, so the choice is copied into a cookie (src/lib/theme.ts)
 // for the server to write the right color into the HTML. Other browsers
@@ -169,14 +170,16 @@ function schemeShowing() {
 }
 
 /** Makes iOS color the status bar again, from the new background, in
- *  Safari and in the Home Screen app alike. WebKit
- *  (LocalFrameView::fixedContainerEdges) samples the top edge only when a
- *  fixed or sticky element is added or removed, and takes a fresh color
- *  only from a full-width bar taller than 10px and at least 10% opaque.
+ *  Safari and in the Home Screen app alike, and Safari's bottom toolbar
+ *  with it. WebKit (LocalFrameView::fixedContainerEdges) samples the top
+ *  and bottom edges only when a fixed or sticky element is added or
+ *  removed, and takes a fresh color only from a full-width bar taller
+ *  than 10px and at least 10% opaque.
  *  It never takes one while anything shows in the top layer (the phone's
  *  drawer and its menu are popovers), and a strip in the top layer
  *  doesn't count. So for one frame this shows such a bar, a plain fixed
- *  one in the page's background at 12% over the top 16px, and, on iOS,
+ *  one in the page's background at 12% over the top 16px and another over
+ *  the bottom 16px, and, on iOS,
  *  lifts the open popovers out of the top layer (liftOut) looking just as
  *  they did, then puts them back. iOS fades the bar to the new color.
  *  Measured on iOS 27.2 in the Simulator's Home Screen app: no frame
@@ -185,11 +188,13 @@ function nudgeStatusBar() {
   let undo = () => {}
   let second = 0
   const first = requestAnimationFrame(() => {
-    const strip = document.createElement("div")
-    strip.ariaHidden = "true"
-    strip.dataset.slot = "status-bar-nudge"
-    strip.style.cssText =
-      "position:fixed;inset:0 0 auto 0;height:16px;background:var(--background);opacity:0.12;pointer-events:none;z-index:2147483647"
+    const strips = ["top:0", "bottom:0"].map((edge) => {
+      const strip = document.createElement("div")
+      strip.ariaHidden = "true"
+      strip.dataset.slot = "status-bar-nudge"
+      strip.style.cssText = `position:fixed;left:0;right:0;${edge};height:16px;background:var(--background);opacity:0.12;pointer-events:none;z-index:2147483647`
+      return strip
+    })
     // navigator.standalone is iOS's alone: elsewhere nothing moves.
     const putBack =
       "standalone" in navigator
@@ -197,13 +202,13 @@ function nudgeStatusBar() {
             liftOut
           )
         : []
-    document.body.appendChild(strip)
+    for (const strip of strips) document.body.appendChild(strip)
     undo = () => {
-      strip.remove()
+      for (const strip of strips) strip.remove()
       for (const back of putBack) back()
       undo = () => {}
     }
-    // Back on the next frame, so exactly one is drawn with the strip.
+    // Back on the next frame, so exactly one is drawn with the strips.
     second = requestAnimationFrame(() => undo())
   })
   return () => {
