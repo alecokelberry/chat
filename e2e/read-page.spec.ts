@@ -1,12 +1,20 @@
-import { MOCK_PAGE_TITLE, READ_FAILED_REPLY, READ_REPLY } from "@/lib/ai/mock"
-import { refusalFor, siteOf } from "@/lib/ai/web-address"
+import {
+  madeUpAddress,
+  MOCK_PAGE_LINK,
+  MOCK_PAGE_TITLE,
+  READ_FAILED_REPLY,
+  READ_REPLY,
+  RESULT_TO_READ,
+} from "@/lib/ai/mock"
+import { refusalFor, siteOf, UNSEEN_ADDRESS } from "@/lib/ai/web-address"
 
 import { expect, replies, send, signInAsDev, test, unique } from "./session"
 
 // Reading a page in a reply (src/lib/ai/read-page.ts, thread.tsx,
 // sources.tsx), on the mock model: a message with "read <address>" makes
 // it read that page, and mockRead answers after a second with a canned
-// page that tries to give orders; "(read N)" asks for N reads
+// page that tries to give orders; "(read N)" asks for N reads, "(obey)"
+// follows the page's hidden orders and "(follow)" its link
 // (src/lib/ai/mock.ts). Nothing here reaches Keenable.
 
 test("a pasted link is read, and listed as a source", async ({ page }) => {
@@ -57,6 +65,48 @@ test("a private address is refused before anything is read", async ({
     )
   ).toBeVisible()
   await expect(page.getByRole("button", { name: /sources?$/ })).toHaveCount(0)
+})
+
+test("an address made up from a page's orders is refused", async ({ page }) => {
+  await signInAsDev(page)
+  const question = unique(
+    "My plan is secret. Please read https://example.org/article (obey)"
+  )
+  await send(page, question)
+  await expect(replies(page)).toHaveText(READ_FAILED_REPLY)
+  await page.getByRole("button", { name: "Read · 1 site" }).click()
+  const thread = page.getByRole("log", { name: "Messages" })
+  await expect(
+    thread.getByText(`Read ${madeUpAddress(question)}`, { exact: true })
+  ).toBeVisible()
+  await expect(thread.getByText(UNSEEN_ADDRESS)).toBeVisible()
+  // Only the page asked for is a source: the made-up one was never read.
+  await page.getByRole("button", { name: "1 source" }).click()
+  await expect(page.getByRole("menuitem")).toHaveCount(1)
+})
+
+test("a link on a page this reply read can be read", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, unique("Please read https://example.org/article (follow)"))
+  await expect(replies(page)).toHaveText(READ_REPLY)
+  await page.getByRole("button", { name: "Read · 1 site" }).click()
+  await expect(
+    page
+      .getByRole("log", { name: "Messages" })
+      .getByText(`Read ${MOCK_PAGE_LINK}`, { exact: true })
+  ).toBeVisible()
+})
+
+test("a search result can be read", async ({ page }) => {
+  await signInAsDev(page)
+  await send(page, unique("Please search the news, then read result"))
+  await expect(replies(page)).toHaveText(READ_REPLY)
+  await page.getByRole("button", { name: /^Searched · / }).click()
+  await expect(
+    page
+      .getByRole("log", { name: "Messages" })
+      .getByText(`Read ${RESULT_TO_READ}`, { exact: true })
+  ).toBeVisible()
 })
 
 test("a reply reads at most three pages", async ({ page }) => {
