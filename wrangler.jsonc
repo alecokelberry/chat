@@ -7,9 +7,18 @@
   "compatibility_date": "2026-11-23",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
-  // Logs and traces (time in D1 and NVIDIA per request), free and kept
-  // 3 days: the Worker's Observability tab.
-  "observability": { "enabled": true, "traces": { "enabled": true } },
+  // Logs and traces (time in D1 and NVIDIA per request): the Worker's
+  // Observability tab. Free keeps them 7 days (from Dec 1, 2026) within
+  // 0.5 GB a day shared by logs, traces and Issues; past that, Cloudflare
+  // stops recording until 00:00 UTC.
+  // Issues groups failures (uncaught errors, 5xx, console.error with an
+  // Error) on the Worker's Issues page; free in its beta. It stays here
+  // because a Wrangler deploy without it turns Issues off.
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true },
+    "issues": { "enabled": true },
+  },
   "upload_source_maps": true,
   // Live at chat.alecokelberry.workers.dev; each branch's Preview at
   // <branch>-chat.alecokelberry.workers.dev (Workers Builds, `previews` below).
