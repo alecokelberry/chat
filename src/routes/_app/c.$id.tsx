@@ -3,6 +3,8 @@
 // (src/routes/_app/route.tsx, which also checks the session). A new chat
 // arrives from / with its first message in history state, which the chat
 // sends once and this page then clears, so a reload doesn't send it again.
+// A chat that isn't in that list, and wasn't started in this tab, shows
+// Not found: a deleted chat's link, or an id nothing has.
 // The tab is titled after the chat, from the list the layout loaded, so it
 // follows a rename or the model naming it once the list loads again. Once
 // the chat has a title (from the sidebar's list), it sits in a pill at the
@@ -59,8 +61,24 @@ export const Route = createFileRoute("/_app/c/$id")({
 function ChatScreen() {
   const { id } = Route.useParams()
   const chat = useChatList().chats.find((listed) => listed.id === id)
-  // Not an id a chat can have: the not-found page, inside the shell.
+  // A chat this tab just started isn't in the list until its first
+  // message lands, so remember it was new.
+  const startedHere = useRef<string>(null)
+  const starting = useLocation({
+    select: (l) => l.state.firstMessage !== undefined,
+  })
+  if (starting) startedHere.current = id
+  // Not an id a chat can have, or a chat that isn't in the list (deleted,
+  // or never there): the not-found page, inside the shell.
   if (!CHAT_ID.test(id)) return <NotFoundPage />
+  if (chat === undefined && startedHere.current !== id)
+    return (
+      <>
+        {/* React hoists it into <head>, over the route's "New chat". */}
+        <title>{pageTitle("Not found")}</title>
+        <NotFoundPage />
+      </>
+    )
   return (
     <ChatPage>
       {chat !== undefined && <ChatHeader key={id} chat={chat} />}
