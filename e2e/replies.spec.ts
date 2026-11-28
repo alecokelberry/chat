@@ -60,10 +60,10 @@ test("a reply says who answered and how long it took, after a reload too", async
   await signInAsDev(page)
   await send(page, "Hello")
   const actions = page.getByRole("toolbar", { name: "Reply actions" })
-  // The mock streams for about two and a half seconds.
-  await expect(actions).toContainText(/Super · \d\.\ds$/)
+  // The mock needs no waiting, so the server's clock says under a second.
+  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
   await page.reload()
-  await expect(actions).toContainText(/Super · \d\.\ds$/)
+  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
 })
 
 test("a stopped reply says how long it ran before Stop", async ({ page }) => {
@@ -73,12 +73,13 @@ test("a stopped reply says how long it ran before Stop", async ({ page }) => {
   await expect(reply).toContainText("talking")
   await page.getByRole("button", { name: "Stop" }).click()
   const actions = page.getByRole("toolbar", { name: "Reply actions" })
-  await expect(actions).toContainText(/Super · \d\.\ds$/)
+  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
   await page.reload()
-  await expect(actions).toContainText(/Super · \d\.\ds$/)
+  await expect(actions).toContainText(/Super · (<1s|\d\.\ds)$/)
 })
 
 test("answeredBy names the model, with tenths under ten seconds", () => {
+  expect(answeredBy({ model: "ultra", ms: 40 })).toBe("Ultra · <1s")
   expect(answeredBy({ model: "ultra", ms: 4249 })).toBe("Ultra · 4.2s")
   expect(answeredBy({ model: "ultra", ms: 9960 })).toBe("Ultra · 10s")
   expect(answeredBy({ model: "ultra", ms: 12_600 })).toBe("Ultra · 13s")
