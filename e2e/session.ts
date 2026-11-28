@@ -345,7 +345,15 @@ export async function send(page: Page, text: string) {
     page.getByRole("button", { name: "Stop", exact: true })
   ).toHaveCount(0)
   await message.fill(text)
-  await page.keyboard.press("Enter")
+  // On a touch screen Return starts a new line (composer.tsx): Send sends.
+  const touch = await page.evaluate(
+    () => matchMedia("(pointer: coarse)").matches
+  )
+  if (touch) {
+    await page.getByRole("button", { name: "Send", exact: true }).click()
+  } else {
+    await page.keyboard.press("Enter")
+  }
   await expect(message).toHaveValue("")
 }
 
