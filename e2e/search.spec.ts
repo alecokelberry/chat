@@ -4,11 +4,14 @@ import type { Page } from "@playwright/test"
 
 import {
   expect,
+  findWords,
+  madeUpWord,
   pick,
   questions,
   replies,
   send,
   signInAsDev,
+  sidebar,
   tapInSheet,
   test,
 } from "./session"
@@ -31,30 +34,12 @@ const field = (page: Page) =>
 const messages = (page: Page) =>
   dialog(page).getByRole("group", { name: "Messages" })
 
-/** A made-up word of letters only, that no other test sends. */
-const madeUpWord = () =>
-  `zq${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`
-
 /** Sends `text` in a new chat and waits for the reply; the chat's path. */
 async function chatSaying(page: Page, text: string) {
   await send(page, text)
   await expect(replies(page)).toHaveText([/Done\.$/])
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
   return new URL(page.url()).pathname
-}
-
-/** Opens Search and types `text` until a message match shows: the
- *  chat's words reach the index just after its reply ends. */
-async function findWords(page: Page, text: string) {
-  await expect(async () => {
-    if ((await dialog(page).count()) === 0)
-      await page.keyboard.press("ControlOrMeta+k")
-    await field(page).fill("")
-    await field(page).fill(text)
-    await expect(messages(page).getByRole("option")).not.toHaveCount(0, {
-      timeout: 2000,
-    })
-  }).toPass()
 }
 
 test("⌘K opens Search, typing narrows by title, and Enter opens the chat", async ({
@@ -424,6 +409,28 @@ test.describe("on a touch phone", () => {
     isMobile: true,
   })
 
+  test("the sheet is the visible height, less 1rem at the top", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    await page.getByRole("button", { name: "Search" }).tap()
+    const sheet = page.locator('[data-slot="dialog-content"]')
+    await tapInSheet(sheet, field(page))
+    const viewport = page.viewportSize()
+    if (viewport === null) throw new Error("No viewport")
+    const sheetHeight = () =>
+      sheet.evaluate((el) => el.getBoundingClientRect().height)
+    expect(await sheetHeight()).toBeCloseTo(viewport.height - 16, 0)
+    // It follows ui-sdk's --available-height (which shrinks as the
+    // keyboard rises), not the viewport.
+    // (An !important rule, since ui-sdk rewrites its own inline value.)
+    await page.addStyleTag({
+      content:
+        '[data-slot="dialog-content"] { --available-height: 600px !important }',
+    })
+    await expect.poll(sheetHeight).toBeCloseTo(600 - 16, 0)
+  })
+
   test("the header's icon opens a sheet, and so does the drawer's, over it", async ({
     page,
   }) => {
@@ -507,4 +514,71 @@ test("an agent can search and open a chat", async ({ page }) => {
   expect(searched.ok, searched.error?.message).toBe(true)
   await expect(page).toHaveURL(/\/c\/00000000-0000-4000-8000-000000000006$/)
   await expect(dialog(page)).toHaveCount(0)
+})
+
+// The palette's other actions (search-chats.tsx's ACTIONS), found by
+// typing and run with Enter, each closing Search.
+test.describe("actions", () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+
+  async function run(page: Page, typed: string, name: string) {
+    await page.keyboard.press("ControlOrMeta+k")
+    await field(page).fill(typed)
+    const action = dialog(page).getByRole("option", { name, exact: true })
+    await expect(action).toBeVisible()
+    await expect(dialog(page).getByRole("option").first()).toHaveText(
+      new RegExp(`^${name}`)
+    )
+    await page.keyboard.press("Enter")
+    await expect(dialog(page)).toHaveCount(0)
+  }
+
+  test("Change theme flips light and dark like the Theme button", async ({
+    page,
+  }) => {
+    await signInAsDev(page)
+    const html = page.locator("html")
+    const before = await html.getAttribute("data-color-scheme")
+    await run(page, "theme", "Change theme")
+    await expect(html).not.toHaveAttribute("data-color-scheme", before ?? "")
+  })
+
+  test("Open settings opens Settings", async ({ page }) => {
+    await signInAsDev(page)
+    await run(page, "settings", "Open settings")
+    await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible()
+  })
+
+  test("Toggle sidebar collapses the rail and back", async ({ page }) => {
+    await signInAsDev(page)
+    await expect(sidebar(page)).not.toHaveAttribute("data-collapsed")
+    await run(page, "toggle", "Toggle sidebar")
+    await expect(sidebar(page)).toHaveAttribute("data-collapsed")
+    await run(page, "toggle", "Toggle sidebar")
+    await expect(sidebar(page)).not.toHaveAttribute("data-collapsed")
+  })
+
+  test("Feature tour opens the tour chat", async ({ page }) => {
+    await signInAsDev(page)
+    await run(page, "tour", "Feature tour")
+    await expect(page).toHaveURL(/\/c\//)
+  })
+
+  test("Sign out lands on /sign-in", async ({ page }) => {
+    await signInAsDev(page)
+    await run(page, "sign out", "Sign out")
+    await expect(page).toHaveURL(/\/sign-in$/)
+  })
+
+  test("a phone's palette has no Toggle sidebar", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await signInAsDev(page)
+    await page.keyboard.press("ControlOrMeta+k")
+    await expect(
+      dialog(page).getByRole("option", { name: "Change theme" })
+    ).toBeVisible()
+    await expect(
+      dialog(page).getByRole("option", { name: "Toggle sidebar" })
+    ).toHaveCount(0)
+  })
 })

@@ -191,7 +191,7 @@ const HOW_TO = `Every message has its actions:
 
 And every chat has a menu (its row's **…** in the sidebar, or the **…** at the top of the chat): *Rename*, *Pin* or *Unpin*, and *Delete*, which offers Undo first.
 
-Pick the model in the composer, and switch light and dark with *Theme* in your account menu. That's the tour. Ask anything to keep going in this chat, or start a new one.`
+Pick the model in the composer, or type **/** at the start of a message to switch by name, and switch light and dark with *Theme* in your account menu. That's the tour. Ask anything to keep going in this chat, or start a new one.`
 
 /** The tour's messages, oldest first. */
 export const TOUR_MESSAGES: UIMessage[] = [
