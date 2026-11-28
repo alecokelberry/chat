@@ -21,11 +21,13 @@ const KB = 1024
 // chat 332, a saved chat 730; the budgets were 240, 330 and 720). Alec's
 // call: he wants the latest ui-sdk. A new chat's raised Nov 28 to 360 for
 // Private (#295): ui-sdk's Toggle, about 2.6 KB, which a new chat needs at
-// once (measured 352).
+// once (measured 352). A saved chat dropped to 654 KB when math rendering
+// (KaTeX, 76 KB) became a chunk that loads only for a reply with math
+// (reply-math.ts), so its budget came down to match.
 const budgets = {
   "sign-in": 262,
   "a new chat": 360,
-  "a saved chat": 767,
+  "a saved chat": 687,
 }
 
 const viewport = { width: 390, height: 844 }
