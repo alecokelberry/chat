@@ -226,7 +226,7 @@
   --ring: #858584; /* 3.5:1 on the page: a focus ring must reach 3:1 */
   --overlay: hsl(0 0% 2% / 20%);
   --bubble-user: var(--accent); /* Grok's question bubble: the wash, 6% */
-  --send: #ec4899;
+  --send: var(--accent-light, #ec4899); /* src/lib/accent.ts */
   --highlight: oklch(0.86 0.17 95); /* <mark> in prose, mixed to 40% */
   --destructive-foreground: var(
     --color-red-700
@@ -292,7 +292,7 @@
     --overlay: hsl(0 0% 2% / 50%);
     --bubble-user: var(--accent);
     --highlight: oklch(0.62 0.13 95); /* darker, so light ink reads on it */
-    --send: #f15aa6;
+    --send: var(--accent-dark, #f15aa6);
     --destructive-foreground: #f75c60; /* Grok's red, lifted to 4.6:1 on its tint */
     --sidebar-border: hsl(0 0% 99% / 6%);
     --ink-secondary: rgb(230 229 227 / 75.6%); /* 8:1 */
@@ -427,6 +427,21 @@
   padding-left: max(--spacing(4), env(safe-area-inset-left));
 }
 
+/* The signed-in app's shell while the iPhone keyboard is up. iOS doesn't
+   shrink the page for its keyboard: it pans the part on screen down to
+   show the field, which carried the shell's header (sidebar, Search, the
+   chat's title) off the top. While the keyboard is open (data-keyboard,
+   from ui-sdk's bindViewport in ui/viewport.tsx) the shell takes the
+   visible height and moves down by the pan, so the header stays at the
+   top and the composer sits on the keyboard. No transition: it follows
+   the pan as ui-sdk measures it. */
+@utility keyboard-fit {
+  :root[data-keyboard] & {
+    height: var(--visual-viewport-height);
+    translate: 0 var(--visual-viewport-top);
+  }
+}
+
 /* Scroll bars keep their room on both edges, so the centered thread never
    shifts when it starts to scroll. */
 @utility scrollbar-gutter-stable {
@@ -451,6 +466,49 @@
 [data-slot="menu-viewport"],
 [data-slot="select-viewport"] {
   --keyboard-inset: 0px !important;
+}
+
+/* A tap just after a sheet closes goes to the page under it, as on a native
+   sheet. ui-sdk keeps a closing sheet's full-screen viewport and its
+   backdrop taking pointer events through the whole close animation, which
+   swallowed the next tap. The sheet itself is inert by then. */
+:is([data-slot="menu-viewport"], [data-slot="select-viewport"]):has(
+  [data-ending-style]
+) {
+  pointer-events: none !important;
+  &::backdrop {
+    pointer-events: none !important;
+  }
+}
+
+/* The accent picker's Custom swatch (src/components/ui/accent-picker.tsx):
+   the hue wheel, starting at red. */
+@utility rainbow {
+  background: conic-gradient(
+    #ef4444,
+    #eab308,
+    #22c55e,
+    #06b6d4,
+    #3b82f6,
+    #a855f7,
+    #ec4899,
+    #ef4444
+  );
+}
+
+/* The picker's hue slider: every hue at full strength, red to red, so it
+   reads as hue alone whatever the color's shade. */
+@utility rainbow-track {
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
 }
 
 /* A phone sheet's fill, carried 48rem past its bottom edge, so a drag up
@@ -503,12 +561,13 @@
 }
 
 /* A phone sheet with a text field (Search): nearly the height the page
-   shows, above the keyboard (ui-sdk sets --visual-viewport-height on the
-   sheet's viewport and lifts the sheet by the keyboard's height), clear
-   of the notch by 1rem. */
+   shows, above the keyboard, clear of the notch by 1rem. ui-sdk sets
+   --available-height on every sheet to the room above the keyboard (it
+   follows the keyboard as it rises), so one calc fits it; 100dvh stands in
+   where a sheet isn't open. */
 @utility sheet-tall {
   height: calc(
-    var(--visual-viewport-height, 100dvh) - env(safe-area-inset-top) - 1rem
+    var(--available-height, 100dvh) - env(safe-area-inset-top) - 1rem
   );
 }
 

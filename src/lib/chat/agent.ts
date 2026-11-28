@@ -24,6 +24,11 @@
 // that answer, and the Worker then reports a delete that worked as failed.
 // The SDK's own deferred destroy waits a second for the same reason; the
 // scheduler rounds a delay down to a whole second, so it takes 2 to be sure.
+// A chat can come back in that window under the same id (Feature tour
+// pressed again, or a send reaching the agent). Each of those cancels a
+// pending wipe before it awaits anything outside the agent, and a wipe
+// already under way gives up if one arrives while it checks D1, or if the
+// chat's row is back: a chat that came back keeps its messages.
 //
 // After every reply, finished, stopped or failed, it brings Search's index
 // of the chat's words up to date (src/lib/chat/message-index.ts): that
@@ -32,26 +37,55 @@
 // as the send moves it up). Search also asks it to index itself whole
 // (indexAll) when it opens, for a chat from before the index.
 //
+// The Library (src/routes/_app/library.tsx) shows a question's file by
+// asking for it here, at /api/chats/<id>/files/<message id>/<part>: the
+// agent answers with an image's bytes, from the data URL the chat keeps,
+// or a document's text, and the browser may keep it for good (the Library's address for a file
+// changes when the file does, src/lib/chat/library.ts).
+//
+// A reply cut off by a deploy (the agent evicted mid-stream) keeps the
+// words that arrived and shows Retry, like a stopped one: the SDK's default
+// would call the model again to continue the partial reply, which needs
+// assistant prefill, and NVIDIA's API has none (recovery.ts).
+//
+// A private chat (its id says so, src/lib/chat/id.ts) keeps nothing past
+// its page: it never touches the chat list, Lightning's title, Search's
+// index or the Library's, though its replies still count in Usage. Once a
+// browser connects, a durable alarm checks every minute
+// (src/lib/chat/private-wipe.ts): with no socket open and none closed in
+// the last half minute (a time kept in storage, so it outlives an
+// eviction), the agent wipes itself (destroy). The half minute lets a
+// dropped socket reconnect without losing the chat; the alarm, rather than the close alone, means a close the agent
+// never hears (an evicted object) still ends it within a couple of minutes.
+//
 // Each reply's metadata records who answered and how long it took, from
 // the send to the last word, or to Stop or a failure, and how long the
 // model thought, from its first thought to the end of its last (or to
 // Stop), so the chat shows them after a reload too.
+import type { Connection, ConnectionContext } from "agents"
 import {
   AIChatAgent,
+  type ChatRecoveryOptions,
   type ChatResponseResult,
   type OnChatMessageOptions,
 } from "@cloudflare/ai-chat"
 import type { UIMessage } from "ai"
+import { Buffer } from "node:buffer"
 
 import { nameChat, replyError, streamReply } from "@/lib/ai"
 import { lastModel } from "@/lib/ai/models"
+import { devBuild } from "@/lib/dev/dev-build"
 import { recordUsage } from "@/lib/chat/usage"
 import { CHAT_DELETED, CHATS_CHANGED } from "@/lib/chat/events"
-import { ownerOf } from "@/lib/chat/id"
+import { isDocument } from "@/lib/chat/documents"
+import { isPrivateChat, ownerOf } from "@/lib/chat/id"
+import { PRIVATE_CHECK_EVERY, privateChatLeft } from "@/lib/chat/private-wipe"
 import { indexMessages } from "@/lib/chat/message-index"
+import { keepPartialReply } from "@/lib/chat/recovery"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   getCustomize,
+  hasChat,
   isUntitled,
   setFirstTitle,
   touchChat,
@@ -68,6 +102,33 @@ const textOf = (message: UIMessage | undefined) =>
  *  down to a whole second, so 2 waits 1 to 2 seconds. */
 const WIPE_AFTER = 2
 
+/** A Library request for a question's file: its message id and part. */
+const FILE_PATH = /\/files\/([^/]+)\/(\d{1,3})$/
+
+/** An inline image (the only kind a question keeps): its type and bytes. */
+const IMAGE_URL = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.*)$/s
+
+/** A question's part as a file: an image's bytes, or a document's text
+ *  (what the chat kept of it), else 404. The browser may keep it for
+ *  good: the Library's address changes with the file. */
+function fileResponse(found: UIMessage["parts"][number] | undefined) {
+  const headers = {
+    "Cache-Control": "private, max-age=31536000, immutable",
+    "X-Content-Type-Options": "nosniff",
+  }
+  if (found !== undefined && isDocument(found))
+    return new Response(found.data.text, {
+      headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+    })
+  const image = found?.type === "file" ? IMAGE_URL.exec(found.url) : null
+  if (image === null) return new Response(null, { status: 404 })
+  const [, type = "", base64 = ""] = image
+  // Node's Buffer (nodejs_compat) decodes natively, inside the 10 ms.
+  return new Response(Buffer.from(base64, "base64"), {
+    headers: { ...headers, "Content-Type": type },
+  })
+}
+
 export class ChatAgent extends AIChatAgent<Env> {
   // The name (user id and chat id) goes to that user's own browser only.
   static options = { sendIdentityOnConnect: true }
@@ -77,6 +138,45 @@ export class ChatAgent extends AIChatAgent<Env> {
     return ownerOf(this.name)
   }
 
+  /** Whether this is a private chat, which keeps nothing past its page. */
+  private get isPrivate() {
+    return isPrivateChat(this.owner.id)
+  }
+
+  /** Where a private chat keeps when its socket last closed: in storage,
+   *  not memory, so the grace outlives an eviction between the close and
+   *  the alarm. None means no close was ever heard. */
+  private static readonly LAST_CLOSE = "private-last-close"
+
+  override async onConnect(connection: Connection, ctx: ConnectionContext) {
+    // Idempotent: a reconnect, or a second tab, keeps the one alarm.
+    if (this.isPrivate)
+      await this.scheduleEvery(PRIVATE_CHECK_EVERY, "endIfLeft")
+    return super.onConnect(connection, ctx)
+  }
+
+  override async onClose(
+    connection: Connection,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ) {
+    if (this.isPrivate)
+      this.ctx.storage.kv.put(ChatAgent.LAST_CLOSE, Date.now())
+    return super.onClose(connection, code, reason, wasClean)
+  }
+
+  /** A private chat's alarm: wipes it once no page holds it (see the top
+   *  of this file). */
+  async endIfLeft() {
+    const open = [...this.getConnections()].some(
+      (connection) => connection.readyState === WebSocket.OPEN
+    )
+    const lastClose = this.ctx.storage.kv.get<number>(ChatAgent.LAST_CLOSE)
+    if (!privateChatLeft(open, lastClose, Date.now())) return
+    await this.destroy()
+  }
+
   /** Tells this chat's open tabs the list changed. An RPC method, for
    *  the Worker (src/lib/chat/list.ts): browsers can't call it. */
   chatsChanged() {
@@ -84,13 +184,26 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   /** Tells this chat's open tabs to leave, then deletes everything the
-   *  agent keeps, for good, once the schedule runs at least a second later (see
-   *  the top of this file). An RPC method,
+   *  agent keeps, for good, once the schedule runs at least a second later,
+   *  unless the chat comes back first (see the top of this file). An RPC method,
    *  for the Worker (src/lib/chat/list.ts), once it has deleted the
    *  chat's row. */
   async deleteChat() {
+    this.revived = false
     this.broadcast(CHAT_DELETED)
     await this.schedule(WIPE_AFTER, "wipe")
+  }
+
+  /** Whether the chat came back (a send, or the tour) since its delete. */
+  private revived = false
+
+  /** Called as the chat comes back: drops a pending wipe, and stops one
+   *  that's checking D1 right now. The schedules are the agent's own
+   *  SQLite, so nothing else gets in while they're read. */
+  private async keepChat() {
+    this.revived = true
+    for (const pending of await this.listSchedules())
+      if (pending.callback === "wipe") await this.cancelSchedule(pending.id)
   }
 
   /** Replaces everything the chat holds with `messages`, stopping any
@@ -100,6 +213,7 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  refresh drops whatever was asked since. An RPC method, for the Worker
    *  (src/lib/chat/list.ts), once it has written the chat's row. */
   async replaceMessages(messages: UIMessage[]) {
+    await this.keepChat()
     this.resetTurnState()
     await this.sessions.session().clearMessages()
     await this.persistMessages(messages)
@@ -123,9 +237,47 @@ export class ChatAgent extends AIChatAgent<Env> {
    *  send came in. */
   private indexed = true
 
-  /** What deleteChat's schedule runs. */
+  /** A question's file for the Library (fileResponse); any other
+   *  request goes on to the SDK. In dev and e2e builds only,
+   *  /api/chats/<id>/wipe-pending answers whether a delete's wipe is still
+   *  to come, so a test can tell it has come due without guessing at the
+   *  time. */
+  override async onRequest(request: Request) {
+    const path = new URL(request.url).pathname
+    if (devBuild && path.endsWith("/wipe-pending")) return this.wipePending()
+    const file = FILE_PATH.exec(path)
+    if (file === null) return super.onRequest(request)
+    return this.partResponse(file)
+  }
+
+  /** The file a question's part holds, from FILE_PATH's match, or 404. */
+  private partResponse(file: RegExpExecArray) {
+    const [, messageId = "", part = ""] = file
+    return fileResponse(
+      this.messages.find((message) => message.id === messageId)?.parts[
+        Number(part)
+      ]
+    )
+  }
+
+  /** Whether a delete's wipe is still to come (dev and e2e builds). */
+  private async wipePending() {
+    const schedules = await this.listSchedules()
+    return Response.json(schedules.some((s) => s.callback === "wipe"))
+  }
+
+  /** What deleteChat's schedule runs: nothing if the chat came back. */
   async wipe() {
+    if (await hasChat(this.env.DB, this.owner)) return
+    // D1 let other calls in while it answered: a send or the tour may have
+    // arrived meanwhile.
+    if (this.revived) return
     await this.destroy()
+  }
+
+  /** A reply cut off by a deploy keeps what arrived (recovery.ts). */
+  override async onChatRecovery(): Promise<ChatRecoveryOptions> {
+    return keepPartialReply
   }
 
   override async onChatMessage(
@@ -133,15 +285,17 @@ export class ChatAgent extends AIChatAgent<Env> {
     options?: OnChatMessageOptions
   ) {
     const started = Date.now()
+    await this.keepChat()
     const model = lastModel(this.messages).key
     // The owner's response style is read each turn, so a change in
     // Settings reaches the next message on any device.
     const [indexed, customize] = await Promise.all([
-      touchChat(this.env.DB, this.owner),
+      // A private chat never joins the chat list.
+      this.isPrivate ? true : touchChat(this.env.DB, this.owner),
       getCustomize(this.env.DB, this.owner.userId),
     ])
     this.indexed = indexed
-    this.broadcast(CHATS_CHANGED)
+    if (!this.isPrivate) this.broadcast(CHATS_CHANGED)
     const result = await streamReply(
       this.messages,
       options?.abortSignal,
@@ -181,6 +335,8 @@ export class ChatAgent extends AIChatAgent<Env> {
   override async onChatResponse(result: ChatResponseResult) {
     if (result.status === "aborted" || result.status === "error")
       await this.saveTimeOf(result.message)
+    // A private chat has no title and isn't indexed.
+    if (this.isPrivate) return
     if (result.status !== "error") await this.nameIfUntitled()
     await this.indexTurn()
   }

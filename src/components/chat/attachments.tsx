@@ -1,8 +1,7 @@
 // The composer's attachments (src/lib/chat/attachments.ts has the rules),
 // and a question's images and documents in the thread. The + at the
-// composer's start opens a menu (a sheet on a phone) whose one row, "Add
-// photos & files", opens the system picker; on an iPhone that offers the
-// photo library, the camera and Files. Pasting into the message or
+// composer's start opens the system picker at once; on an iPhone that
+// offers the photo library, the camera and Files. Pasting into the message or
 // dropping anywhere on the page (an overlay says "Drop to attach") adds
 // files too. Each file shows as a tile above the text, a spinner until
 // it's ready (an image's thumbnail, or a document's name and kind), with ✕
@@ -16,7 +15,7 @@
 // Send waits and a line under the composer offers "Switch to Super".
 import { useRef, useState } from "react"
 import type { FileUIPart } from "ai"
-import { ImageOffIcon, ImagePlusIcon, PlusIcon, XIcon } from "lucide-react"
+import { ImageOffIcon, PlusIcon, XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { FileChip } from "@/components/ui/file-chip"
@@ -29,7 +28,6 @@ import {
   FileInputList,
 } from "@/components/ui/file-input"
 import { ImageViewer } from "@/components/ui/image-viewer"
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
 import {
@@ -190,33 +188,27 @@ export function AttachmentsInput({
   )
 }
 
-/** The + at the composer's start, and its menu. */
-export function AttachMenu({
+/** The + at the composer's start: it opens the system picker at once. */
+export function AttachButton({
   controller,
 }: {
   controller: Attachments["controller"]
 }) {
   return (
-    <Menu>
-      <Tooltip type="label">
-        <TooltipTrigger
-          render={
-            <MenuTrigger
-              render={<Button size="circle" aria-label="Attach" />}
-            />
-          }
-        >
-          <PlusIcon className="size-icon" />
-        </TooltipTrigger>
-        <TooltipContent>Attach</TooltipContent>
-      </Tooltip>
-      <MenuContent>
-        <MenuItem onClick={() => controller.open()}>
-          <ImagePlusIcon aria-hidden />
-          Add photos & files
-        </MenuItem>
-      </MenuContent>
-    </Menu>
+    <Tooltip type="label">
+      <TooltipTrigger
+        render={
+          <Button
+            size="circle"
+            aria-label="Attach"
+            onClick={() => controller.open()}
+          />
+        }
+      >
+        <PlusIcon className="size-icon" />
+      </TooltipTrigger>
+      <TooltipContent>Attach</TooltipContent>
+    </Tooltip>
   )
 }
 

@@ -131,6 +131,20 @@ export async function isUntitled(
   return row !== undefined && row.title === null
 }
 
+/** Whether the chat has a row in the list: false once it's deleted, until
+ *  a send or the tour adds it back. */
+export async function hasChat(
+  d1: D1Database,
+  owner: ChatOwner
+): Promise<boolean> {
+  const row = await db(d1)
+    .select({ id: chat.id })
+    .from(chat)
+    .where(isChat(owner))
+    .get()
+  return row !== undefined
+}
+
 /** Titles the chat, unless it already has a title (a rename's, or an
  *  earlier try's): the check and the write are one statement. */
 export async function setFirstTitle(

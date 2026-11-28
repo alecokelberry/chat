@@ -1,7 +1,13 @@
 import { fc, it } from "@fast-check/vitest"
 import { describe, expect, test } from "vitest"
 
-import { appearsIn, refusalFor, siteOf, writtenIn } from "@/lib/ai/web-address"
+import {
+  appearsIn,
+  knownAddresses,
+  refusalFor,
+  siteOf,
+  writtenIn,
+} from "@/lib/ai/web-address"
 
 /** Ranges off the public internet, from RFC 6890: [first, last] as
  *  32-bit numbers. */
@@ -222,5 +228,24 @@ describe("writtenIn", () => {
       writtenIn("https://example.org/article?q=1", "read example.org/article")
     ).toBe(false)
     expect(writtenIn("https://article", "read article")).toBe(false)
+  })
+})
+
+describe("knownAddresses", () => {
+  test("opens a link a page gives only on that page's site", () => {
+    const known = knownAddresses(["read https://example.org/a"])
+    known.add(
+      "see https://example.org/b and https://other.example.net/c",
+      "example.org"
+    )
+    expect(known.has("https://example.org/a")).toBe(true)
+    expect(known.has("https://example.org/b")).toBe(true)
+    expect(known.has("https://other.example.net/c")).toBe(false)
+  })
+
+  test("opens a search result's own address on any site", () => {
+    const known = knownAddresses([])
+    known.add("https://other.example.net/c")
+    expect(known.has("https://other.example.net/c")).toBe(true)
   })
 })

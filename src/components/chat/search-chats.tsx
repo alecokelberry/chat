@@ -1,9 +1,12 @@
 // Search's dialog and list (search.tsx opens it; this loads apart so the
 // first load doesn't carry it): Grok's command palette, "Search or type an
 // action". The list is ui-sdk's Command over Chat's actions (New Chat, its
-// keys on the right) and the chat list the layout already has
-// (chat-list.tsx). With nothing typed it shows the actions, New Chat
-// highlighted, then under Chats the 50 most recently active, each with a
+// keys on the right, and Library) and the chat list the layout already has
+// (chat-list.tsx). The actions are New Chat, Library, Change theme, Open
+// settings, Feature tour, Toggle sidebar (not on a phone, which has a
+// drawer) and Sign out; New Chat and Library are links, the rest run from
+// onAction. With nothing typed it shows the actions, New Chat highlighted,
+// then under Chats the 50 most recently active, each with a
 // chat icon and how long ago on the right (1d, 2d). Tab moves the
 // highlight to the next section's first row, Shift+Tab back. Typing ranks
 // the actions and every chat by title with Command's fuzzy filter, a
@@ -27,6 +30,7 @@
 // so a rename or delete shows in both at once.
 import {
   createContext,
+  type ComponentType,
   use,
   useEffect,
   useMemo,
@@ -37,14 +41,20 @@ import {
 } from "react"
 import type { UIMessage } from "ai"
 import {
+  CompassIcon,
   EllipsisIcon,
+  LibraryIcon,
+  LogOutIcon,
   MessageCircleIcon,
+  PanelLeftIcon,
   PencilIcon,
   PlusIcon,
+  SettingsIcon,
 } from "lucide-react"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
+import type { SettingsController } from "@/components/chat/settings-dialog"
 import { useChatList } from "@/components/chat/chat-list"
 import { ThreadPreview } from "@/components/chat/thread"
 import {
@@ -82,14 +92,22 @@ import {
 } from "@/components/ui/dialog"
 import { Kbd, KbdKeys } from "@/components/ui/kbd"
 import { Menu } from "@/components/ui/menu"
-import { NEW_CHAT_SHORTCUT } from "@/components/ui/sidebar"
+import { useToggleTheme } from "@/components/ui/preferences"
+import {
+  NEW_CHAT_SHORTCUT,
+  TOGGLE_SIDEBAR_SHORTCUT,
+} from "@/components/ui/sidebar"
+import { ThemeIcon } from "@/components/ui/theme-icon"
+import { toast } from "@/components/ui/toast"
+import { SIGN_OUT_CONFIRM, useSignOut } from "@/lib/auth/use-sign-out"
 import { findInMessages, indexOlderChats, QUERY_MAX } from "@/lib/chat/list"
+import { useOpenTour } from "@/lib/chat/use-open-tour"
 import { sortChats } from "@/lib/chat/groups"
 import { marksOf } from "@/lib/chat/match-marks"
 import { nextSection } from "@/lib/chat/next-section"
 import { relativeTime } from "@/lib/chat/relative-time"
 import type { ChatSummary } from "@/lib/chat/store"
-import { usePhone } from "@/lib/phone"
+import { usePhone } from "@/lib/media"
 
 const toItem = (chat: ChatSummary): CommandDataItem => ({
   value: chat.id,
@@ -99,10 +117,26 @@ const toItem = (chat: ChatSummary): CommandDataItem => ({
 /** The most chats listed while nothing is typed: the most recently active. */
 const RECENT = 50
 
-/** What Search can do besides opening a chat, first in the list. Each
- *  goes to `to`, as a link, and shows its keys. Open settings joins once
- *  Settings lands. */
-const ACTIONS = [
+/** The theme's sun and moon at a row's icon size; the row would stretch
+ *  its span (a row's own spans fill the rest of it). */
+const ThemeActionIcon = () => (
+  <ThemeIcon className="flex-none! [&_svg]:size-4.5" />
+)
+
+/** What Search can do besides opening a chat, first in the list, with
+ *  its keys. New Chat goes to `to`, as a link; the others run from
+ *  onAction (runAction). Toggle sidebar is for computers only: a phone
+ *  has the drawer. */
+const ACTIONS: readonly {
+  value: string
+  label: string
+  to?: "/" | "/library"
+  shortcut?: string
+  icon: ComponentType<{ "aria-hidden"?: boolean }>
+  computerOnly?: true
+  /** What an agent is told before it runs this. */
+  confirm?: string
+}[] = [
   {
     value: "action:new-chat",
     label: "New Chat",
@@ -110,7 +144,42 @@ const ACTIONS = [
     shortcut: NEW_CHAT_SHORTCUT,
     icon: PlusIcon,
   },
-] as const
+  {
+    value: "action:library",
+    label: "Library",
+    to: "/library",
+    icon: LibraryIcon,
+  },
+  {
+    value: "action:theme",
+    label: "Change theme",
+    shortcut: "d",
+    icon: ThemeActionIcon,
+  },
+  {
+    value: "action:settings",
+    label: "Open settings",
+    icon: SettingsIcon,
+  },
+  {
+    value: "action:tour",
+    label: "Feature tour",
+    icon: CompassIcon,
+  },
+  {
+    value: "action:sidebar",
+    label: "Toggle sidebar",
+    shortcut: TOGGLE_SIDEBAR_SHORTCUT,
+    icon: PanelLeftIcon,
+    computerOnly: true,
+  },
+  {
+    value: "action:sign-out",
+    label: "Sign out",
+    icon: LogOutIcon,
+    confirm: SIGN_OUT_CONFIRM,
+  },
+]
 
 type Action = (typeof ACTIONS)[number]
 
@@ -121,10 +190,12 @@ const ACTION_VALUES: ReadonlySet<string> = new Set(
   ACTIONS.map((action) => action.value)
 )
 
-const actionItems: CommandDataItem[] = ACTIONS.map(({ value, label }) => ({
-  value,
-  label,
-}))
+/** What the shell gives Search for the actions that aren't links. */
+export type ActionTools = {
+  settings: SettingsController
+  /** Collapses or expands the computer's sidebar. */
+  toggleSidebar: () => void
+}
 
 /** The dialog `controller` opens, `content` its panel, for ⌘K to close
  *  it from inside. */
@@ -132,11 +203,13 @@ export function SearchPanel({
   controller,
   content,
   onPick,
+  tools,
 }: {
   controller: DialogController
   content: RefObject<HTMLDivElement | null>
   /** A chat was picked: the phone's drawer under Search closes too. */
   onPick?: () => void
+  tools: ActionTools
 }) {
   // While the sheet slides up and the keyboard rises under it, iOS draws
   // the field's caret where the field was, not where it is, so it jumped
@@ -157,6 +230,7 @@ export function SearchPanel({
         <SearchChats
           close={() => controller.close()}
           onPick={onPick}
+          tools={tools}
           settled={settled}
         />
       </DialogContent>
@@ -303,10 +377,12 @@ type WordsItem = CommandDataItem & { line: MatchSegment[] }
 function SearchChats({
   close,
   onPick,
+  tools,
   settled,
 }: {
   close: () => void
   onPick?: () => void
+  tools: ActionTools
   /** The sheet has finished sliding in: the caret can show. */
   settled: boolean
 }) {
@@ -329,6 +405,33 @@ function SearchChats({
   const [renaming, setRenaming] = useState<string | null>(null)
   const renamed = chats.find((chat) => chat.id === renaming)
   const phone = usePhone()
+  const openTour = useOpenTour(onPick)
+  const toggleTheme = useToggleTheme()
+  const signOut = useSignOut()
+  const actionItems = useMemo<CommandDataItem[]>(
+    () =>
+      ACTIONS.filter((action) => !(action.computerOnly && phone === true)).map(
+        ({ value, label }) => ({ value, label })
+      ),
+    [phone]
+  )
+  /** Runs an action that isn't a link. The ones that open something over
+   *  the page (Settings) or leave it (Sign out) keep a phone's drawer;
+   *  the tour, like a chat, closes it. */
+  function runAction(value: string) {
+    switch (value) {
+      case "action:theme":
+        return toggleTheme()
+      case "action:settings":
+        return void tools.settings.open({ payload: "account" })
+      case "action:sidebar":
+        return tools.toggleSidebar()
+      case "action:sign-out":
+        return void signOut().catch(() => toast.error("Couldn't sign out"))
+      case "action:tour":
+        return void openTour()
+    }
+  }
   const [menus, setMenus] = useState<HTMLDivElement | null>(null)
   const rows = useMemo(
     () => ({
@@ -350,7 +453,7 @@ function SearchChats({
         items: sortChats(chats, "updatedAt").slice(0, RECENT).map(toItem),
       },
     ],
-    [chats]
+    [actionItems, chats]
   )
   // Typed: titles ranked in one list, as long as every chat, so only the
   // rows in view render; then message matches, from two letters, as
@@ -388,7 +491,7 @@ function SearchChats({
   }, [chats, found.items, query])
   const items = useMemo(
     () => [...actionItems, ...chats.map(toItem), ...words],
-    [chats, words]
+    [actionItems, chats, words]
   )
   const filter = useMemo(
     () =>
@@ -411,13 +514,18 @@ function SearchChats({
       status={found.status}
       controller={command}
       autoHighlight
-      defaultValue={ACTIONS[0].value}
+      defaultValue="action:new-chat"
       onAction={(value, { event }) => {
+        const action = actionOf(value)
+        if (action !== undefined && action.to === undefined) {
+          runAction(value)
+          close()
+          return
+        }
         // A click, a tap or Enter follows the result's link itself; a run
         // with neither (an agent's) goes there from here.
         if (!(event instanceof MouseEvent || event instanceof KeyboardEvent)) {
-          const action = actionOf(value)
-          void (action === undefined
+          void (action?.to === undefined
             ? navigate({ to: "/c/$id", params: { id: chatIdOf(value) } })
             : navigate({ to: action.to }))
         }
@@ -606,7 +714,8 @@ function ActionResult({
       value={item.value}
       label={item.label}
       index={index}
-      render={<Link to={action.to} />}
+      render={action.to === undefined ? undefined : <Link to={action.to} />}
+      data-agent-confirm={action.confirm}
     >
       <Icon aria-hidden />
       {query === undefined ? (
@@ -614,7 +723,9 @@ function ActionResult({
       ) : (
         <CommandMatchText text={item.label} query={query} />
       )}
-      <KbdKeys shortcut={action.shortcut} className="ms-3 flex-none!" />
+      {action.shortcut !== undefined && (
+        <KbdKeys shortcut={action.shortcut} className="ms-3 flex-none!" />
+      )}
     </CommandItem>
   )
 }
