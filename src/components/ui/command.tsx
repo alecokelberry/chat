@@ -3,11 +3,11 @@
 // runs or follows it, focus stays in the field) with the sidebar's look.
 // The field is a 56px row, 15px (16px on touch screens, so iOS never
 // zooms), with an optional hint at its end (Grok's "Next section Tab"),
-// over a hairline; groups are labelled like the sidebar's (12px medium
-// muted); rows are 40px with 12px corners in secondary ink, an 18px icon
-// 10px before the label and CommandItemEnd (a time, keycaps) at the end,
-// washed and full ink while highlighted, the search's matched letters in
-// medium full ink. The list scrolls on its own,
+// over a hairline, its typed text medium; groups are labelled 14/20
+// medium muted; rows are 40px with 12px corners in full ink (Grok's,
+// measured), an 18px icon 10px before the label and CommandItemEnd (a
+// time, keycaps) at the end, washed while highlighted, the search's
+// matched letters in medium. The list scrolls on its own,
 // without chaining to the page. A long flat list renders only the rows in
 // view (CommandWindow, ui-sdk's virtualized Command): ui-sdk still ranks
 // and arrows through every item, mounted or not, and useCommandWindow
@@ -82,7 +82,7 @@ function CommandInput({
     >
       <CommandInputPrimitive
         className={cn(
-          "min-w-0 flex-1 bg-transparent field-text text-foreground outline-hidden placeholder:text-muted-foreground",
+          "min-w-0 flex-1 bg-transparent field-text font-medium text-foreground outline-hidden placeholder:font-normal placeholder:text-muted-foreground",
           caretHidden && "caret-transparent",
           className
         )}
@@ -134,7 +134,7 @@ function CommandGroupLabel({
   return (
     <CommandGroupLabelPrimitive
       className={cn(
-        "px-3 pt-2.5 pb-1 text-xs font-medium text-sidebar-muted select-none",
+        "px-3 pt-2.5 pb-1 text-sm font-medium text-sidebar-muted select-none",
         className
       )}
       {...props}
@@ -149,7 +149,7 @@ function CommandItem({
   return (
     <CommandItemPrimitive
       className={cn(
-        "flex h-10 shrink-0 items-center gap-2.5 rounded-item px-3 text-base text-ink-secondary outline-hidden select-none has-data-[slot=command-item-lines]:h-auto highlighted:bg-accent highlighted:text-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>svg]:size-4.5 [&>svg]:shrink-0",
+        "flex h-10 shrink-0 items-center gap-2.5 rounded-item px-3 text-base text-foreground outline-hidden select-none has-data-[slot=command-item-lines]:h-auto highlighted:bg-accent highlighted:text-foreground [&>span]:min-w-0 [&>span]:flex-1 [&>span]:truncate [&>svg]:size-4.5 [&>svg]:shrink-0",
         className
       )}
       {...props}
