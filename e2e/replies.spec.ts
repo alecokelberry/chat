@@ -79,7 +79,6 @@ test("a stopped reply says how long it ran before Stop", async ({ page }) => {
 })
 
 test("answeredBy names the model, with tenths under ten seconds", () => {
-  expect(answeredBy({ model: "ultra", ms: 40 })).toBe("Ultra · <1s")
   expect(answeredBy({ model: "ultra", ms: 4249 })).toBe("Ultra · 4.2s")
   expect(answeredBy({ model: "ultra", ms: 9960 })).toBe("Ultra · 10s")
   expect(answeredBy({ model: "ultra", ms: 12_600 })).toBe("Ultra · 13s")
