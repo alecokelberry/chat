@@ -22,6 +22,8 @@ import {
 // the Library (the feature tour, put back unindexed) shows up once the
 // page has opened. A deleted chat's files leave at once, and Undo brings
 // them back; an edit that takes a file out takes it out of the Library.
+// Tabs, a name search and the order narrow and flip it, kept in the
+// address.
 
 const SMALL = "e2e/fixtures/small.jpg" // 400 × 300
 const NOTES = "e2e/fixtures/notes.pdf"
@@ -112,6 +114,47 @@ test("an edit that takes a file out takes it out of the Library", async ({
   await openLibrary(page)
   await expect(row(page, notes)).toBeVisible()
   await expect(row(page, photo)).toHaveCount(0)
+})
+
+test("tabs, a name search and Oldest narrow and flip the list, after a reload too", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const tag = unique("x").slice(2)
+  const { photo, notes } = await sendFiles(page, tag)
+  await openLibrary(page)
+
+  const tabs = page.getByRole("tablist", { name: "Show" })
+  await tabs.getByRole("tab", { name: "Images" }).click()
+  await expect(page).toHaveURL(/tab=images/)
+  await expect(row(page, photo)).toBeVisible()
+  await expect(row(page, notes)).toHaveCount(0)
+  await page.reload()
+  await expect(tabs.getByRole("tab", { name: "Images" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  )
+  await tabs.getByRole("tab", { name: "Files" }).click()
+  await expect(row(page, notes)).toBeVisible()
+  await expect(row(page, photo)).toHaveCount(0)
+  await tabs.getByRole("tab", { name: "All" }).click()
+
+  const search = page.getByRole("searchbox", { name: "Search files" })
+  await search.fill(`notes-${tag}`.toUpperCase())
+  await expect(page).toHaveURL(/q=/)
+  await expect(library(page).getByRole("link")).toHaveCount(1)
+  await expect(row(page, notes)).toBeVisible()
+  await search.fill(`nothing-${tag}`)
+  await expect(library(page)).toContainText("No files found")
+  await search.fill(tag)
+  await expect(library(page).getByRole("link")).toHaveCount(2)
+
+  // Newest first, the PDF last attached; Oldest flips it.
+  await expect(library(page).getByRole("link").first()).toContainText(notes)
+  await page.getByRole("button", { name: "View options" }).click()
+  await page.getByRole("menuitemradio", { name: "Oldest" }).click()
+  await expect(page).toHaveURL(/order=oldest/)
+  await expect(library(page).getByRole("link").first()).toContainText(photo)
 })
 
 test("Search's actions open the Library", async ({ page }) => {

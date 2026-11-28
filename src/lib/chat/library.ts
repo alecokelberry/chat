@@ -8,9 +8,9 @@
 // (indexMessages, src/lib/chat/message-index.ts), so one path keeps both
 // up to date and indexes an older chat whole. Rows belong to their chat's
 // row in the chat list, so deleting a chat (or its user) deletes them too.
-import { desc, eq } from "drizzle-orm"
-import { drizzle } from "drizzle-orm/d1"
+import { and, asc, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm"
 import {
+  type BaseSQLiteDatabase,
   foreignKey,
   index,
   integer,
@@ -197,15 +197,47 @@ export type LibraryItem = {
   at: number
 }
 
+/** Where the Library is in its list: the last item it has. */
+export type LibraryCursor = { at: number; seq: number }
+
+/** The Library's tabs: every file, images, or documents. */
+export const LIBRARY_TABS = ["all", "images", "files"] as const
+export type LibraryTab = (typeof LIBRARY_TABS)[number]
+
+export const LIBRARY_ORDERS = ["newest", "oldest"] as const
+export type LibraryOrder = (typeof LIBRARY_ORDERS)[number]
+
+/** What the Library shows: a tab, a part of a file name, an order, and
+ *  where the next page starts. */
+export type LibraryQuery = {
+  tab: LibraryTab
+  name: string
+  order: LibraryOrder
+  cursor?: LibraryCursor
+}
+
 /** How many items one page of the Library holds. */
 export const LIBRARY_PAGE = 60
 
-/** The first page of the user's attachments, newest first. */
-export async function listAttachments(
-  d1: D1Database,
-  userId: string
+const KINDS_OF: Record<LibraryTab, AttachmentKind[] | null> = {
+  all: null,
+  images: ["image"],
+  files: ["pdf", "text"],
+}
+
+/** One page of the user's attachments that `query` asks for, from `db`
+ *  (D1's Drizzle in the app). A name
+ *  matches anywhere, in any case (SQLite's instr on lowercased text, so
+ *  nothing typed is read as a pattern). */
+export async function listAttachments<Result>(
+  db: BaseSQLiteDatabase<"async", Result>,
+  userId: string,
+  { tab, name, order, cursor }: LibraryQuery
 ): Promise<LibraryItem[]> {
-  return drizzle(d1)
+  const newest = order === "newest"
+  const before = newest ? lt : gt
+  const kinds = KINDS_OF[tab]
+  return db
     .select({
       seq: attachment.seq,
       chatId: attachment.chatId,
@@ -217,8 +249,29 @@ export async function listAttachments(
       at: attachment.at,
     })
     .from(attachment)
-    .where(eq(attachment.userId, userId))
-    .orderBy(desc(attachment.at), desc(attachment.seq))
+    .where(
+      and(
+        eq(attachment.userId, userId),
+        kinds === null ? undefined : inArray(attachment.kind, kinds),
+        name === ""
+          ? undefined
+          : sql`instr(lower(${attachment.name}), ${name.toLowerCase()}) > 0`,
+        cursor === undefined
+          ? undefined
+          : or(
+              before(attachment.at, cursor.at),
+              and(
+                eq(attachment.at, cursor.at),
+                before(attachment.seq, cursor.seq)
+              )
+            )
+      )
+    )
+    .orderBy(
+      ...(newest
+        ? [desc(attachment.at), desc(attachment.seq)]
+        : [asc(attachment.at), asc(attachment.seq)])
+    )
     .limit(LIBRARY_PAGE)
 }
 
