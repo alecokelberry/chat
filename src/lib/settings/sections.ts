@@ -24,7 +24,7 @@ export const SECTIONS: readonly Section[] = [
   {
     id: "appearance",
     label: "Appearance",
-    settings: ["Theme", "Dark theme", "Wrap long code blocks"],
+    settings: ["Theme", "Dark theme", "Accent color", "Wrap long code blocks"],
   },
   {
     id: "customize",

@@ -226,7 +226,7 @@
   --ring: #858584; /* 3.5:1 on the page: a focus ring must reach 3:1 */
   --overlay: hsl(0 0% 2% / 20%);
   --bubble-user: var(--accent); /* Grok's question bubble: the wash, 6% */
-  --send: #ec4899;
+  --send: var(--accent-light, #ec4899); /* src/lib/accent.ts */
   --highlight: oklch(0.86 0.17 95); /* <mark> in prose, mixed to 40% */
   --destructive-foreground: var(
     --color-red-700
@@ -292,7 +292,7 @@
     --overlay: hsl(0 0% 2% / 50%);
     --bubble-user: var(--accent);
     --highlight: oklch(0.62 0.13 95); /* darker, so light ink reads on it */
-    --send: #f15aa6;
+    --send: var(--accent-dark, #f15aa6);
     --destructive-foreground: #f75c60; /* Grok's red, lifted to 4.6:1 on its tint */
     --sidebar-border: hsl(0 0% 99% / 6%);
     --ink-secondary: rgb(230 229 227 / 75.6%); /* 8:1 */
@@ -464,6 +464,36 @@
   &::backdrop {
     pointer-events: none !important;
   }
+}
+
+/* The accent picker's Custom swatch (src/components/ui/accent-picker.tsx):
+   the hue wheel, starting at red. */
+@utility rainbow {
+  background: conic-gradient(
+    #ef4444,
+    #eab308,
+    #22c55e,
+    #06b6d4,
+    #3b82f6,
+    #a855f7,
+    #ec4899,
+    #ef4444
+  );
+}
+
+/* The picker's hue slider: every hue at full strength, red to red, so it
+   reads as hue alone whatever the color's shade. */
+@utility rainbow-track {
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
 }
 
 /* A phone sheet's fill, carried 48rem past its bottom edge, so a drag up
