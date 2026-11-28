@@ -101,8 +101,15 @@ function ChatScreen() {
   if (starting) startedHere.current = id
   // Not an id a chat can have, or a chat that isn't in the list (deleted,
   // or never there): the not-found page, inside the shell.
-  if (!CHAT_ID.test(id) || (chat === undefined && startedHere.current !== id))
-    return <NotFoundPage />
+  if (!CHAT_ID.test(id)) return <NotFoundPage />
+  if (chat === undefined && startedHere.current !== id)
+    return (
+      <>
+        {/* React hoists it into <head>, over the route's "New chat". */}
+        <title>{pageTitle("Not found")}</title>
+        <NotFoundPage />
+      </>
+    )
   return (
     // No top pad: the header floats over the thread, whose own pad sets
     // where the last question rests (message-scroller.tsx).
