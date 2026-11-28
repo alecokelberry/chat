@@ -4,6 +4,8 @@ My own AI chat on free NVIDIA models, on Cloudflare's free plan. The budget is $
 
 The open GitHub issues are the plan, `docs/decisions.md` says why it's built this way (add a row when a decision changes), `docs/nvidia.md` covers the models, `DESIGN.md` the UI and `CODING_STANDARDS.md` what review checks. `pnpm check` before each commit, `pnpm verify` before each PR. `src/routeTree.gen.ts` and `worker-configuration.d.ts` are generated.
 
+`docs/roadmap.md` says what's now, next and later; check it before starting new work.
+
 ## Rules
 
 - **Free plan limits:** 10 ms of CPU per request (waiting on NVIDIA doesn't count) and a Worker under 3 MB gzipped. Keep server rendering light, render heavy things (markdown, code highlighting) in the browser, and never hash passwords on the server.
