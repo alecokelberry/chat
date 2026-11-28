@@ -49,7 +49,7 @@ import {
   PlusIcon,
   SettingsIcon,
 } from "lucide-react"
-import { Link, useNavigate, useRouter } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 
 import { ChatMenuContent, RenameField } from "@/components/chat/chat-actions"
 import type { SettingsController } from "@/components/chat/settings-dialog"
@@ -97,13 +97,9 @@ import {
 } from "@/components/ui/sidebar"
 import { ThemeIcon } from "@/components/ui/theme-icon"
 import { toast } from "@/components/ui/toast"
-import { useSignOut } from "@/lib/auth/use-sign-out"
-import {
-  addTour,
-  findInMessages,
-  indexOlderChats,
-  QUERY_MAX,
-} from "@/lib/chat/list"
+import { SIGN_OUT_CONFIRM, useSignOut } from "@/lib/auth/use-sign-out"
+import { findInMessages, indexOlderChats, QUERY_MAX } from "@/lib/chat/list"
+import { useOpenTour } from "@/lib/chat/use-open-tour"
 import { sortChats } from "@/lib/chat/groups"
 import { marksOf } from "@/lib/chat/match-marks"
 import { nextSection } from "@/lib/chat/next-section"
@@ -136,6 +132,8 @@ const ACTIONS: readonly {
   shortcut?: string
   icon: ComponentType<{ "aria-hidden"?: boolean }>
   computerOnly?: true
+  /** What an agent is told before it runs this. */
+  confirm?: string
 }[] = [
   {
     value: "action:new-chat",
@@ -171,6 +169,7 @@ const ACTIONS: readonly {
     value: "action:sign-out",
     label: "Sign out",
     icon: LogOutIcon,
+    confirm: SIGN_OUT_CONFIRM,
   },
 ]
 
@@ -398,7 +397,7 @@ function SearchChats({
   const [renaming, setRenaming] = useState<string | null>(null)
   const renamed = chats.find((chat) => chat.id === renaming)
   const phone = usePhone()
-  const router = useRouter()
+  const openTour = useOpenTour(onPick)
   const toggleTheme = useToggleTheme()
   const signOut = useSignOut()
   const actionItems = useMemo<CommandDataItem[]>(
@@ -422,13 +421,7 @@ function SearchChats({
       case "action:sign-out":
         return void signOut().catch(() => toast.error("Couldn't sign out"))
       case "action:tour":
-        return void addTour()
-          .then(async (id) => {
-            await router.invalidate()
-            await navigate({ to: "/c/$id", params: { id } })
-            onPick?.()
-          })
-          .catch(() => toast.error("Couldn't add the feature tour"))
+        return void openTour()
     }
   }
   const [menus, setMenus] = useState<HTMLDivElement | null>(null)
@@ -714,11 +707,7 @@ function ActionResult({
       label={item.label}
       index={index}
       render={action.to === undefined ? undefined : <Link to={action.to} />}
-      data-agent-confirm={
-        action.value === "action:sign-out"
-          ? "Signs you out on this device"
-          : undefined
-      }
+      data-agent-confirm={action.confirm}
     >
       <Icon aria-hidden />
       {query === undefined ? (
