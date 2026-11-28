@@ -287,6 +287,51 @@ export async function pickModel(page: Page, name: string) {
  *  fresh on a rerun. */
 export const unique = (text: string) => `${text} ${randomUUID().slice(0, 8)}`
 
+/** A made-up word of letters only, that no other test sends: for Search,
+ *  whose index splits `unique`'s ids at their digits. */
+export const madeUpWord = () =>
+  `zq${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`
+
+/** Opens Search and types `text` until a message match shows: the
+ *  chat's words reach the index just after its reply ends. */
+export async function findWords(page: Page, text: string) {
+  const dialog = page.getByRole("dialog", { name: "Search" })
+  const field = page.getByRole("combobox", { name: "Search chats" })
+  const messages = dialog.getByRole("group", { name: "Messages" })
+  await expect(async () => {
+    if ((await dialog.count()) === 0)
+      await page.keyboard.press("ControlOrMeta+k")
+    await field.fill("")
+    await field.fill(text)
+    await expect(messages.getByRole("option")).not.toHaveCount(0, {
+      timeout: 2000,
+    })
+  }).toPass()
+}
+
+/** The tokens Settings › Usage counts toward a model, read the way a
+ *  person does (account menu, Settings, Usage), then closed again. Other
+ *  tests on a worker chat as its Dev too, so compare it, don't pin it. */
+export async function tokensOf(page: Page, model: string) {
+  const settings = page.getByRole("dialog", { name: "Settings" })
+  await sidebar(page).getByRole("button", { name: "Dev", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Settings" }).click()
+  await settings
+    .getByRole("tablist", { name: "Settings" })
+    .getByRole("tab", { name: "Usage" })
+    .click()
+  const usage = settings.getByRole("tabpanel", { name: "Usage" })
+  await expect(usage.locator('[aria-busy="false"]')).toBeVisible()
+  const row = usage
+    .getByRole("list", { name: "Tokens by model" })
+    .getByRole("listitem")
+    .filter({ hasText: model })
+  const text = (await row.count()) === 0 ? "0" : await row.innerText()
+  await page.keyboard.press("Escape")
+  await expect(settings).toBeHidden()
+  return Number(/([\d,]+) tokens?$/.exec(text)?.[1]?.replaceAll(",", "") ?? 0)
+}
+
 /** Sends a message the way a person does: once the last reply is over. The
  *  composer ignores Enter while a reply streams (Send is Stop then), and a
  *  reply's last word shows before its stream has ended, so on a slow

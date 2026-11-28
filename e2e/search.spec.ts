@@ -4,6 +4,8 @@ import type { Page } from "@playwright/test"
 
 import {
   expect,
+  findWords,
+  madeUpWord,
   pick,
   questions,
   replies,
@@ -32,30 +34,12 @@ const field = (page: Page) =>
 const messages = (page: Page) =>
   dialog(page).getByRole("group", { name: "Messages" })
 
-/** A made-up word of letters only, that no other test sends. */
-const madeUpWord = () =>
-  `zq${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`
-
 /** Sends `text` in a new chat and waits for the reply; the chat's path. */
 async function chatSaying(page: Page, text: string) {
   await send(page, text)
   await expect(replies(page)).toHaveText([/Done\.$/])
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible()
   return new URL(page.url()).pathname
-}
-
-/** Opens Search and types `text` until a message match shows: the
- *  chat's words reach the index just after its reply ends. */
-async function findWords(page: Page, text: string) {
-  await expect(async () => {
-    if ((await dialog(page).count()) === 0)
-      await page.keyboard.press("ControlOrMeta+k")
-    await field(page).fill("")
-    await field(page).fill(text)
-    await expect(messages(page).getByRole("option")).not.toHaveCount(0, {
-      timeout: 2000,
-    })
-  }).toPass()
 }
 
 test("⌘K opens Search, typing narrows by title, and Enter opens the chat", async ({

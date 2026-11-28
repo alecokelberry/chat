@@ -1,12 +1,13 @@
 // The door to the chats: /api/chats/<id> (the WebSocket) and its
 // sub-paths (like /get-messages) go to that chat's agent, for a signed-in
 // browser only. The agent is named after the user and the chat, so one
-// account can never reach another's chat, whatever id it asks for.
+// account can never reach another's chat, whatever id it asks for. A
+// private chat's id (src/lib/chat/id.ts) comes through the same door.
 import { env } from "cloudflare:workers"
 import { getAgentByName } from "agents"
 
 import { getAuth } from "@/lib/auth/server"
-import { agentName, CHAT_ID } from "@/lib/chat/id"
+import { AGENT_CHAT_ID, agentName } from "@/lib/chat/id"
 
 const CHAT_PATH = /^\/api\/chats\/([^/]+)(?:\/|$)/
 
@@ -18,7 +19,7 @@ export async function routeChatRequest(
   const url = new URL(request.url)
   const id = CHAT_PATH.exec(url.pathname)?.[1]
   if (id === undefined) return null
-  if (!CHAT_ID.test(id)) return new Response(null, { status: 404 })
+  if (!AGENT_CHAT_ID.test(id)) return new Response(null, { status: 404 })
   // Another site's page can't open a socket with our cookie. Browsers
   // always send Origin on a WebSocket; a request without one isn't a page.
   const origin = request.headers.get("Origin")
