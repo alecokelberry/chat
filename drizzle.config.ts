@@ -1,5 +1,6 @@
 // drizzle-kit: `pnpm db:generate` writes a migration into migrations/ from
-// the Drizzle tables (src/lib/chat/store.ts, message-index.ts, usage.ts);
+// the Drizzle tables (src/lib/chat/store.ts, message-index.ts, usage.ts,
+// library.ts);
 // `pnpm run deploy` applies it
 // with Wrangler, as before. Only exported tables are generated, so Better
 // Auth's own (migrations/0001_auth.sql) stay its own. New files get a
@@ -13,6 +14,7 @@ export default defineConfig({
     "./src/lib/chat/store.ts",
     "./src/lib/chat/message-index.ts",
     "./src/lib/chat/usage.ts",
+    "./src/lib/chat/library.ts",
   ],
   out: "./migrations",
   migrations: { prefix: "timestamp" },

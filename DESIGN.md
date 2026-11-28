@@ -91,6 +91,7 @@ Every control is a ui-sdk part, so keyboards, screen readers and agents all see 
 | -------- | ------------------------------------------- |
 | New chat | What can I ask?                             |
 | Chat     | The reply, and what the model did to get it |
+| Library  | Where's that file I sent?                   |
 | Sign-in  | One tap: your passkey                       |
 
 ## Taste

@@ -124,8 +124,12 @@ test.describe("on a computer", () => {
     await expect(skip).toBeInViewport()
     await page.keyboard.press("Enter")
     await expect(page.getByRole("main")).toBeFocused()
-    // The next Tab lands in the page, not back in the sidebar: on the
-    // composer's +, then its text.
+    // The next Tab lands in the page, not back in the sidebar: on Private
+    // at its top, then the composer's +, then its text.
+    await page.keyboard.press("Tab")
+    await expect(
+      page.getByRole("button", { name: "Private chat" })
+    ).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(page.getByRole("button", { name: "Attach" })).toBeFocused()
     await page.keyboard.press("Tab")

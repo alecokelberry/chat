@@ -3,6 +3,10 @@
 // new tab (a real link, so it opens the way the browser opens links),
 // then Delete, in red, which an agent can't press (data-agent-confirm).
 //
+// The installed Home Screen app leaves Open in new tab out: there it opens
+// Safari, which keeps its own cookies apart from the app, so it's most
+// likely signed out.
+//
 // Pin, Rename and Delete go through the chat list (chat-list.tsx), which
 // shows them at once and saves them; Delete offers Undo first.
 //
@@ -30,6 +34,7 @@ import {
   MenuSeparator,
 } from "@/components/ui/menu"
 import { TITLE_MAX } from "@/lib/chat/list"
+import { useStandalone } from "@/lib/media"
 
 /** The menu's items for `chat`, below its trigger with their end edges
  *  level. */
@@ -83,20 +88,7 @@ export function ChatMenuContent({
           Rename
         </MenuItem>
       </MenuGroup>
-      <MenuSeparator />
-      <MenuItem
-        render={
-          <Link
-            to="/c/$id"
-            params={{ id: chat.id }}
-            target="_blank"
-            rel="noopener"
-          />
-        }
-      >
-        <ExternalLinkIcon aria-hidden />
-        Open in new tab
-      </MenuItem>
+      <OpenInNewTab id={chat.id} />
       <MenuSeparator />
       <MenuItem
         destructive
@@ -168,6 +160,24 @@ export function RenameField({
         onCancel={() => finish(null)}
         onSave={() => finish(field.current?.value ?? null)}
       />
+    </>
+  )
+}
+
+/** Open in new tab, after a separator; nothing in the Home Screen app. */
+function OpenInNewTab({ id }: { id: string }) {
+  if (useStandalone() === true) return null
+  return (
+    <>
+      <MenuSeparator />
+      <MenuItem
+        render={
+          <Link to="/c/$id" params={{ id }} target="_blank" rel="noopener" />
+        }
+      >
+        <ExternalLinkIcon aria-hidden />
+        Open in new tab
+      </MenuItem>
     </>
   )
 }

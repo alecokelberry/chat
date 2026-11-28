@@ -3,13 +3,16 @@ import type { Page } from "@playwright/test"
 import { TOUR_ID, TOUR_MESSAGES, TOUR_TITLE } from "@/lib/chat/tour"
 
 import {
+  closeDeleteToast,
   expect,
   questions,
   replies,
+  savedMessages,
   send,
   sidebar,
   signInAsDev,
   test,
+  wipePending,
 } from "./session"
 
 // The feature tour (src/lib/chat/tour.ts): Feature tour in the account menu
@@ -100,4 +103,27 @@ test("Feature tour adds one pinned demo chat, refreshes it, and deletes", async 
   await page.evaluate(() => window.toast.dismiss())
   await page.reload()
   await expect(tourRows(page)).toHaveCount(0)
+})
+
+// A delete wipes the chat's agent 1 to 2 seconds after it answers
+// (src/lib/chat/agent.ts). The tour comes back under the same id, so one
+// added again in that window keeps its messages: adding it cancels the
+// wipe. Once no wipe is left to come, the messages are all there; a wipe
+// that ran would have left none.
+test("the tour added again right after a delete keeps its messages", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await openTour(page)
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+  await expect(tourRows(page)).toHaveCount(0)
+  await closeDeleteToast(page)
+  expect(await wipePending(page, TOUR_ID)).toBe(true)
+
+  await openTour(page)
+  await expect.poll(() => wipePending(page, TOUR_ID)).toBe(false)
+  expect(await savedMessages(page, TOUR_ID)).toBe(TOUR_MESSAGES.length)
+  await page.reload()
+  await expect(questions(page)).toHaveCount(QUESTIONS)
 })

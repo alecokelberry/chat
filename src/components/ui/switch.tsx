@@ -1,6 +1,7 @@
 // Switch: ui-sdk's switch, for a setting that takes effect as it changes
 // (Settings' rows). A 36×22 pill: the pressed wash while off, ink while
-// on; its 18px thumb (the ink's own text color) slides to the end over
+// on; its 18px thumb (the ink's own text color, or the text color while
+// off in dark, where the ink's text color would vanish) slides to the end over
 // duration-fast, and back under right-to-left. Under reduced motion it
 // jumps. A 40px invisible touch area on touch screens.
 import type * as React from "react"
@@ -24,7 +25,7 @@ function Switch({
       )}
       {...props}
     >
-      <SwitchThumbPrimitive className="block size-4.5 rounded-full bg-primary-foreground shadow-tooltip transition-transform duration-fast ease-standard data-checked:translate-x-3.5 motion-reduce:transition-none rtl:data-checked:-translate-x-3.5" />
+      <SwitchThumbPrimitive className="block size-4.5 rounded-full bg-primary-foreground shadow-tooltip transition-transform duration-fast ease-standard data-checked:translate-x-3.5 motion-reduce:transition-none rtl:data-checked:-translate-x-3.5 dark:not-data-checked:bg-foreground" />
     </SwitchPrimitive>
   )
 }
