@@ -130,11 +130,10 @@ export const webSearch = (known: KnownAddresses) => {
           env.MOCK_MODEL === "1"
             ? await mockSearch(query, abortSignal)
             : await keenable(query, abortSignal)
-        known.add(
-          ...results.map(({ url, title, snippet }) =>
-            [url, title, snippet].join("\n")
-          )
-        )
+        for (const { url, site, title, snippet } of results) {
+          known.add(url)
+          known.add(`${title}\n${snippet}`, site)
+        }
         return { results }
       } catch (error) {
         if (abortSignal?.aborted === true) throw error
