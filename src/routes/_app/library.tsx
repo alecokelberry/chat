@@ -1,21 +1,23 @@
 // The Library: every image and document attached to a question, across
 // all the signed-in user's chats, laid out like Grok's Library page: its
-// heading, tabs (All, Images, Files), a search box and an options button
-// (Order: Newest or Oldest), then the files under the sidebar's day groups
-// (src/lib/chat/groups.ts) in the browser's own time zone, so the list
-// renders only in the browser. The tab, what's typed and the order live in
-// the address (?tab=&q=&order=), so back and reload keep them; the list
-// for them comes from the attachment index (getLibrary,
-// src/lib/chat/library.ts) a page at a time, the next page loading as the
-// end of the list scrolls into view. Each row shows the image (from its
-// chat's agent, fileUrl) or a document's icon, its name and kind, and how
-// long ago it was sent, and opens the chat it came from. A chat being
-// deleted takes its files with it at once, and Undo brings them back, as
-// in the sidebar's list. As the page opens
-// it has a few chats the index doesn't hold yet index themselves, as Search
-// does, and loads the list again if any did, so older chats fill in. In
-// dev, ?data=worst|empty|one swaps the files for made-up extremes
-// (src/lib/dev/worst-case.ts).
+// heading, tabs (All, Images, Files), a search box, a Grid/List switch and
+// an options button (Order: Newest or Oldest), then the files under the
+// sidebar's day groups (src/lib/chat/groups.ts) in the browser's own time
+// zone, so the list renders only in the browser. The tab and what's typed
+// live in the address (?tab=&q=), so back and reload keep them; the view
+// and order are remembered on the device (src/lib/library-view.ts), so
+// the server renders them with no flash. The list comes from the
+// attachment index (getLibrary, src/lib/chat/library.ts) a page at a
+// time, the next page loading as the end of the list scrolls into view.
+// The Grid shows each image as a square (from its chat's agent, fileUrl)
+// and each document as a tile with its icon, name and kind; the List
+// shows a row with a thumbnail, its name and kind, and how long ago it
+// was sent. Either opens the chat it came from. A chat being deleted
+// takes its files with it at once, and Undo brings them back, as in the
+// sidebar's list. As the page opens it has a few chats the index doesn't
+// hold yet index themselves, as Search does, and loads the list again if
+// any did, so older chats fill in. In dev, ?data=worst|empty|one swaps
+// the files for made-up extremes (src/lib/dev/worst-case.ts).
 import {
   useEffect,
   useMemo,
@@ -34,6 +36,8 @@ import {
 import {
   FileTextIcon,
   ImageOffIcon,
+  LayoutGridIcon,
+  ListIcon,
   SearchIcon,
   Settings2Icon,
 } from "lucide-react"
@@ -43,6 +47,7 @@ import { Button } from "@/components/ui/button"
 import { FileName } from "@/components/ui/file-chip"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs"
+import { Toggle, ToggleGroup, ToggleIcon } from "@/components/ui/toggle"
 import {
   Menu,
   MenuContent,
@@ -65,9 +70,14 @@ import {
 import { getLibrary, indexOlderChats, NAME_MAX } from "@/lib/chat/list"
 import { relativeTime } from "@/lib/chat/relative-time"
 import { previewLibrary } from "@/lib/dev/worst-case"
+import {
+  libraryLook,
+  saveLibraryLook,
+  type LibraryView,
+} from "@/lib/library-view"
 import { pageTitle } from "@/lib/utils"
 
-type LibrarySearch = { tab?: LibraryTab; q?: string; order?: LibraryOrder }
+type LibrarySearch = { tab?: LibraryTab; q?: string }
 
 type Query = Omit<LibraryQuery, "cursor">
 
@@ -83,17 +93,17 @@ export const Route = createFileRoute("/_app/library")({
       typeof search.q === "string" && search.q !== ""
         ? search.q.slice(0, NAME_MAX)
         : undefined,
-    order: oneOf(LIBRARY_ORDERS.slice(1), search.order),
   }),
-  loaderDeps: ({ search }): Query => ({
+  loaderDeps: ({ search }) => ({
     tab: search.tab ?? "all",
     name: search.q ?? "",
-    order: search.order ?? "newest",
   }),
-  loader: async ({ deps }) => ({
-    query: deps,
-    items: await getLibrary({ data: deps }),
-  }),
+  // The order comes from the saved look; a change saves it and loads again.
+  loader: async ({ deps }) => {
+    const { view, order } = libraryLook()
+    const query: Query = { ...deps, order }
+    return { query, view, items: await getLibrary({ data: query }) }
+  },
   component: Library,
 })
 
@@ -142,7 +152,9 @@ const useInBrowser = () =>
 
 function Library() {
   const { data } = useSearch({ from: "/_app" })
-  const { query, items } = Route.useLoaderData()
+  const { query, view: savedView, items } = Route.useLoaderData()
+  // Shown at once; the order needs the list loaded again.
+  const [view, setView] = useState(savedView)
   const shown = useMemo(() => previewLibrary(items, data), [items, data])
   const navigate = useNavigate({ from: Route.fullPath })
   const router = useRouter()
@@ -190,17 +202,19 @@ function Library() {
                   })
                 }
               />
+              <ViewSwitch
+                view={view}
+                onView={(picked) => {
+                  saveLibraryLook({ view: picked, order: query.order })
+                  setView(picked)
+                }}
+              />
               <Options
                 order={query.order}
-                onOrder={(order) =>
-                  void navigate({
-                    search: (prev) => ({
-                      ...prev,
-                      order: order === "newest" ? undefined : order,
-                    }),
-                    replace: true,
-                  })
-                }
+                onOrder={(order) => {
+                  saveLibraryLook({ view, order })
+                  void router.invalidate()
+                }}
               />
             </div>
             <Files
@@ -208,6 +222,7 @@ function Library() {
               key={JSON.stringify(query)}
               first={shown}
               query={query}
+              view={view}
               more={data === undefined}
             />
           </TabsPanel>
@@ -257,7 +272,38 @@ function NameSearch({
   )
 }
 
-/** Grok's view options button: here, the order. */
+/** Grid or List, shown at once. */
+function ViewSwitch({
+  view,
+  onView,
+}: {
+  view: LibraryView
+  onView: (view: LibraryView) => void
+}) {
+  return (
+    <ToggleGroup<LibraryView>
+      aria-label="View"
+      value={[view]}
+      deselectable={false}
+      onValueChange={([pressed]) => {
+        if (pressed !== undefined) onView(pressed)
+      }}
+    >
+      <Toggle value="grid" aria-label="Grid">
+        <ToggleIcon>
+          <LayoutGridIcon />
+        </ToggleIcon>
+      </Toggle>
+      <Toggle value="list" aria-label="List">
+        <ToggleIcon>
+          <ListIcon />
+        </ToggleIcon>
+      </Toggle>
+    </ToggleGroup>
+  )
+}
+
+/** Grok's view options button: the order. */
 function Options({
   order,
   onOrder,
@@ -274,8 +320,8 @@ function Options({
         <MenuRadioGroup
           value={order}
           onValueChange={(value) => {
-            const next = oneOf(LIBRARY_ORDERS, value)
-            if (next !== undefined) onOrder(next)
+            const picked = oneOf(LIBRARY_ORDERS, value)
+            if (picked !== undefined) onOrder(picked)
           }}
         >
           <MenuGroupLabel>Order</MenuGroupLabel>
@@ -315,10 +361,12 @@ function Nothing({ query }: { query: Query }) {
 function Files({
   first,
   query,
+  view,
   more,
 }: {
   first: LibraryItem[]
   query: Query
+  view: LibraryView
   more: boolean
 }) {
   const inBrowser = useInBrowser()
@@ -381,18 +429,73 @@ function Files({
             <h2 className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">
               {group.label}
             </h2>
-            <ul className="flex flex-col gap-px">
-              {group.items.map((item) => (
-                <li key={item.seq}>
-                  <Row item={item} now={now} />
-                </li>
-              ))}
-            </ul>
+            {view === "grid" ? (
+              <ul className="grid grid-cols-3 gap-2 px-3 sm:grid-cols-4 md:grid-cols-5">
+                {group.items.map((item) => (
+                  <li key={item.seq}>
+                    <Tile item={item} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <ul className="flex flex-col gap-px">
+                {group.items.map((item) => (
+                  <li key={item.seq}>
+                    <Row item={item} now={now} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )
       )}
       {!done && <div ref={end} className="h-px" />}
     </>
+  )
+}
+
+/** A file in the Grid: an image's square, or a document's tile with its
+ *  icon, name and kind. An image's name is there for screen readers. */
+function Tile({ item }: { item: LibraryItem }) {
+  const [broken, setBroken] = useState(false)
+  const image = item.kind === "image" && !broken
+  return (
+    <Button
+      variant="tile"
+      size="none"
+      render={<Link to="/c/$id" params={{ id: item.chatId }} />}
+    >
+      {image ? (
+        <>
+          <img
+            src={fileUrl(item)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setBroken(true)}
+          />
+          <span className="sr-only">
+            {item.name}, {KIND[item.kind]}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="text-muted-foreground">
+            {item.kind === "image" ? (
+              <ImageOffIcon aria-hidden />
+            ) : (
+              <FileTextIcon aria-hidden />
+            )}
+          </span>
+          <span className="line-clamp-2 w-full text-xs font-medium break-all">
+            {item.name}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {KIND[item.kind]}
+          </span>
+        </>
+      )}
+    </Button>
   )
 }
 

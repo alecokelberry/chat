@@ -22,8 +22,8 @@ import {
 // the Library (the feature tour, put back unindexed) shows up once the
 // page has opened. A deleted chat's files leave at once, and Undo brings
 // them back; an edit that takes a file out takes it out of the Library.
-// Tabs, a name search and the order narrow and flip it, kept in the
-// address.
+// Tabs and a name search narrow it, kept in the address; the order flips
+// it and Grid/List switches it, kept on the device.
 
 const SMALL = "e2e/fixtures/small.jpg" // 400 × 300
 const NOTES = "e2e/fixtures/notes.pdf"
@@ -116,7 +116,7 @@ test("an edit that takes a file out takes it out of the Library", async ({
   await expect(row(page, photo)).toHaveCount(0)
 })
 
-test("tabs, a name search and Oldest narrow and flip the list, after a reload too", async ({
+test("tabs, a name search and Oldest narrow and flip the list", async ({
   page,
 }) => {
   await signInAsDev(page)
@@ -153,8 +153,36 @@ test("tabs, a name search and Oldest narrow and flip the list, after a reload to
   await expect(library(page).getByRole("link").first()).toContainText(notes)
   await page.getByRole("button", { name: "View options" }).click()
   await page.getByRole("menuitemradio", { name: "Oldest" }).click()
-  await expect(page).toHaveURL(/order=oldest/)
   await expect(library(page).getByRole("link").first()).toContainText(photo)
+  await page.reload()
+  await expect(library(page).getByRole("link").first()).toContainText(photo)
+})
+
+test("Grid shows the files as squares, List as rows, after a reload too", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const { photo, notes } = await sendFiles(page, unique("g").slice(2))
+  await openLibrary(page)
+
+  const view = page.getByRole("group", { name: "View" })
+  const grid = view.getByRole("button", { name: "Grid" })
+  const list = view.getByRole("button", { name: "List" })
+  await expect(grid).toHaveAttribute("aria-pressed", "true")
+  const square = await row(page, photo).boundingBox()
+  expect(Math.abs((square?.width ?? 0) - (square?.height ?? 1))).toBeLessThan(2)
+  await expect(row(page, notes)).toContainText("PDF")
+
+  await list.click()
+  await expect(list).toHaveAttribute("aria-pressed", "true")
+  await page.reload()
+  await expect(list).toHaveAttribute("aria-pressed", "true")
+  const line = await row(page, photo).boundingBox()
+  expect(line?.width).toBeGreaterThan((line?.height ?? 0) * 4)
+
+  await grid.click()
+  await page.reload()
+  await expect(grid).toHaveAttribute("aria-pressed", "true")
 })
 
 test("Files finds a text file by a part of its name; Back clears the box", async ({
