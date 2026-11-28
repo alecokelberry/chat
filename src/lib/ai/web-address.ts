@@ -97,3 +97,12 @@ export function appearsIn(url: string, text: string): boolean {
   }
   return false
 }
+
+/** Whether `url` is written in `text` (appearsIn), or, as https, is a
+ *  bare address written there without its scheme ("example.org/a"), as
+ *  people often type one. */
+export function writtenIn(url: string, text: string): boolean {
+  if (appearsIn(url, text)) return true
+  const bare = url.startsWith("https://") ? url.slice("https://".length) : ""
+  return bare.includes(".") && appearsIn(bare, text)
+}

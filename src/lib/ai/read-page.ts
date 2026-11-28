@@ -8,7 +8,7 @@
 // reads at most READ_LIMIT pages; past that the tool tells the model no,
 // and the chat leaves the refusal out (src/lib/chat/searches.ts).
 //
-// It opens only an address written out whole in `known`: the owner's
+// It opens only an address written out whole in `known` (writtenIn): the owner's
 // questions and documents in the chat, then whatever this reply's searches
 // found and the pages it read (src/lib/ai/index.ts and search.ts add
 // them). An address the model made up itself is refused before anything
@@ -26,10 +26,10 @@ import { z } from "zod"
 import { mockRead } from "@/lib/ai/mock"
 import { KeenableError, SearchError } from "@/lib/ai/search"
 import {
-  appearsIn,
   refusalFor,
   siteOf,
   UNSEEN_ADDRESS,
+  writtenIn,
 } from "@/lib/ai/web-address"
 
 /** At most this many pages read in one reply. */
@@ -124,7 +124,7 @@ export const readPage = (known: string[]) => {
     execute: async ({ url }, { abortSignal }) => {
       const refusal = refusalFor(url)
       if (refusal !== null) throw new SearchError(refusal)
-      if (!known.some((text) => appearsIn(url, text)))
+      if (!known.some((text) => writtenIn(url, text)))
         throw new SearchError(UNSEEN_ADDRESS)
       if (left <= 0)
         return {

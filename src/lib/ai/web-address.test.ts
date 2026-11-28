@@ -1,7 +1,7 @@
 import { fc, it } from "@fast-check/vitest"
 import { describe, expect, test } from "vitest"
 
-import { appearsIn, refusalFor, siteOf } from "@/lib/ai/web-address"
+import { appearsIn, refusalFor, siteOf, writtenIn } from "@/lib/ai/web-address"
 
 /** Ranges off the public internet, from RFC 6890: [first, last] as
  *  32-bit numbers. */
@@ -201,5 +201,26 @@ describe("appearsIn", () => {
 
   test("finds nothing for an empty address", () => {
     expect(appearsIn("", "anything")).toBe(false)
+  })
+})
+
+describe("writtenIn", () => {
+  test("takes a bare address the owner typed as https", () => {
+    expect(
+      writtenIn("https://example.org/article", "read example.org/article")
+    ).toBe(true)
+    expect(
+      writtenIn("https://www.example.org/x", "see www.example.org/x.")
+    ).toBe(true)
+  })
+
+  test("adds nothing else to a bare address", () => {
+    expect(
+      writtenIn("http://example.org/article", "read example.org/article")
+    ).toBe(false)
+    expect(
+      writtenIn("https://example.org/article?q=1", "read example.org/article")
+    ).toBe(false)
+    expect(writtenIn("https://article", "read article")).toBe(false)
   })
 })
