@@ -1,7 +1,8 @@
 import type { ChatOwner } from "@/lib/chat/store"
 
-// A chat's id: a random UUID the browser makes on the first send. Both the
-// /c/<id> page and the /api/chats/<id> door check it with this.
+// A chat's id (a random UUID the browser makes on the first send, which the
+// /c/<id> page and the /api/chats/<id> door check with CHAT_ID) and the name
+// of its agent, `<user id>:<chat id>`, built and read back here.
 export const CHAT_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 

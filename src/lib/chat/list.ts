@@ -73,9 +73,7 @@ async function ownChat(id: string): Promise<ChatOwner> {
   return { userId: user, id }
 }
 
-/** The chat's agent. Its name holds the user's id, so a user reaches only
- *  their own chats' agents, whatever id they send
- *  (src/lib/chat/route.ts names it the same way, with agentName). */
+/** The chat's agent, named with agentName. */
 const agentOf = (owner: ChatOwner) =>
   getAgentByName(env.ChatAgent, agentName(owner))
 
