@@ -15,6 +15,7 @@
     "deploy:preview": "vite build && wrangler d1 migrations apply chat-preview --remote -c wrangler.preview-migrations.jsonc && wrangler preview",
     "format": "oxfmt",
     "db:generate": "drizzle-kit generate",
+    "db:export": "node scripts/db-export.mjs",
     "e2e": "vite build --mode test && playwright test",
     "smoke": "vite build --mode test && NVIDIA_SMOKE=1 playwright test",
     "check": "oxfmt --check && oxlint && tsc --noEmit",
