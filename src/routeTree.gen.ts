@@ -15,6 +15,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppSplatRouteImport } from './routes/_app/$'
 import { Route as AppLibraryRouteImport } from './routes/_app/library'
+import { Route as AppPrivateRouteImport } from './routes/_app/private'
 import { Route as AppCIdRouteImport } from './routes/_app/c.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -47,6 +48,11 @@ const AppLibraryRoute = AppLibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppPrivateRoute = AppPrivateRouteImport.update({
+  id: '/private',
+  path: '/private',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppCIdRoute = AppCIdRouteImport.update({
   id: '/c/$id',
   path: '/c/$id',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/$': typeof AppSplatRoute
   '/library': typeof AppLibraryRoute
+  '/private': typeof AppPrivateRoute
   '/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/$': typeof AppSplatRoute
   '/library': typeof AppLibraryRoute
+  '/private': typeof AppPrivateRoute
   '/': typeof AppIndexRoute
   '/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/$': typeof AppSplatRoute
   '/_app/library': typeof AppLibraryRoute
+  '/_app/private': typeof AppPrivateRoute
   '/_app/': typeof AppIndexRoute
   '/_app/c/$id': typeof AppCIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -90,9 +99,24 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/setup' | '/sign-in' | '/$' | '/library' | '/c/$id' | '/api/auth/$'
+    | '/'
+    | '/setup'
+    | '/sign-in'
+    | '/$'
+    | '/library'
+    | '/private'
+    | '/c/$id'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/setup' | '/sign-in' | '/$' | '/library' | '/' | '/c/$id' | '/api/auth/$'
+  to:
+    | '/setup'
+    | '/sign-in'
+    | '/$'
+    | '/library'
+    | '/private'
+    | '/'
+    | '/c/$id'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/_app'
@@ -100,6 +124,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/$'
     | '/_app/library'
+    | '/_app/private'
     | '/_app/'
     | '/_app/c/$id'
     | '/api/auth/$'
@@ -156,6 +181,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLibraryRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/private': {
+      id: '/_app/private'
+      path: '/private'
+      fullPath: '/private'
+      preLoaderRoute: typeof AppPrivateRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/c/$id': {
       id: '/_app/c/$id'
       path: '/c/$id'
@@ -176,6 +208,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteRouteChildren {
   AppSplatRoute: typeof AppSplatRoute
   AppLibraryRoute: typeof AppLibraryRoute
+  AppPrivateRoute: typeof AppPrivateRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCIdRoute: typeof AppCIdRoute
 }
@@ -183,6 +216,7 @@ interface AppRouteRouteChildren {
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSplatRoute: AppSplatRoute,
   AppLibraryRoute: AppLibraryRoute,
+  AppPrivateRoute: AppPrivateRoute,
   AppIndexRoute: AppIndexRoute,
   AppCIdRoute: AppCIdRoute,
 }
