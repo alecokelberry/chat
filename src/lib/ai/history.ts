@@ -14,7 +14,9 @@
 // Its size is counted in characters, about four to a token: each text and
 // each document's text by its length, and each image as IMAGE_COST (an
 // "[image: name]" for a model that can't see is just its text). Thinking and
-// tool calls don't count, since pruneMessages drops every old one. The
+// tool calls don't count: pruneMessages drops all but the last two
+// messages', so the reply just before the last question can bring its
+// searches and pages (a few times 8,000 characters) past the budget. The
 // instructions aren't part of the chat, so they always go. The last
 // question, with all its files, and anything after it always go whole.
 // While the chat is over budget, its oldest turn (a question and its reply,
@@ -112,5 +114,5 @@ export function fitHistory(
     size -= messageSize(message)
     start = index + 1
   }
-  return start === 0 ? messages : messages.slice(start)
+  return messages.slice(start)
 }

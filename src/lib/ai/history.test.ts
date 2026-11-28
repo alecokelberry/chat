@@ -2,6 +2,8 @@ import { fc, it } from "@fast-check/vitest"
 import type { UIMessage } from "ai"
 import { expect, test } from "vitest"
 
+import { documentPrompt } from "@/lib/chat/documents"
+
 import { fitHistory, historySize, modelMessages } from "@/lib/ai/history"
 
 const PAGE_TEXT = "The page's whole text, which only the old reply read."
@@ -96,23 +98,36 @@ const chats = fc
       { id: `a${turn}`, role: "assistant", parts: reply },
     ])
   )
-  // Most chats end on the question being answered; some end on a reply,
-  // as one does when a reply goes on after a reload.
+  // Half end on the question being answered, half on a reply, as one
+  // does when a reply goes on after a reload.
   .chain((chat) =>
-    fc.boolean().map((answered) => (answered ? chat : chat.slice(0, -1)))
+    fc.boolean().map((endsOnReply) => (endsOnReply ? chat : chat.slice(0, -1)))
   )
   .filter((chat) => chat.length > 0)
 const budgets = fc.oneof(
   fc.integer({ min: 0, max: 1_000 }),
   fc.integer({ min: 0, max: 400_000 })
 )
+/** A chat and a budget, which half the time lands on the edge: the size
+ *  of the chat from one of its questions on, give or take one. */
+const chatsAndBudgets = chats.chain((chat) => {
+  const from = chat.flatMap((message, index) =>
+    message.role === "user" ? [index] : []
+  )
+  const edge = fc
+    .tuple(fc.constantFrom(...from), fc.constantFrom(-1, 0, 1))
+    .map(([index, nudge]) =>
+      Math.max(0, historySize(chat.slice(index)) + nudge)
+    )
+  return fc.tuple(fc.constant(chat), fc.oneof(budgets, edge))
+})
 
 const lastQuestionAt = (chat: UIMessage[]) =>
   chat.findLastIndex((message) => message.role === "user")
 
-it.prop([chats, budgets])(
+it.prop([chatsAndBudgets])(
   "the last question and what follows it are kept whole",
-  (chat, budget) => {
+  ([chat, budget]) => {
     const fitted = fitHistory(chat, budget)
     const from = lastQuestionAt(chat)
     expect(fitted.slice(lastQuestionAt(fitted))).toEqual(chat.slice(from))
@@ -123,9 +138,9 @@ it.prop([chats])("a chat within the budget comes back as it was", (chat) => {
   expect(fitHistory(chat, historySize(chat))).toBe(chat)
 })
 
-it.prop([chats, budgets])(
+it.prop([chatsAndBudgets])(
   "the result fits, unless only the last question is left",
-  (chat, budget) => {
+  ([chat, budget]) => {
     const fitted = fitHistory(chat, budget)
     if (lastQuestionAt(fitted) > 0) {
       expect(historySize(fitted)).toBeLessThanOrEqual(budget)
@@ -133,24 +148,24 @@ it.prop([chats, budgets])(
   }
 )
 
-it.prop([chats, budgets])(
+it.prop([chatsAndBudgets])(
   "messages are only dropped from the start, and never changed",
-  (chat, budget) => {
+  ([chat, budget]) => {
     const fitted = fitHistory(chat, budget)
     expect(fitted).toEqual(chat.slice(chat.length - fitted.length))
   }
 )
 
-it.prop([chats, budgets])(
+it.prop([chatsAndBudgets])(
   "the result starts with a question",
-  (chat, budget) => {
+  ([chat, budget]) => {
     expect(fitHistory(chat, budget)[0]?.role).toBe("user")
   }
 )
 
-it.prop([chats, budgets])(
+it.prop([chatsAndBudgets])(
   "no more turns are dropped than the budget needs",
-  (chat, budget) => {
+  ([chat, budget]) => {
     const cut = chat.length - fitHistory(chat, budget).length
     if (cut === 0) return
     // The chat from the last dropped question on is over budget.
@@ -159,10 +174,13 @@ it.prop([chats, budgets])(
   }
 )
 
-it.prop([chats, budgets])("fitting twice changes nothing", (chat, budget) => {
-  const fitted = fitHistory(chat, budget)
-  expect(fitHistory(fitted, budget)).toEqual(fitted)
-})
+it.prop([chatsAndBudgets])(
+  "fitting twice changes nothing",
+  ([chat, budget]) => {
+    const fitted = fitHistory(chat, budget)
+    expect(fitHistory(fitted, budget)).toEqual(fitted)
+  }
+)
 
 test("images count at what the model is sent", async () => {
   const photo: Part = {
@@ -194,4 +212,47 @@ test("images count at what the model is sent", async () => {
     JSON.stringify(await modelMessages(chat, seesImages))
   expect(await sent(false)).toContain("The first question")
   expect(await sent(true)).not.toContain("The first question")
+})
+
+test("size counts text, documents and images, not thinking or tools", () => {
+  const document: Part = {
+    type: "data-document",
+    data: {
+      name: "notes.txt",
+      mediaType: "text/plain",
+      text: "abc",
+      cut: false,
+    },
+  }
+  const message: UIMessage = {
+    id: "m",
+    role: "assistant",
+    parts: [
+      { type: "text", text: "12345" },
+      { type: "reasoning", text: words(1_000), state: "done" },
+      {
+        type: "tool-readPage",
+        toolCallId: "c",
+        state: "output-available",
+        input: { url: "https://example.com" },
+        output: { text: words(1_000) },
+      },
+      {
+        type: "file",
+        mediaType: "image/jpeg",
+        url: "data:image/jpeg;base64,AAAA",
+      },
+      document,
+    ],
+  }
+  expect(historySize([message])).toBe(
+    5 +
+      8_000 +
+      documentPrompt({
+        name: "notes.txt",
+        mediaType: "text/plain",
+        text: "abc",
+        cut: false,
+      }).length
+  )
 })
