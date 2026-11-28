@@ -518,7 +518,7 @@ test.describe("actions", () => {
   async function run(page: Page, typed: string, name: string) {
     await page.keyboard.press("ControlOrMeta+k")
     await field(page).fill(typed)
-    const action = dialog(page).getByRole("option", { name })
+    const action = dialog(page).getByRole("option", { name, exact: true })
     await expect(action).toBeVisible()
     await expect(dialog(page).getByRole("option").first()).toHaveText(
       new RegExp(`^${name}`)
