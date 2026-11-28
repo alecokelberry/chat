@@ -232,6 +232,26 @@ test("the Library lists newest first, by tab, by part of a name in any case", as
   expect((await list({ order: "oldest" })).at(0)?.name).toBe("Photo0.jpg")
 })
 
+test("Files holds PDFs and text files; a name folds A to Z as SQLite does", async () => {
+  index([
+    question("q1", [doc("PackingList.md", "text/markdown"), doc("École.pdf")]),
+    reply("r1", 5000),
+  ])
+  expect((await list({ tab: "files" })).map((item) => item.kind)).toEqual([
+    "pdf",
+    "text",
+  ])
+  expect((await list({ name: "packing" })).map((item) => item.name)).toEqual([
+    "PackingList.md",
+  ])
+  expect((await list({ name: "COLE" })).map((item) => item.name)).toEqual([
+    "École.pdf",
+  ])
+  expect((await list({ name: "É" })).map((item) => item.name)).toEqual([
+    "École.pdf",
+  ])
+})
+
 test("pages follow on from the last item, in either order, with none twice", async () => {
   fill(LIBRARY_PAGE)
   for (const order of ["newest", "oldest"] as const) {

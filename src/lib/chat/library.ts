@@ -219,6 +219,10 @@ export type LibraryQuery = {
 /** How many items one page of the Library holds. */
 export const LIBRARY_PAGE = 60
 
+/** A to Z as a to z, and nothing else, as SQLite's lower() does. */
+const foldAscii = (text: string) =>
+  text.replaceAll(/[A-Z]/g, (letter) => letter.toLowerCase())
+
 const KINDS_OF: Record<LibraryTab, AttachmentKind[] | null> = {
   all: null,
   images: ["image"],
@@ -226,9 +230,9 @@ const KINDS_OF: Record<LibraryTab, AttachmentKind[] | null> = {
 }
 
 /** One page of the user's attachments that `query` asks for, from `db`
- *  (D1's Drizzle in the app). A name
- *  matches anywhere, in any case (SQLite's instr on lowercased text, so
- *  nothing typed is read as a pattern). */
+ *  (D1's Drizzle in the app). A name matches anywhere (SQLite's instr,
+ *  so nothing typed is read as a pattern), A to Z in either case: D1's
+ *  lower() folds only ASCII, so what's typed is folded the same way. */
 export async function listAttachments<Result>(
   db: BaseSQLiteDatabase<"async", Result>,
   userId: string,
@@ -255,7 +259,7 @@ export async function listAttachments<Result>(
         kinds === null ? undefined : inArray(attachment.kind, kinds),
         name === ""
           ? undefined
-          : sql`instr(lower(${attachment.name}), ${name.toLowerCase()}) > 0`,
+          : sql`instr(lower(${attachment.name}), ${foldAscii(name)}) > 0`,
         cursor === undefined
           ? undefined
           : or(

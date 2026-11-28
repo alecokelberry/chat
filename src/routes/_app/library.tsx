@@ -59,6 +59,7 @@ import {
   LIBRARY_TABS,
   type LibraryItem,
   type LibraryOrder,
+  type LibraryQuery,
   type LibraryTab,
 } from "@/lib/chat/library"
 import { getLibrary, indexOlderChats, NAME_MAX } from "@/lib/chat/list"
@@ -68,7 +69,7 @@ import { pageTitle } from "@/lib/utils"
 
 type LibrarySearch = { tab?: LibraryTab; q?: string; order?: LibraryOrder }
 
-type Query = { tab: LibraryTab; name: string; order: LibraryOrder }
+type Query = Omit<LibraryQuery, "cursor">
 
 const oneOf = <T extends string>(values: readonly T[], value: unknown) =>
   values.find((known) => known === value)
@@ -96,10 +97,32 @@ export const Route = createFileRoute("/_app/library")({
   component: Library,
 })
 
-const TABS: Record<LibraryTab, string> = {
-  all: "All",
-  images: "Images",
-  files: "Files",
+/** Each tab's name, and what it says with nothing to show. */
+const TABS: Record<
+  LibraryTab,
+  { label: string; empty: { title: string; body: string } }
+> = {
+  all: {
+    label: "All",
+    empty: {
+      title: "Your library is empty",
+      body: "Files you attach in a chat show up here.",
+    },
+  },
+  images: {
+    label: "Images",
+    empty: {
+      title: "No images yet",
+      body: "Photos you attach in a chat show up here.",
+    },
+  },
+  files: {
+    label: "Files",
+    empty: {
+      title: "No files yet",
+      body: "PDFs and text files you attach in a chat show up here.",
+    },
+  },
 }
 
 const KIND = { image: "Image", pdf: "PDF", text: "Text" } as const
@@ -152,7 +175,7 @@ function Library() {
                   />
                 }
               >
-                {TABS[tab]}
+                {TABS[tab].label}
               </TabsTab>
             ))}
           </TabsList>
@@ -204,22 +227,28 @@ function NameSearch({
   onChange: (name: string) => void
 }) {
   const [typed, setTyped] = useState(name)
-  const sent = useRef(name)
+  // What the address last held or was sent: a name it gets from
+  // elsewhere (Back, or the sidebar's Library) replaces what's typed.
+  const [sent, setSent] = useState(name)
+  if (name !== sent) {
+    setSent(name)
+    setTyped(name)
+  }
   useEffect(() => {
-    if (typed === sent.current) return
+    if (typed === sent) return
     const timer = setTimeout(() => {
-      sent.current = typed
+      setSent(typed)
       onChange(typed)
     }, TYPING_PAUSE)
     return () => clearTimeout(timer)
-  }, [typed, onChange])
+  }, [typed, sent, onChange])
   return (
     <div className="flex h-9 w-full max-w-60 items-center gap-2 rounded-lg border border-border bg-secondary px-3 text-muted-foreground focus-within:ring-2 focus-within:ring-ring [&_svg]:size-4 [&_svg]:shrink-0">
       <SearchIcon aria-hidden />
       <Input
         type="search"
         aria-label="Search files"
-        placeholder="Search"
+        placeholder="Search…"
         maxLength={NAME_MAX}
         value={typed}
         onChange={(event) => setTyped(event.currentTarget.value)}
@@ -277,23 +306,8 @@ function Nothing({ query }: { query: Query }) {
     return (
       <Empty title="No files found">No file name holds “{query.name}”.</Empty>
     )
-  if (query.tab === "images")
-    return (
-      <Empty title="No images yet">
-        Photos you attach in a chat show up here.
-      </Empty>
-    )
-  if (query.tab === "files")
-    return (
-      <Empty title="No files yet">
-        PDFs and text files you attach in a chat show up here.
-      </Empty>
-    )
-  return (
-    <Empty title="Your library is empty">
-      Files you attach in a chat show up here.
-    </Empty>
-  )
+  const { title, body } = TABS[query.tab].empty
+  return <Empty title={title}>{body}</Empty>
 }
 
 /** The list: `first`, the loader's page, then each next page as the end
@@ -326,6 +340,8 @@ function Files({
     const last = loadedItems.at(-1)
     if (done || sentinel === null || last === undefined) return
     let loading = false
+    // A list started over (older chats just indexed) drops this page.
+    let stale = false
     const observer = new IntersectionObserver(([entry]) => {
       if (entry?.isIntersecting !== true || loading) return
       loading = true
@@ -333,6 +349,7 @@ function Files({
         data: { ...query, cursor: { at: last.at, seq: last.seq } },
       }).then(
         (page) => {
+          if (stale) return
           setItems((had) => [...had, ...page])
           if (page.length < LIBRARY_PAGE) setDone(true)
         },
@@ -344,11 +361,15 @@ function Files({
       )
     })
     observer.observe(sentinel)
-    return () => observer.disconnect()
+    return () => {
+      stale = true
+      observer.disconnect()
+    }
   }, [loadedItems, done, query])
   const listed = new Set(chats.map((chat) => chat.id))
   const items = loadedItems.filter((item) => listed.has(item.chatId))
-  if (items.length === 0) return <Nothing query={query} />
+  // Files only of chats being deleted still leave later pages to load.
+  if (items.length === 0 && done) return <Nothing query={query} />
   if (!inBrowser) return null
   const now = Date.now()
   const groups = groupByDay(items, (item) => item.at, now)

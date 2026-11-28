@@ -157,6 +157,46 @@ test("tabs, a name search and Oldest narrow and flip the list, after a reload to
   await expect(library(page).getByRole("link").first()).toContainText(photo)
 })
 
+test("Files finds a text file by a part of its name; Back clears the box", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  const tag = unique("m").slice(2)
+  const list = `PackingList-${tag}.md`
+  await pick(page, [
+    {
+      name: list,
+      mimeType: "text/markdown",
+      buffer: Buffer.from("# Packing\n\n- Water"),
+    },
+  ])
+  await expect(
+    page
+      .getByRole("list", { name: "Attached files" })
+      .locator("[data-slot=file-chip]")
+  ).toContainText("Text")
+  await page.getByRole("textbox", { name: "Message" }).fill(unique("List"))
+  await page.keyboard.press("Enter")
+  await expect(replies(page)).toHaveText([/Done\.$/])
+
+  await openLibrary(page)
+  await page
+    .getByRole("tablist", { name: "Show" })
+    .getByRole("tab", { name: "Files" })
+    .click()
+  await expect(page).toHaveURL(/tab=files/)
+  const search = page.getByRole("searchbox", { name: "Search files" })
+  await search.fill(`list-${tag}`)
+  await expect(page).toHaveURL(/q=/)
+  await expect(library(page).getByRole("link")).toHaveCount(1)
+  await expect(row(page, list)).toContainText("Text")
+
+  // The search replaced its entry, so Back is All with no search.
+  await page.goBack()
+  await expect(page).toHaveURL(/\/library$/)
+  await expect(search).toHaveValue("")
+})
+
 test("Search's actions open the Library", async ({ page }) => {
   await signInAsDev(page)
   await page.keyboard.press("ControlOrMeta+k")
