@@ -477,5 +477,6 @@ export {
   SidebarSectionAction,
   SidebarToggle,
   NEW_CHAT_SHORTCUT,
+  TOGGLE_SHORTCUT as TOGGLE_SIDEBAR_SHORTCUT,
   useNewChatShortcut,
 }
