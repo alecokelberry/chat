@@ -1,6 +1,8 @@
 node_modules
 dist
 .wrangler
+# D1 backups (pnpm db:export): private data, never committed
+backups
 .dev.vars*
 !.dev.vars.example
 .env*
