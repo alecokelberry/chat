@@ -431,10 +431,19 @@ test.describe("on a touch phone", () => {
     await page.getByRole("button", { name: "Search" }).tap()
     const sheet = page.locator('[data-slot="dialog-content"]')
     await tapInSheet(sheet, field(page))
-    const height = await sheet.evaluate(
-      (el) => el.getBoundingClientRect().height
-    )
-    expect(height).toBeCloseTo(844 - 16, 0)
+    const viewport = page.viewportSize()
+    if (viewport === null) throw new Error("No viewport")
+    const sheetHeight = () =>
+      sheet.evaluate((el) => el.getBoundingClientRect().height)
+    expect(await sheetHeight()).toBeCloseTo(viewport.height - 16, 0)
+    // It follows ui-sdk's --available-height (which shrinks as the
+    // keyboard rises), not the viewport.
+    // (An !important rule, since ui-sdk rewrites its own inline value.)
+    await page.addStyleTag({
+      content:
+        '[data-slot="dialog-content"] { --available-height: 600px !important }',
+    })
+    await expect.poll(sheetHeight).toBeCloseTo(600 - 16, 0)
   })
 
   test("the header's icon opens a sheet, and so does the drawer's, over it", async ({
