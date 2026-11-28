@@ -28,7 +28,7 @@ Semantic tokens only; no `dark:` color overrides. Everything is near-monochrome 
 
 ## Type
 
-Geist and Geist Mono, both variable. Five sizes: `text-xs` 12/16, `sm` 14/20, `base` 15/24, `2xl` 20/26 and `3xl` 28/36. Two weights: `font-normal` (425) and `font-medium` (525). Small sizes track slightly open (+0.01em at 12px), and display sizes sit at 0. App code never sets `leading-*` or `tracking-*`. Chat prose is `typeset typeset-docs` (`src/styles/`), the one place bold is used, at 650. Text fields on touch screens stay at 16px. Sizes are in rem, so they follow the browser's text size.
+Geist and Geist Mono, both variable. Six sizes: `text-xs` 12/16, `label` 13/20 (sidebar section labels and the Chats header), `sm` 14/20 (sidebar rows, New Chat), `base` 15/24, `2xl` 20/26 and `3xl` 28/36. The sidebar's sizes are Grok's, measured on grok.com. Two weights: `font-normal` (425) and `font-medium` (525). Small sizes track slightly open (+0.01em at 12px), and display sizes sit at 0. App code never sets `leading-*` or `tracking-*`. Chat prose is `typeset typeset-docs` (`src/styles/`), the one place bold is used, at 650. Text fields on touch screens stay at 16px. Sizes are in rem, so they follow the browser's text size.
 
 ## Motion
 
