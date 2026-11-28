@@ -65,6 +65,13 @@ async function openDrawer(page: Page) {
   return drawer
 }
 
+/** The chat list: the drawer on a phone, the column on a computer. */
+async function chatList(page: Page, phone: boolean) {
+  return phone
+    ? openDrawer(page)
+    : page.getByRole("navigation", { name: "Chats" })
+}
+
 for (const [look, { name, viewport, colorScheme }] of looks.entries()) {
   test.describe(name, () => {
     test.use({ viewport, colorScheme, reducedMotion: "reduce" })
@@ -87,10 +94,7 @@ for (const [look, { name, viewport, colorScheme }] of looks.entries()) {
     test("the chat list", async ({ page }) => {
       await signInAsDev(page, freshAccount(look, 3))
       await chatOnce(page)
-      const list =
-        viewport.width < 600
-          ? await openDrawer(page)
-          : page.getByRole("navigation", { name: "Chats" })
+      const list = await chatList(page, viewport.width < 600)
       await settled(page)
       await expect(
         list.getByRole("link", { name: "Talking to the mock model" })
@@ -112,10 +116,7 @@ for (const [look, { name, viewport, colorScheme }] of looks.entries()) {
 
     test("Settings", async ({ page }) => {
       await signInAsDev(page, freshAccount(look, 5))
-      const list =
-        viewport.width < 600
-          ? await openDrawer(page)
-          : page.getByRole("navigation", { name: "Chats" })
+      const list = await chatList(page, viewport.width < 600)
       await list.getByRole("button", { name: "Dev", exact: true }).click()
       await page.getByRole("menuitem", { name: "Settings" }).click()
       await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible()
