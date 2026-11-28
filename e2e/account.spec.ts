@@ -10,7 +10,7 @@ import {
   signInAsDev,
   test,
 } from "./session"
-import { statusBar, watchStatusBar } from "./status-bar"
+import { bottomBar, statusBar, watchStatusBar } from "./status-bar"
 
 // The account row and its menu (src/components/chat/account-menu.tsx) and
 // the theme it switches (src/components/ui/preferences.tsx): the name and
@@ -395,6 +395,32 @@ test.describe("on a phone", () => {
       "system"
     )
     await expect.poll(() => statusBar(page)).toBe(LIGHT)
+  })
+
+  test("in Safari, a theme change recolors the bottom toolbar too", async ({
+    page,
+  }) => {
+    // Safari on iOS 26 tints its bottom toolbar from the bottom edge, by
+    // the same rules as the status bar: the page's full-screen shell keeps
+    // the old color, so the nudge needs a strip at the bottom as well.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "standalone", { value: false })
+    })
+    await watchStatusBar(page)
+    await page.goto("/sign-in")
+    const toggle = page.getByRole("button", { name: "Dark theme" })
+    await expect(toggle).toBeVisible()
+    await expect.poll(() => bottomBar(page)).toBe(LIGHT)
+    await toggle.tap()
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-color-scheme",
+      "dark"
+    )
+    await expect.poll(() => bottomBar(page)).toBe(DARK)
+    await expect.poll(() => statusBar(page)).toBe(DARK)
+    await expect(page.locator('[data-slot="status-bar-nudge"]')).toHaveCount(0)
+    await toggle.tap()
+    await expect.poll(() => bottomBar(page)).toBe(LIGHT)
   })
 
   test("in the Home Screen app, Theme in the drawer recolors the bar with no reload", async ({
