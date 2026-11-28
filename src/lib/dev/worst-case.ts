@@ -1,6 +1,7 @@
 // Made-up data for checking screens against extremes, in dev and e2e builds
 // only: ?data=worst, ?data=empty or ?data=one on any signed-in page swaps the
-// sidebar's chats, the account row and a chat's messages for fixtures, and a
+// sidebar's chats, the account row, the Library's files and a chat's
+// messages for fixtures, and a
 // bar at the bottom (components/ui/demo-bar.tsx) flips between them. The
 // swap happens where each piece of data enters (the layout's chat list and
 // account, a chat's messages: src/routes/_app), so no component knows. A
@@ -11,6 +12,7 @@
 import type { UIMessage } from "ai"
 
 import type { Account } from "@/components/chat/account-menu"
+import type { LibraryItem } from "@/lib/chat/library-items"
 import type { ChatSummary } from "@/lib/chat/store"
 import { devBuild } from "@/lib/dev/dev-build"
 
@@ -75,6 +77,44 @@ export function previewChats(
       },
     ]
   return fakeChats(1000, now)
+}
+
+/** File names a question could hold: unbreakable, long, non-Latin, emoji,
+ *  one letter, and the longest a row keeps (255). */
+const FILE_NAMES = [
+  "IMG_20261127_183045_HDR_Portrait_Mode_Unbreakable_Name_With_No_Spaces.jpeg",
+  `${"Quarterly planning notes for the onboarding launch ".repeat(5)}`
+    .slice(0, 251)
+    .concat(".pdf"),
+  "تقرير الخصوصية والأمان.pdf",
+  "東京旅行の計画メモ.md",
+  "👩🏽‍💻🦊🚀.png",
+  "a",
+  "<script>alert(1)</script>.txt",
+]
+
+const KINDS = ["image", "pdf", "text"] as const
+
+/** `items`, or the fixture's: 300 files an hour apart (Today to Older),
+ *  their chats the fixture's. An image's file isn't there, so its tile
+ *  shows the empty square a failed load leaves. */
+export function previewLibrary(
+  items: LibraryItem[],
+  state: DataState | undefined
+): LibraryItem[] {
+  if (!previewEnabled || state === undefined) return items
+  if (state === "empty") return []
+  const now = Date.now()
+  return fakeChats(state === "one" ? 1 : 300, now).map((chat, i) => ({
+    seq: i + 1,
+    chatId: chat.id,
+    messageId: `fixture-${i}`,
+    part: 0,
+    name: FILE_NAMES[i] ?? `Worst-case file ${i + 1}.pdf`,
+    kind: KINDS[i % KINDS.length] ?? "pdf",
+    size: 1000,
+    at: chat.updatedAt,
+  }))
 }
 
 /** `account`, or the fixture's: the longest name and email, or the shortest.
