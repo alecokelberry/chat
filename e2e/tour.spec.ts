@@ -101,3 +101,41 @@ test("Feature tour adds one pinned demo chat, refreshes it, and deletes", async 
   await page.reload()
   await expect(tourRows(page)).toHaveCount(0)
 })
+
+// A delete wipes the chat's agent 1 to 2 seconds after it answers
+// (src/lib/chat/agent.ts). The tour comes back under the same id, so one
+// added again in that window must keep its messages when the wipe comes
+// due: the wipe sees the chat's row is back and leaves it be.
+test("the tour added again right after a delete keeps its messages", async ({
+  page,
+}) => {
+  await signInAsDev(page)
+  await openTour(page)
+  await page.getByRole("button", { name: "Chat actions" }).click()
+  await menu(page).getByRole("menuitem", { name: "Delete" }).click()
+  await expect(tourRows(page)).toHaveCount(0)
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/_serverFn/") &&
+      response.request().method() === "POST"
+  )
+  await page.evaluate(() => window.toast.dismiss())
+  expect((await deleted).ok()).toBe(true)
+  const deletedAt = Date.now()
+
+  await openTour(page)
+  // Past the wipe's due time (2 s, and a second's slack), the messages
+  // are all still there; a wipe that ran would leave none.
+  await expect(async () => {
+    const saved = await page.evaluate(async (id) => {
+      const response = await fetch(`/api/chats/${id}/get-messages`)
+      if (!response.ok) return -1
+      const messages: unknown[] = await response.json()
+      return messages.length
+    }, TOUR_ID)
+    expect(saved).toBe(TOUR_MESSAGES.length)
+    expect(Date.now() - deletedAt).toBeGreaterThan(3000)
+  }).toPass()
+  await page.reload()
+  await expect(questions(page)).toHaveCount(QUESTIONS)
+})

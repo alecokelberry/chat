@@ -24,6 +24,9 @@
 // that answer, and the Worker then reports a delete that worked as failed.
 // The SDK's own deferred destroy waits a second for the same reason; the
 // scheduler rounds a delay down to a whole second, so it takes 2 to be sure.
+// A chat can come back in that window under the same id (Feature tour
+// pressed again, or a send reaching the agent), so the wipe runs only if
+// the chat's row is still gone: one that came back keeps its messages.
 //
 // After every reply, finished, stopped or failed, it brings Search's index
 // of the chat's words up to date (src/lib/chat/message-index.ts): that
@@ -71,6 +74,7 @@ import { indexMessages } from "@/lib/chat/message-index"
 import { stoppedMetadata, type ReplyMetadata } from "@/lib/chat/reply-metadata"
 import {
   getCustomize,
+  hasChat,
   isUntitled,
   setFirstTitle,
   touchChat,
@@ -208,8 +212,9 @@ export class ChatAgent extends AIChatAgent<Env> {
     })
   }
 
-  /** What deleteChat's schedule runs. */
+  /** What deleteChat's schedule runs: nothing if the chat came back. */
   async wipe() {
+    if (await hasChat(this.env.DB, this.owner)) return
     await this.destroy()
   }
 
