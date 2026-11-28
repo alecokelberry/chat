@@ -7,6 +7,12 @@
 // a prompt can't point it at something that isn't the public web.
 // Keenable, which does the fetching, refuses private addresses too; this
 // check says why before anything leaves.
+//
+// And readPage opens only an address in the reply's KnownAddresses: one
+// written out whole (writtenIn) in the owner's questions or documents in
+// the chat, in this reply's search results, or in a page this reply read.
+// An address the model wrote itself is refused. What's left: the model can
+// still choose among the links a page it read lists (docs/decisions.md).
 
 /** An address's site (its host, without "www."), or null if it isn't an
  *  http(s) address. */
@@ -69,3 +75,53 @@ const isPrivateHost = (host: string) =>
   !host.includes(".") ||
   LOCAL_NAMES.test(host) ||
   isPrivateV4(host)
+
+/** Why readPage won't open an address the reply hasn't seen. */
+export const UNSEEN_ADDRESS =
+  "That address isn't in the chat, the search results or a page read for this reply, so it can't be read."
+
+/** The characters an address can hold (RFC 3986's, plus %). */
+const ADDRESS_CHAR = /[\w\-.~:/?#[\]@!$&'()*+,;=%]/
+
+/** What may follow an address that ends a sentence or sits in brackets
+ *  or quotes: only these, before a space or the end. */
+const CLOSING = /^[.,;:!?'")\]]*$/
+
+/** Whether `url` is written out whole in `text`: there, and not running
+ *  on into more of an address, so it can't be the start of a longer one
+ *  with something added. Closing punctuation after it is fine ("see
+ *  https://example.org/a.", "[a](https://example.org/a)"). */
+export function appearsIn(url: string, text: string): boolean {
+  if (url === "") return false
+  for (let at = text.indexOf(url); at !== -1; at = text.indexOf(url, at + 1)) {
+    let end = at + url.length
+    while (end < text.length && ADDRESS_CHAR.test(text.charAt(end))) end += 1
+    if (CLOSING.test(text.slice(at + url.length, end))) return true
+  }
+  return false
+}
+
+/** Whether `url` is written in `text` (appearsIn), or, as https, is a
+ *  bare address written there without its scheme ("example.org/a"), as
+ *  people often type one. */
+export function writtenIn(url: string, text: string): boolean {
+  if (appearsIn(url, text)) return true
+  const bare = url.startsWith("https://") ? url.slice("https://".length) : ""
+  return bare.includes(".") && appearsIn(bare, text)
+}
+
+/** The text one reply's addresses may come from: the owner's words at
+ *  first, then each search's results and each page read, added as they
+ *  arrive. Each text is checked on its own, so no address is pieced
+ *  together from two. */
+export function knownAddresses(ownWords: string[]) {
+  const texts = [...ownWords]
+  return {
+    add: (...more: string[]) => {
+      texts.push(...more)
+    },
+    has: (url: string) => texts.some((text) => writtenIn(url, text)),
+  }
+}
+
+export type KnownAddresses = ReturnType<typeof knownAddresses>
